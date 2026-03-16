@@ -14,7 +14,12 @@ Deep analysis of the Commercial Acoustics historical project dataset. This docum
 6. [Vendor Quote Analysis](#vendor-quote-analysis)
 7. [Product and Scope Taxonomy](#product-and-scope-taxonomy)
 8. [Email (.msg) Analysis](#email-msg-analysis)
-9. [Key Observations](#key-observations)
+9. [Plan/Drawing Extractability](#plandrawing-extractability)
+10. [Vendor Ecosystem](#vendor-ecosystem)
+11. [Project Type Distribution](#project-type-distribution)
+12. [Non-Standard Line Items](#non-standard-line-items)
+13. [Data Integrity](#data-integrity)
+14. [Key Observations](#key-observations)
 
 ---
 
@@ -98,7 +103,7 @@ The 98% prevalence of Excel buildups means the extraction pipeline can rely on t
 
 ## Excel Buildup Analysis
 
-The Excel buildups are **the single most important data source** in the entire dataset. They contain the actual cost calculations that drive every quote. However, they are semi-structured — no consistent header rows, varying cell positions, and three distinct format families.
+The Excel buildups are **the single most important data source** in the entire dataset. They contain the actual cost calculations that drive every quote. However, they are semi-structured — no consistent header rows, varying cell positions, and four distinct format families.
 
 ### Format A: Simple Single-Scope
 
@@ -174,6 +179,25 @@ Sheet "Summary":
 - Most complex to parse — requires sheet-level iteration and hierarchy detection
 - ~15% of all buildups follow this pattern
 
+### Format D: Tabular Takeoff
+
+**Found in:** Deloitte Tampa, Jesuit Student Center, MUFG Tampa
+**Structure:** Horizontal table with column headers in Row 1, one line item per row
+
+```
+| Category | Name | Description | Quantity | Scrap Rate | Total SF | Locations | Cost/SF Tile | Cost/SF Grid | Material Cost | Markup | Material Price | Man-Days | Labor Price | Sales Tax | Total |
+|----------|------|-------------|----------|------------|----------|-----------|-------------|-------------|---------------|--------|----------------|----------|-------------|-----------|-------|
+| ACT      | Dune | 2x2 lay-in | 4,200    | 10%        | 4,620    | Floors 2-4| $1.88       | $0.46       | $2,161        | 35%    | $2,917         | 6        | $3,132      | $175      | $6,224|
+```
+
+**Characteristics:**
+- True tabular format with proper column headers in Row 1
+- Includes scrap rate (waste factor) as an explicit column
+- Splits material cost into tile and grid components
+- One line item per row, most spreadsheet-like of the four formats
+- Locations column references specific building areas
+- ~5% of all buildups follow this pattern
+
 ### Universal Data Fields
 
 Regardless of format, every buildup contains these core fields:
@@ -183,9 +207,9 @@ Regardless of format, every buildup contains these core fields:
 | **Square Footage (SF)** | Primary quantity measure | Yes | The fundamental input to every estimate |
 | **Product/System** | Tile type + grid system | Yes | Free-form text, e.g., "Dune on Suprafine", "Lyra PB WoodLook on Suprafine" |
 | **Cost/SF** | Material unit rate | Yes | Derived from vendor quotes |
-| **Markup %** | Margin applied to material cost | Yes | Ranges from **15% to 75%**, varies by scope type and project |
-| **Man-Days** | Labor estimate | Yes | Converted at ~$522-558/day rate |
-| **Sales Tax** | Florida sales tax on materials | Yes | **6%** on material price (markup-inclusive) |
+| **Markup %** | Margin applied to material cost | Yes | Ranges from **15% to 100%**, varies by scope type and project (median 33-35%) |
+| **Man-Days** | Labor estimate | Yes | Converted at daily rates ranging **$486-$725/day** (see Labor Rate Analysis) |
+| **Sales Tax** | Florida sales tax on materials | Yes | Typically **6%** on material price, but varies (see Sales Tax Variations) |
 | **Grand Total** | Final price for the scope | Yes | Material Price + Labor Price + Sales Tax |
 
 ### Additional Fields (Present in Some Buildups)
@@ -202,37 +226,85 @@ Regardless of format, every buildup contains these core fields:
 
 ### Markup Ranges by Scope Type
 
-Analysis of markup percentages across all buildups reveals scope-type-dependent patterns:
+Analysis of markup percentages across all buildups reveals scope-type-dependent patterns. The overall range is **15% to 100%** (median 33-35%), broken down by material category:
+
+| Material Category | Typical Markup Range | Notes |
+|-------------------|---------------------|-------|
+| ACT commodity (Dune, Cortega, grid) | 15%-45% | High volume, competitive pricing |
+| Standard panels/wood | 30%-42% | Mid-range products |
+| Specialty panels/fabric (Zintra, custom) | 38%-75% | Lower volume, less price pressure |
+| Custom/small jobs | 50%-100% | Small scope, high setup cost relative to materials |
+
+Per scope type:
 
 | Scope Type | Typical Markup Range | Median | Notes |
 |-----------|---------------------|--------|-------|
-| ACT (Ceiling Tile) | 25%-45% | 35% | Standard commodity, competitive |
+| ACT (Ceiling Tile) | 15%-45% | 35% | Standard commodity, competitive |
 | AWP (Wall Panels) | 20%-40% | 30% | Higher material cost, lower margin |
 | Baffles | 25%-50% | 35% | Specialty, less price pressure |
 | FW (Fabric Wall) | 30%-50% | 40% | Labor-intensive, custom |
 | SM (Sound Masking) | 40%-75% | 50% | Equipment + install, high margin |
 | WW (WoodWorks) | 15%-35% | 25% | High material cost, slim margin |
 | RPG (Specialty) | 30%-50% | 40% | Niche products, less competition |
+| Custom/small jobs | 50%-100% | 65% | High fixed-cost ratio |
 
 ### Labor Rate Analysis
 
-Man-days are converted to labor price at a consistent daily rate:
+Man-days are converted to labor price using a formula-based daily rate. The actual range is much wider than initially documented:
 
-| Rate Observed | Time Period | Notes |
-|--------------|-------------|-------|
-| $522/day | 2023-early 2024 | Standard crew rate |
-| $540/day | Mid 2024 | Slight increase |
-| $558/day | Late 2024-2025 | Current rate |
+**Formula pattern:** `Man-Days x Hours/Day x Base Rate x Multiplier`
+
+| Component | Observed Values | Notes |
+|-----------|----------------|-------|
+| Hours/Day | 8 or 10 | Most use 8; some files use 10-hour days |
+| Base Rate | $45, $46, or $50/hr | $45 is most common |
+| Multiplier | 1.35 to 1.80 | Burden/overhead factor |
+
+**Resulting daily rates:**
+
+| Rate | Formula | Time Period / Context |
+|------|---------|----------------------|
+| $486/day | 8 x $45 x 1.35 | Lowest observed |
+| $522/day | 8 x $45 x 1.45 | 2023-early 2024, most common |
+| $540/day | 8 x $45 x 1.50 | Mid 2024 |
+| $558/day | 8 x $45 x 1.55 | Late 2024-2025 |
+| $648/day | 8 x $45 x 1.80 | High-complexity or overtime projects |
+| $725/day | 10 x $50 x 1.45 | 10-hour day with $50 base rate (highest observed) |
 
 The rate represents a loaded crew rate (not per-person), including wages, benefits, insurance, tools, and vehicle. Approximately **1 man-day per 600-800 SF of ACT** and **1 man-day per 100-150 SF of wall panels** are typical benchmarks.
+
+### Sales Tax Variations
+
+Sales tax is not a flat 6% in all cases. Multiple patterns exist:
+
+| Pattern | Formula | Prevalence | Notes |
+|---------|---------|-----------|-------|
+| Standard FL | 6% x Material Price | Most common | Simple flat rate |
+| FL + County Surtax | 6% + 1.5% capped at $5,000 | Common in Hillsborough County | Formula: `0.06 x MatPrice + MIN(0.015 x MatPrice, 5000)` |
+| Conditional (IF) | IF statement in Excel | Rare | Conditional logic based on project type |
+| 7.5% flat | 7.5% x Material Price | Rare | Certain county combinations |
+| 6% + 1% county | 7% effective | Rare | Some county surtax variants |
+| No sales tax | 0% | Schools/non-profits | Tax-exempt entities |
+
+The FL county discretionary surtax (the `0.015 x 5000` cap pattern) is specific to Florida. The surtax is capped at $5,000 per line item/transaction, so it matters most on larger scopes. The extraction pipeline must detect and preserve the specific tax formula used, not assume a flat 6%.
 
 ---
 
 ## Quote Document Analysis
 
-### Template
+### Templates
 
-Customer-facing quotes use two templates: **T-004A** (General) and **T-004B** (Panel Fab & Install), version 2.29.2024. Both are standardized two-page documents:
+Customer-facing quotes use three templates, not two:
+
+| Template | Name | Use Case | Clauses | Notes |
+|----------|------|----------|---------|-------|
+| **T-004A** | General | Larger GC-bid projects | 14 | Includes insurance/retainage provisions |
+| **T-004B** | Acoustic Panel Fab & Install | Most common, standard projects | 6-9 | Shorter terms, streamlined |
+| **T-004E** | Sound Masking | Sound masking-specific projects | 14 | Structurally similar to T-004A but different header |
+
+Document versions observed: 1.13.21, 10.27.21, 2.29.2024.
+
+All templates are standardized two-page documents:
 
 **Page 1:**
 - Commercial Acoustics letterhead
@@ -243,7 +315,7 @@ Customer-facing quotes use two templates: **T-004A** (General) and **T-004B** (P
 
 **Page 2:**
 - Detailed breakdown table (material, labor, tax per scope)
-- 13-point terms and conditions
+- Terms and conditions (clause count varies by template)
 - Signature block
 
 ### Quote Numbering
@@ -357,20 +429,144 @@ Some projects use non-standard tags:
 
 ## Email (.msg) Analysis
 
-304 Outlook .msg files across the dataset. Categories:
+304 Outlook .msg files across the dataset. Revised breakdown from deep audit:
 
-| Category | Count (approx.) | Value for Extraction |
-|---------|-----------------|---------------------|
-| **Bid invitations from GCs** | ~40 | Project details, due dates, scope requirements |
-| **RFQ correspondence with vendors** | ~25 | Product specifications, quantities requested |
-| **Vendor quotes via email** | ~15 | Pricing (redundant with PDF quotes) |
-| **Bid recording sheets** | ~10 | Competitive pricing intelligence |
-| **Award notices / LOIs** | ~8 | Win/loss status, awarded amounts |
-| **General project correspondence** | ~14 | Misc — change orders, clarifications |
+| Category | % of Total | Notes |
+|---------|-----------|-------|
+| General correspondence | 50% | Project coordination, RFIs, clarifications |
+| RFQ / vendor quotes | 25% | Product specifications, quantities, pricing |
+| BuildingConnected bid invites | 9% | Richest structured metadata (project details, due dates, scope) |
+| Direct email bid invites | 6% | GC bid invitations via email |
+| SmartBidNet / ConstructConnect | 4% | Bid platform invitations |
+| Procore bid invites | 2% | Rich structured metadata similar to BuildingConnected |
+| Award / LOI / NTP | 2% | Win notifications, letters of intent, notices to proceed |
+
+### Key Findings
+
+- **Procore and BuildingConnected emails** contain the richest structured metadata (project name, GC, due date, scope, plan links). These are the highest-value emails for extraction.
+- Only **~5 award/LOI emails** exist across the entire dataset — this is a significant gap for win/loss outcome tracking. Most award notifications likely happen via phone or in-person.
+- SmartBidNet/ConstructConnect invites contain bid platform links that could be used to retrieve additional project data.
 
 ### Extraction Priority
 
-Emails are **low priority** for the initial extraction pipeline. The most valuable metadata (project name, GC, due date) is typically captured in the buildup or folder name. Award notices could be useful for tracking win/loss rates but are not critical for cost modeling.
+Emails are **low priority** for the initial extraction pipeline. The most valuable metadata (project name, GC, due date) is typically captured in the buildup or folder name. BuildingConnected and Procore emails are worth prioritizing within the email set for their structured metadata. Award notices are too sparse (only 5) to reliably track win/loss rates.
+
+---
+
+## Plan/Drawing Extractability
+
+A major finding from the deep audit: the majority of drawing PDFs contain extractable vector text and annotations, significantly reducing the need for Vision AI.
+
+### PDF Type Distribution
+
+| Type | % of Drawing PDFs | Description |
+|------|-------------------|-------------|
+| Vector-rich CAD exports | 73% | Fully extractable text — no vision AI needed |
+| Minimal text (title block only) | 12% | Room names/specs not in text layer |
+| Hybrid (partial text + raster) | 10% | Some text extractable, some requires vision |
+| Raster-only (scanned) | 5% | Requires full vision AI / OCR |
+
+### Extractable Data from Vector PDFs
+
+The 73% of vector-rich PDFs contain:
+- Room names and numbers
+- Ceiling heights
+- Finish tags and keynotes
+- Product specifications (from room finish schedules)
+- Dimensional information
+- Room finish schedule tables (embedded in drawing sheets)
+
+### Bluebeam/PDF Annotations
+
+**Critical finding:** Many takeoff PDFs contain Bluebeam markup annotations with pre-calculated values:
+- **Polygon areas** with calculated SF values (e.g., "Area: 609.87 sq ft")
+- **Color-coded scope assignments:** Red = ACT, Green = wall panels, Blue = alternate ceilings, etc.
+- **Measurement annotations** with linear footage, perimeter, and count values
+- These annotations are stored in the PDF annotation layer and are fully extractable with PyMuPDF
+
+### Implications for Architecture
+
+This finding changes the Phase 4 plan reading approach:
+- **PRIMARY method:** Text extraction + annotation parsing via PyMuPDF (local Python, no API cost)
+- **SUPPLEMENTARY method:** Claude Vision API for the ~27% of files without good text/annotations
+- This significantly reduces Claude API costs and improves accuracy (parsed text is exact, not interpreted)
+- Bluebeam polygon areas provide pre-calculated SF values that can be used directly in estimates
+
+---
+
+## Vendor Ecosystem
+
+### Vendor Tiers
+
+| Tier | Role | Vendors | Products |
+|------|------|---------|----------|
+| Tier 1 — Distributors | Commodity ACT/grid supply | GatorGyp/GMS, FBM, L&W Supply, Best Supply | Ceiling tile, grid, standard materials |
+| Tier 2 — Specialty Manufacturers | Specialty acoustic products | G&S Acoustics, Conwed, Kinetics, Koroseal/Panawall, PSI | Custom panels, specialty acoustics |
+| Tier 3 — Decorative/Design | High-end architectural | MDC/Zintra, Wolf-Gordon, Soelberg, Acoufelt, FACT, Impact Acoustic, AkuWood, Roos | Designer felt, wood, decorative panels |
+| Tier 4 — Retail | Commodity lumber/materials | 84 Lumber | Framing, blocking, misc materials |
+
+### Freight and Tariffs
+
+- **Freight costs:** 3-15% of material cost (varies by vendor, product weight, and distance)
+- **Tariff surcharges:** A 2025-2026 theme affecting multiple vendors — MDC, Koroseal, Impact Acoustic, and CertainTeed have all added tariff surcharges to pricing. The extraction pipeline should capture surcharge line items separately from base material cost.
+
+---
+
+## Project Type Distribution
+
+Analysis of all ~504 projects by type:
+
+| Type | Count | % |
+|------|-------|---|
+| Commercial Office | 109 | 21.7% |
+| Other/Unclassified | 99 | 19.7% |
+| Education | 77 | 15.3% |
+| Healthcare | 64 | 12.7% |
+| Government/Civic | 58 | 11.5% |
+| Worship | 34 | 6.8% |
+| Hospitality | 32 | 6.4% |
+| Residential | 18 | 3.6% |
+| Entertainment | 12 | 2.4% |
+
+Commercial office dominates, followed by education and healthcare. The "Other/Unclassified" category (19.7%) represents projects that could not be confidently categorized from folder names alone — many of these may be classifiable once project details are extracted from buildups and quotes.
+
+---
+
+## Non-Standard Line Items
+
+Beyond the core material/labor/tax formula, buildups frequently include additional cost items:
+
+| Cost Item | Typical Range | Prevalence | Notes |
+|-----------|--------------|-----------|-------|
+| Lift Rental | $500-$1,800 | ~30% | Scissor lifts for high ceilings |
+| Travel — Per Diem | $65-75/day x man-days | ~15% | Out-of-town projects |
+| Travel — Flights | $400-550/trip | ~10% | Remote project locations |
+| Travel — Hotels | $150/night | ~10% | Multi-day remote installs |
+| Equipment Rental | Varies | ~20% | Scissor boom, compressor, table saw, scaffolding |
+| Consumables | 2-10% of material price | ~25% | Adhesive, caulk, fasteners, touch-up paint |
+| P&P Bond | 3% of total | ~5% | Payment and Performance bond (large GC projects) |
+| Site Visit | $750 or 1 man-day | ~10% | Pre-bid field verification |
+| Commission/Tune/Balance | Flat fee | SM scopes only | Sound masking commissioning |
+| Setup/Unload | 10% of install days | ~20% | Mobilization and material handling |
+| Punch List | 0.85-2 days | ~15% | Return trip to complete/fix items |
+
+These items are not captured in the core formula and must be extracted separately. They can represent 5-20% of total project cost, especially for out-of-town work.
+
+---
+
+## Data Integrity
+
+Cross-reference check of 10 randomly selected projects comparing quote PDFs to Excel buildups:
+
+| Result | Count | Notes |
+|--------|-------|-------|
+| Clean alignment | 7/10 (70%) | Quote PDF totals match Excel buildup exactly |
+| Post-quote Excel update | 2/10 (20%) | Excel was revised after the quote was issued, without a new quote PDF |
+| Minor rounding delta | 1/10 (10%) | ~119 SF difference due to rounding in intermediate calculations |
+
+**Key takeaway:** The Excel buildup is the source of truth. Quote PDFs are point-in-time snapshots and may not reflect the final numbers if the buildup was revised post-quote. Quote numbers in filenames match quote numbers inside PDFs at 100% accuracy.
+
+For the extraction pipeline: always prefer the Excel buildup for cost data. Use quote PDFs for validation and for extracting metadata (quote number, date, client info) not present in the Excel file.
 
 ---
 
@@ -382,11 +578,11 @@ Emails are **low priority** for the initial extraction pipeline. The most valuab
    ```
    Material Cost = SF x Cost/SF
    Material Price = Material Cost x (1 + Markup%)
-   Labor Price = Man-Days x Daily Rate
-   Sales Tax = Material Price x 6%
-   Total = Material Price + Labor Price + Sales Tax
+   Labor Price = Man-Days x Hours/Day x Base Rate x Multiplier
+   Sales Tax = Material Price x Tax Rate (varies — see Sales Tax Variations)
+   Total = Material Price + Labor Price + Sales Tax + Additional Costs
    ```
-   This formula is **deterministic** — the ML model's job is to predict the *inputs* (Cost/SF, Markup%, Man-Days), not the arithmetic.
+   This formula is **deterministic** — the ML model's job is to predict the *inputs* (Cost/SF, Markup%, Man-Days), not the arithmetic. Additional costs (lift rental, travel, consumables, etc.) are additive line items outside the core formula.
 
 2. **Consistent scope taxonomy**: The 8 scope types (ACT, AWP, AP, Baffles, FW, SM, WW, RPG) appear across all projects. Models can be trained per-scope-type for maximum accuracy.
 
@@ -408,7 +604,7 @@ Emails are **low priority** for the initial extraction pipeline. The most valuab
 
 5. **Formula values as None**: Some cells contain Excel formulas that were never evaluated (workbook was never fully opened/calculated). The extraction pipeline must handle these gracefully.
 
-6. **Three distinct formats**: The parser must detect which format (A, B, or C) a buildup uses before applying the appropriate extraction logic — or use Claude API to handle all formats intelligently.
+6. **Four distinct formats**: The parser must detect which format (A, B, C, or D) a buildup uses before applying the appropriate extraction logic — or use Claude API to handle all formats intelligently.
 
 ### Dataset Size Estimate
 

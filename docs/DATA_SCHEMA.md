@@ -11,6 +11,8 @@ projects ──< scopes >── products
     │
     ├──< vendor_quotes >── vendors
     │
+    ├──< additional_costs
+    │
 estimates ──< estimate_scopes >── products
 ```
 
@@ -37,9 +39,9 @@ CREATE TABLE projects (
     gc_name         TEXT,
     gc_contact      TEXT,
     project_type    TEXT CHECK (project_type IN (
-                        'commercial', 'healthcare', 'education',
+                        'commercial_office', 'healthcare', 'education',
                         'worship', 'hospitality', 'residential',
-                        'government', 'mixed_use', 'other'
+                        'government', 'entertainment', 'mixed_use', 'other'
                     )),
     quote_number    TEXT,
     quote_date      DATE,
@@ -104,7 +106,13 @@ CREATE TABLE scopes (
     man_days            DECIMAL(8,2),
     daily_labor_rate    DECIMAL(8,2),
     labor_price         DECIMAL(12,2),
+    labor_base_rate     DECIMAL(6,2),
+    labor_hours_per_day DECIMAL(4,1) DEFAULT 8,
+    labor_multiplier    DECIMAL(4,2),
+    scrap_rate          DECIMAL(5,4),
     sales_tax_pct       DECIMAL(5,4) DEFAULT 0.06,
+    county_surtax_rate  DECIMAL(5,4),
+    county_surtax_cap   DECIMAL(10,2),
     sales_tax           DECIMAL(12,2),
     total               DECIMAL(12,2),
     drawing_references  TEXT[],
@@ -135,8 +143,14 @@ CREATE TABLE scopes (
 | man_days | DECIMAL | Yes | Labor estimate in man-days |
 | daily_labor_rate | DECIMAL | Yes | $/day rate used (e.g., 522.00, 558.00) |
 | labor_price | DECIMAL | Yes | man_days x daily_labor_rate |
+| labor_base_rate | DECIMAL | Yes | Hourly base rate (e.g., 45.00, 46.00, 50.00) |
+| labor_hours_per_day | DECIMAL | Yes | Hours per day — defaults to 8, some projects use 10 |
+| labor_multiplier | DECIMAL | Yes | Burden/overhead multiplier (e.g., 1.35 to 1.80) |
+| scrap_rate | DECIMAL | Yes | Waste factor as decimal (e.g., 0.10 = 10% scrap) |
 | sales_tax_pct | DECIMAL | Yes | Tax rate — defaults to 6% (Florida) |
-| sales_tax | DECIMAL | Yes | material_price x sales_tax_pct |
+| county_surtax_rate | DECIMAL | Yes | FL county discretionary surtax rate (e.g., 0.015 = 1.5%) |
+| county_surtax_cap | DECIMAL | Yes | Surtax cap per transaction (e.g., 5000.00 for FL) |
+| sales_tax | DECIMAL | Yes | material_price x sales_tax_pct + min(surtax_rate x material_price, surtax_cap) |
 | total | DECIMAL | Yes | material_price + labor_price + sales_tax |
 | drawing_references | TEXT[] | Yes | Sheet numbers from architectural plans |
 | notes | TEXT | Yes | Extraction notes, anomalies |
@@ -302,6 +316,54 @@ CREATE TABLE vendor_quotes (
 
 ---
 
+### additional_costs
+
+Non-standard cost items that appear in buildups beyond the core material/labor/tax formula.
+
+```sql
+CREATE TABLE additional_costs (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id      UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    cost_type       TEXT CHECK (cost_type IN (
+                        'lift_rental', 'travel_per_diem', 'travel_flights',
+                        'travel_hotels', 'equipment', 'consumables',
+                        'bond', 'site_visit', 'punch_list', 'setup_unload',
+                        'commission', 'other'
+                    )),
+    description     TEXT,
+    amount          DECIMAL(12,2),
+    notes           TEXT,
+    source_file     TEXT,
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| id | UUID | No | Primary key |
+| project_id | UUID | No | FK to projects — cascading delete |
+| cost_type | TEXT | Yes | Categorized cost type — constrained to enum values |
+| description | TEXT | Yes | Free-form description (e.g., "Scissor lift 2 weeks", "Per diem 6 days") |
+| amount | DECIMAL | Yes | Dollar amount for this cost item |
+| notes | TEXT | Yes | Extraction notes |
+| source_file | TEXT | Yes | Original file path |
+| created_at | TIMESTAMP | No | Record creation timestamp |
+
+**Typical values by cost_type:**
+- `lift_rental`: $500-$1,800
+- `travel_per_diem`: $65-75/day x man-days
+- `travel_flights`: $400-550/trip
+- `travel_hotels`: $150/night
+- `equipment`: Varies (scissor boom, compressor, table saw, scaffolding)
+- `consumables`: 2-10% of material price
+- `bond`: 3% of total (Payment & Performance bond)
+- `site_visit`: $750 or 1 man-day equivalent
+- `punch_list`: 0.85-2 man-days equivalent
+- `setup_unload`: 10% of install days equivalent
+- `commission`: Flat fee (sound masking tune/balance)
+
+---
+
 ### estimates
 
 AI-generated estimates for new projects. Created when a user uploads plans or manually creates an estimate.
@@ -313,9 +375,9 @@ CREATE TABLE estimates (
     project_address TEXT,
     gc_name         TEXT,
     project_type    TEXT CHECK (project_type IN (
-                        'commercial', 'healthcare', 'education',
+                        'commercial_office', 'healthcare', 'education',
                         'worship', 'hospitality', 'residential',
-                        'government', 'mixed_use', 'other'
+                        'government', 'entertainment', 'mixed_use', 'other'
                     )),
     source_plans    TEXT[],
     status          TEXT CHECK (status IN (
@@ -436,6 +498,10 @@ CREATE INDEX idx_vendor_quotes_project_id ON vendor_quotes(project_id);
 CREATE INDEX idx_vendor_quotes_vendor_id ON vendor_quotes(vendor_id);
 CREATE INDEX idx_vendor_quotes_quote_date ON vendor_quotes(quote_date);
 
+-- Additional Costs
+CREATE INDEX idx_additional_costs_project_id ON additional_costs(project_id);
+CREATE INDEX idx_additional_costs_cost_type ON additional_costs(cost_type);
+
 -- Estimates
 CREATE INDEX idx_estimates_status ON estimates(status);
 CREATE INDEX idx_estimates_created_at ON estimates(created_at);
@@ -452,13 +518,14 @@ CREATE INDEX idx_estimate_scopes_scope_type ON estimate_scopes(scope_type);
 ### project_type
 | Value | Description |
 |-------|-------------|
-| commercial | Office, retail, restaurant, mixed commercial |
+| commercial_office | Office, retail, restaurant, mixed commercial |
 | healthcare | Hospital, clinic, medical office, senior living |
 | education | School, university, library |
 | worship | Church, synagogue, mosque |
 | hospitality | Hotel, resort, event venue |
 | residential | Multi-family, condo, luxury residential |
 | government | Government building, courthouse, military |
+| entertainment | Theater, arena, performing arts, recreation |
 | mixed_use | Multiple categories in one project |
 | other | Uncategorized |
 

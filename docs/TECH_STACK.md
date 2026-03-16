@@ -69,30 +69,32 @@ The core AI engine for the extraction pipeline. Rather than writing brittle form
 
 ### Claude Vision API (claude-sonnet-4-6)
 
-**Role:** PDF plan reading, architectural drawing interpretation
+**Role:** SUPPLEMENTARY plan reading for non-vector PDFs (~27% of drawing files)
 
-Used in Phase 4+ for reading architectural floor plans and reflected ceiling plans. The Vision API processes rendered PDF pages as images and extracts:
+Used in Phase 4+ as a **fallback** for the ~27% of drawing PDFs that lack extractable vector text. The primary extraction method is PyMuPDF text + annotation parsing (see below), which handles 73% of drawings with zero API cost. The Vision API processes rendered PDF pages as images and extracts:
 - Room names and boundaries
 - Dimensional information
 - Ceiling type annotations
 - Wall treatment specifications
 - Keynote references
 
-**Cost estimate:** ~$0.003 per page (sonnet vision, ~1K image tokens per page)
+**Cost estimate:** ~$0.003 per page (sonnet vision, ~1K image tokens per page). With the text-first approach, Vision API is only invoked for ~27% of plan pages, significantly reducing total cost.
 
 ### PyMuPDF (fitz)
 
-**Role:** PDF text extraction and image rendering
+**Role:** PRIMARY PDF extraction engine — text, annotations, and image rendering
 
 ```
 pip: PyMuPDF>=1.24.0
 ```
 
-Used for two purposes:
-1. **Text extraction** from structured quote PDFs (template T-004B) where OCR is not needed
-2. **Page rendering** to images for Claude Vision API input (plan reading)
+The **primary extraction tool** for plan reading (Phase 4). Used for:
+1. **Text extraction** from structured quote PDFs (template T-004A/B/E) where OCR is not needed
+2. **Vector text extraction** from CAD-exported drawing PDFs (73% of all drawings are vector-rich)
+3. **Annotation parsing** — extracts Bluebeam polygon annotations with pre-calculated SF values, color-coded scope assignments, and measurement annotations
+4. **Page rendering** to images for Claude Vision API input (only for the 27% of raster/minimal-text pages)
 
-PyMuPDF is chosen over alternatives (pdfplumber, pdfminer) for its speed, reliability with complex layouts, and built-in image rendering.
+PyMuPDF is chosen over alternatives (pdfplumber, pdfminer) for its speed, reliability with complex layouts, built-in image rendering, and robust annotation extraction support. The discovery that 73% of drawing PDFs are vector-rich CAD exports makes PyMuPDF the most cost-effective extraction path — most plan data is extracted locally with zero API calls.
 
 ### python-docx
 
@@ -112,7 +114,7 @@ Used to extract data from the 14 .docx files (bid forms, proposals). Lower prior
 pip: extract-msg>=0.48.0
 ```
 
-Extracts sender, recipient, date, subject, body, and attachments from the 112 Outlook .msg files. Lowest priority for extraction — emails provide supplementary metadata, not core pricing data.
+Extracts sender, recipient, date, subject, body, and attachments from the 304 Outlook .msg files. Emails provide supplementary metadata, not core pricing data. Highest-value targets within the email set are BuildingConnected and Procore bid invites (11% of emails) which contain rich structured metadata including project details, due dates, and plan links.
 
 ---
 

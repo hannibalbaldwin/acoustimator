@@ -87,7 +87,7 @@ src/
 - **Buildup** — Internal Excel cost spreadsheet with material, labor, and tax calculations
 - **Takeoff** — Process of measuring quantities from architectural drawings
 - **Scope** — A line item category (e.g., ACT-1 for ceiling tile in area 1, AWP-1 for wall panels)
-- **Man-days** — Unit of labor (one crew working one day, ~$522-558/day loaded rate)
+- **Man-days** — Unit of labor (one crew working one day, $486-725/day loaded rate depending on base rate, hours, and multiplier)
 - **ACT** — Acoustical Ceiling Tile
 - **AWP** — Acoustic Wall Panels
 - **FW** — Fabric Wall (Snap-Tex track system)
@@ -97,8 +97,14 @@ src/
 - **GC** — General Contractor (the client in most projects)
 - **SF** — Square Feet (primary unit of measure)
 - **LF** — Linear Feet (for baffles, track, trim)
-- **T-004B** — The standard quote template used by Commercial Acoustics
-- **Markup** — Percentage margin applied to material cost (ranges 15%-75%)
+- **T-004A** — General quote template (larger GC projects, 14 clauses, includes insurance/retainage)
+- **T-004B** — Acoustic Panel Fab & Install quote template (most common, 6-9 clauses)
+- **T-004E** — Sound Masking quote template (similar to T-004A, different header)
+- **Markup** — Percentage margin applied to material cost (ranges 15%-100%, median 33-35%)
+- **Surtax** — FL county discretionary sales surtax, capped at $5,000 per transaction
+- **Scrap rate** — Waste factor (5-20%) applied to material quantities before pricing
+- **P&P Bond** — Payment and Performance bond, typically 3% of total (large GC projects)
+- **Go-back/Punch** — Return trip to fix or complete items (0.85-2 man-days typical)
 
 ## Database Schema
 

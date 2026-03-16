@@ -48,7 +48,7 @@ The most critical component. Buildups are semi-structured Excel files with three
 **Acceptance criteria:**
 - Successfully extracts data from 90%+ of the 123 buildups with buildups
 - Extracted totals match within 2% of quote totals for validation set
-- Handles all three format types (A, B, C)
+- Handles all four format types (A, B, C, D)
 
 ### 1.2: Quote PDF Parser
 
@@ -218,29 +218,42 @@ Predict man-days from scope parameters.
 
 ---
 
-## Phase 4: Plan Reading with Vision AI (Week 4-6)
+## Phase 4: Plan Reading — Text Extraction + Vision AI (Week 4-6)
 
-**Goal:** Extract room areas, ceiling types, and scope suggestions from architectural drawings.
+**Goal:** Extract room areas, ceiling types, and scope suggestions from architectural drawings. **Key insight from audit:** 73% of drawing PDFs are vector-rich CAD exports with fully extractable text — prioritize text extraction and annotation parsing first, use Vision AI as supplement.
 
-### 4.1: Claude Vision API Integration
+### 4.1: PyMuPDF Text + Annotation Extraction (PRIMARY)
 
-Set up the pipeline for sending architectural drawings to Claude Vision.
+The primary extraction path — handles 73% of drawing PDFs with zero API cost.
+
+- Extract all text from vector PDF layers using PyMuPDF (fitz)
+- Parse room names, ceiling heights, finish tags, product specs from text layer
+- Extract room finish schedule tables embedded in drawing sheets
+- **Parse Bluebeam polygon annotations for pre-calculated SF values** (e.g., "Area: 609.87 sq ft")
+- **Extract color-coded scope assignments from annotation layers** (Red=ACT, Green=wall panels, Blue=alternate ceilings)
+- Parse measurement annotations for linear footage, perimeter, and count values
+- Classify each PDF page: vector-rich (text extractable) vs. raster (needs vision)
+
+### 4.2: Claude Vision API Integration (SUPPLEMENTARY)
+
+Fallback for the ~27% of PDFs without good text/annotations.
 
 - PDF-to-image conversion at appropriate DPI (300 DPI for detail)
 - Multi-page handling (floor plans are typically multi-sheet sets)
 - Prompt engineering for architectural drawing interpretation
 - Structured output parsing (rooms, areas, annotations)
+- **Only invoke Vision API for pages classified as raster or minimal-text** — skip for vector-rich pages
 
-### 4.2: Room/Area Extraction from Floor Plans
+### 4.3: Room/Area Extraction from Floor Plans
 
 Identify and extract individual rooms and spaces from floor plans.
 
-- Room name/number extraction from text labels
+- Room name/number extraction from text labels (text extraction) or image (vision)
 - Room boundary detection (conceptual, not pixel-perfect)
 - Room grouping by floor and building
 - Handle open plan areas and corridors
 
-### 4.3: Ceiling Type and Height Detection
+### 4.4: Ceiling Type and Height Detection
 
 Extract ceiling specifications from reflected ceiling plans (RCPs).
 
@@ -249,7 +262,7 @@ Extract ceiling specifications from reflected ceiling plans (RCPs).
 - Grid layout patterns (2x2, 2x4)
 - Special ceiling features (clouds, baffles, soffits)
 
-### 4.4: Wall Treatment Area Calculation
+### 4.5: Wall Treatment Area Calculation
 
 Estimate wall panel and fabric wall areas from plans and elevations.
 
@@ -257,25 +270,27 @@ Estimate wall panel and fabric wall areas from plans and elevations.
 - Panel height and width extraction
 - Running linear footage for wainscot and chair rail applications
 
-### 4.5: SF Estimation from Plan Dimensions
+### 4.6: SF Estimation from Plan Dimensions
 
 Calculate square footages from dimensional information in drawings.
 
 - Read dimension strings from plans
 - Calculate room areas from boundary dimensions
+- Use Bluebeam polygon annotations when available (pre-calculated, highest accuracy)
 - Handle irregular shapes (L-shaped rooms, curved walls)
 - Cross-reference with room schedules if present
 
-### 4.6: Scope Type Suggestion from Drawing Annotations
+### 4.7: Scope Type Suggestion from Drawing Annotations
 
 Use drawing annotations, keynotes, and specifications to suggest scope types.
 
 - Match ceiling type annotations to ACT scope types
 - Identify wall treatment keynotes
+- Use Bluebeam color-coding to assign scope types automatically
 - Reference specification section numbers (09 51 00 = ACT, 09 84 30 = sound masking)
 - Output suggested scope tag and product for each room/area
 
-**Phase 4 Deliverable:** Upload a PDF plan set and receive a structured room-by-room breakdown with SF estimates, suggested ceiling/wall types, and scope tags. Manual review and correction UI.
+**Phase 4 Deliverable:** Upload a PDF plan set and receive a structured room-by-room breakdown with SF estimates, suggested ceiling/wall types, and scope tags. 73% of plans processed locally (no API cost); 27% use Vision AI as supplement. Manual review and correction UI.
 
 ---
 
