@@ -30,7 +30,7 @@ Over 500 historical client projects (125 active + 379 archive) live in Dropbox â
 | AI | Claude API (sonnet) â€” extraction + vision |
 | ML | scikit-learn, XGBoost, pandas |
 | Data Extraction | openpyxl, PyMuPDF, python-docx, extract-msg |
-| Infrastructure | Vercel (frontend), Railway (backend), Neon (DB), GitHub Actions |
+| Infrastructure | Vercel (frontend + backend), Neon (DB), GitHub Actions |
 
 ## Project Structure
 

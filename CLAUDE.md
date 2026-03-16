@@ -26,7 +26,7 @@ This contains 126 folders (125 active projects + 1 `++Archive` with 379 historic
 
 - **Database:** Neon serverless Postgres — branch-per-environment (`main` = prod, `dev`, `staging`, auto-branches for Vercel previews)
 - **Frontend deploy:** Vercel (Hobby tier, $0/mo)
-- **Backend deploy:** Railway (Hobby tier, ~$5/mo) — always-on process, no cold starts
+- **Backend deploy:** Vercel serverless function (same project, $0/mo) — FastAPI runs as a native Python serverless function
 - **Local dev:** Connect directly to Neon `dev` branch (no local Postgres needed), or use `docker-compose.yml` for local services
 
 ## Commands

@@ -12,8 +12,7 @@ acoustimator/
 ├── CLAUDE.md                    # Claude Code project instructions
 ├── .gitignore                   # Git exclusions (data/, .env, models/)
 ├── .env.example                 # Required environment variables template
-├── vercel.json                  # Vercel deployment config (Next.js frontend)
-├── railway.toml                 # Railway deployment config (FastAPI backend)
+├── vercel.json                  # Vercel deployment config (Next.js frontend + FastAPI backend)
 ├── docker-compose.yml           # Local dev environment (optional — can use Neon dev branch directly)
 ├── pyproject.toml               # Python project config, dependencies, tool settings
 ├── uv.lock                      # Locked dependency versions

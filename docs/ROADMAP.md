@@ -20,9 +20,9 @@ Phased development plan for the Acoustimator estimation engine. Each phase build
 - [ ] Create `CLAUDE.md` project instructions
 - [ ] Validate Dropbox data source accessibility
 - [ ] Set up Neon project with `main` and `dev` branches
-- [ ] Configure Railway for FastAPI deployment (connect GitHub repo)
-- [ ] Set up Vercel project with Neon integration (auto-branch preview DBs)
-- [ ] Configure environment variables across all three services (Neon, Vercel, Railway)
+- [ ] Configure Vercel project for both Next.js frontend and FastAPI backend
+- [ ] Set up Neon integration on Vercel (auto-branch preview DBs)
+- [ ] Configure environment variables across both services (Neon, Vercel)
 
 **Deliverable:** Fully documented project ready for development. Any developer can read the docs and understand the domain, data, and plan.
 

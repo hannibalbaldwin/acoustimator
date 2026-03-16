@@ -349,24 +349,19 @@ Chart library for the project dashboard:
 
 ### Vercel
 
-**Role:** Next.js frontend hosting (Hobby tier, $0/mo)
+**Role:** Frontend + backend hosting (Hobby tier, $0/mo)
 
-Native Next.js support with zero-config deployments. Key features:
+Hosts both the Next.js frontend and FastAPI backend as a single project. FastAPI deploys as a Vercel serverless function with native Python support (zero config). Key features:
 - Automatic preview deployments on every PR
 - Native Neon integration for preview branch DBs (auto-creates a Neon branch per preview)
 - Edge network for global performance
 - Built-in analytics and Web Vitals
-
-### Railway
-
-**Role:** FastAPI backend hosting (Hobby tier, ~$5/mo)
-
-Always-on process hosting for the Python backend. Key features:
-- Persistent process — no cold starts
-- Background task support (extraction pipeline, model training)
-- Proper connection pooling to Neon
-- WebSocket support for real-time processing status
+- Native Python serverless function support for FastAPI (no Docker needed)
 - Auto-deploy from GitHub on push to main
+
+**Workarounds for serverless constraints:**
+- File uploads >4.5MB go through presigned S3/R2 URLs (Vercel has a 4.5MB request body limit)
+- Background processing (extraction pipeline, model training) uses Vercel Cron
 
 ### Neon
 
@@ -381,7 +376,7 @@ See Database section above. Scale to Launch tier (~$15/mo) if storage exceeds 0.
 Workflows:
 - **Test** — Run pytest on every PR
 - **Lint** — Ruff check on every PR
-- **Deploy** — Automatic via Vercel (frontend) and Railway (backend) GitHub integrations
+- **Deploy** — Automatic via Vercel GitHub integration (frontend + backend)
 
 ### Docker
 
@@ -389,23 +384,13 @@ Workflows:
 
 `docker-compose.yml` is available for local development but is optional — developers can connect directly to a Neon `dev` branch instead of running local Postgres.
 
-### Why Not FastAPI on Vercel?
-
-Vercel's serverless model is a poor fit for a Python API backend:
-- **Cold starts** — Python serverless functions have slow cold starts (2-5s), degrading UX
-- **Request body limit** — 4.5MB limit blocks file uploads (architectural plan PDFs)
-- **No persistent process** — Cannot run background tasks, WebSockets, or long-running extraction jobs
-- **No persistent connection pool** — Each invocation creates a new DB connection, wasting Neon compute
-- **Railway gives an always-on process for $5/mo** — persistent connections, background tasks, no cold starts. Worth it.
-
 ### Cost Estimate
 
 | Service | Tier | Monthly Cost |
 |---------|------|-------------|
 | Neon | Free | $0 |
 | Vercel | Hobby | $0 |
-| Railway | Hobby | $5 |
-| **Total** | | **$5/mo** |
+| **Total** | | **$0/mo** |
 
 ---
 
