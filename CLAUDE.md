@@ -17,10 +17,17 @@ This contains 126 folders (125 active projects + 1 `++Archive` with 379 historic
 
 - **Python 3.12+** backend with **uv** for package management
 - **Next.js 15** frontend with **pnpm** for package management
-- **SQLite** for development, **PostgreSQL** for production
+- **Neon** serverless PostgreSQL (pooled endpoint for app, direct endpoint for migrations)
 - **Claude API (claude-sonnet-4-6)** for data extraction and plan reading
 - **scikit-learn / XGBoost** for parametric cost models
 - **FastAPI** for the API layer
+
+## Infrastructure
+
+- **Database:** Neon serverless Postgres — branch-per-environment (`main` = prod, `dev`, `staging`, auto-branches for Vercel previews)
+- **Frontend deploy:** Vercel (Hobby tier, $0/mo)
+- **Backend deploy:** Railway (Hobby tier, ~$5/mo) — always-on process, no cold starts
+- **Local dev:** Connect directly to Neon `dev` branch (no local Postgres needed), or use `docker-compose.yml` for local services
 
 ## Commands
 

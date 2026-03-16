@@ -24,13 +24,13 @@ Over 500 historical client projects (125 active + 379 archive) live in Dropbox â
 
 | Layer | Technology |
 |-------|-----------|
-| Backend | Python 3.12+, FastAPI, SQLAlchemy |
+| Backend | Python 3.12+, FastAPI, SQLAlchemy (async) |
 | Frontend | Next.js 15, TypeScript, Tailwind CSS, shadcn/ui |
-| Database | SQLite (dev) / PostgreSQL (prod) |
+| Database | Neon serverless PostgreSQL |
 | AI | Claude API (sonnet) â€” extraction + vision |
 | ML | scikit-learn, XGBoost, pandas |
 | Data Extraction | openpyxl, PyMuPDF, python-docx, extract-msg |
-| Infrastructure | Docker, GitHub Actions |
+| Infrastructure | Vercel (frontend), Railway (backend), Neon (DB), GitHub Actions |
 
 ## Project Structure
 
@@ -89,7 +89,7 @@ pytest
 ```
 ANTHROPIC_API_KEY=sk-ant-...
 DATA_SOURCE_PATH=/path/to/dropbox/+ITBs
-DATABASE_URL=sqlite:///data/acoustimator.db
+DATABASE_URL=postgresql+asyncpg://user:pass@ep-xyz.us-east-2.aws.neon.tech/acoustimator?sslmode=require
 ```
 
 ## Documentation

@@ -118,39 +118,36 @@ Extracts sender, recipient, date, subject, body, and attachments from the 112 Ou
 
 ## Database
 
-### SQLite (Phase 1-3, Development)
+### Neon (neon.tech) — Serverless PostgreSQL
 
-**Role:** Development database, zero-config, file-based
+**Role:** Primary database for all environments (dev, staging, production)
 
-SQLite is the development database for its simplicity:
-- No server process to manage
-- Single file (`data/acoustimator.db`) — easy to back up, share, reset
-- Full SQL support for analytical queries
-- Sufficient for the 127-project dataset (well within SQLite's capabilities)
+- **Neon** (neon.tech) — Serverless PostgreSQL with branch-per-environment
+- Free tier: 0.5GB storage, 100 compute-hours/month, 10 branches
+- Built-in PgBouncer connection pooling (use pooled endpoint for app, direct for migrations)
+- Branch strategy: `main` = production, `dev` branch, `staging` branch, auto-branches for Vercel previews
+- Drivers: `asyncpg` for async FastAPI, `psycopg` v3 as fallback
 
-### PostgreSQL (Phase 4+, Production)
-
-**Role:** Production database, full-featured
-
-PostgreSQL becomes necessary when the web application (Phase 6) requires:
+PostgreSQL features used:
 - Concurrent multi-user access
 - JSONB columns for flexible vendor quote item storage
 - Array columns (text[], UUID[]) for scope tags and aliases
 - Full-text search for project and product lookup
-- Better indexing for complex analytical queries
+- Advanced indexing for complex analytical queries
 
 ### SQLAlchemy
 
 **Role:** ORM and query builder
 
 ```
-pip: sqlalchemy>=2.0
+pip: sqlalchemy[asyncio]>=2.0
+pip: asyncpg>=0.29.0
 ```
 
-SQLAlchemy 2.0 with the new-style declarative mappings. Provides:
+SQLAlchemy 2.0 with async support (`sqlalchemy[asyncio]` + `asyncpg`). Provides:
 - ORM models mapped to database tables (see [DATA_SCHEMA.md](DATA_SCHEMA.md))
-- Session management and connection pooling
-- Database-agnostic queries (same code for SQLite and PostgreSQL)
+- Async session management for FastAPI
+- Connection pooling (leverages Neon's built-in PgBouncer)
 - Relationship definitions (project -> scopes, scope -> product)
 
 ### Alembic
@@ -161,7 +158,7 @@ SQLAlchemy 2.0 with the new-style declarative mappings. Provides:
 pip: alembic>=1.13.0
 ```
 
-Manages schema changes as the database evolves. Auto-generates migration scripts from SQLAlchemy model changes. Essential for Phase 4+ when the schema stabilizes and production data must be preserved across updates.
+Manages schema changes as the database evolves. Auto-generates migration scripts from SQLAlchemy model changes. **Important:** Run migrations against the direct (non-pooled) Neon connection string, not the pooled endpoint.
 
 ---
 
@@ -350,16 +347,32 @@ Chart library for the project dashboard:
 
 ## Infrastructure
 
-### Docker
+### Vercel
 
-**Role:** Containerized deployment
+**Role:** Next.js frontend hosting (Hobby tier, $0/mo)
 
-Docker Compose for local development with multiple services:
-- `api` — FastAPI backend
-- `frontend` — Next.js application
-- `db` — PostgreSQL (production mode)
+Native Next.js support with zero-config deployments. Key features:
+- Automatic preview deployments on every PR
+- Native Neon integration for preview branch DBs (auto-creates a Neon branch per preview)
+- Edge network for global performance
+- Built-in analytics and Web Vitals
 
-Production deployment via single Dockerfile per service.
+### Railway
+
+**Role:** FastAPI backend hosting (Hobby tier, ~$5/mo)
+
+Always-on process hosting for the Python backend. Key features:
+- Persistent process — no cold starts
+- Background task support (extraction pipeline, model training)
+- Proper connection pooling to Neon
+- WebSocket support for real-time processing status
+- Auto-deploy from GitHub on push to main
+
+### Neon
+
+**Role:** Serverless PostgreSQL (Free tier, $0/mo for <0.5GB)
+
+See Database section above. Scale to Launch tier (~$15/mo) if storage exceeds 0.5GB.
 
 ### GitHub Actions
 
@@ -368,17 +381,31 @@ Production deployment via single Dockerfile per service.
 Workflows:
 - **Test** — Run pytest on every PR
 - **Lint** — Ruff check on every PR
-- **Build** — Docker image build on merge to main
-- **Deploy** — Deploy to hosting on release tag
+- **Deploy** — Automatic via Vercel (frontend) and Railway (backend) GitHub integrations
 
-### Hosting (TBD)
+### Docker
 
-Options under consideration:
-- **Vercel** — Frontend hosting (native Next.js support)
-- **Railway** — Full-stack hosting (API + DB + frontend in one platform)
-- **Fly.io** — Container-based hosting (more control, lower cost at scale)
+**Role:** Local development only
 
-Decision deferred to Phase 6 based on performance and cost requirements.
+`docker-compose.yml` is available for local development but is optional — developers can connect directly to a Neon `dev` branch instead of running local Postgres.
+
+### Why Not FastAPI on Vercel?
+
+Vercel's serverless model is a poor fit for a Python API backend:
+- **Cold starts** — Python serverless functions have slow cold starts (2-5s), degrading UX
+- **Request body limit** — 4.5MB limit blocks file uploads (architectural plan PDFs)
+- **No persistent process** — Cannot run background tasks, WebSockets, or long-running extraction jobs
+- **No persistent connection pool** — Each invocation creates a new DB connection, wasting Neon compute
+- **Railway gives an always-on process for $5/mo** — persistent connections, background tasks, no cold starts. Worth it.
+
+### Cost Estimate
+
+| Service | Tier | Monthly Cost |
+|---------|------|-------------|
+| Neon | Free | $0 |
+| Vercel | Hobby | $0 |
+| Railway | Hobby | $5 |
+| **Total** | | **$5/mo** |
 
 ---
 
