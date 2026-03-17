@@ -1,5 +1,7 @@
 # Acoustimator Repository Structure
 
+> **Note:** This document describes the **planned** repository structure. Directories and files will be created as their respective phases begin. Currently only `docs/`, `README.md`, `CLAUDE.md`, and `.gitignore` exist.
+
 Detailed documentation of the repository organization. Every directory and key file is explained.
 
 ---
@@ -32,12 +34,12 @@ acoustimator/
 
 ```
 docs/
-├── ANALYSIS.md              # Deep data analysis of the 127-project dataset
+├── ANALYSIS.md              # Deep data analysis of the 500+ project dataset
 ├── ROADMAP.md               # Phased development plan
 ├── TECH_STACK.md            # Technology choices and rationale
 ├── REPO_STRUCTURE.md        # This file — directory organization
 ├── DATA_SCHEMA.md           # Database table definitions and relationships
-└── API_REFERENCE.md         # API endpoint documentation (Phase 6)
+└── API_REFERENCE.md         # API endpoint documentation (Phase 6) (not yet created)
 ```
 
 All project documentation lives here. These are living documents updated as the project evolves. The analysis document is the canonical reference for understanding the source data. The schema document is the single source of truth for database structure.
@@ -60,11 +62,11 @@ src/extraction/
 └── validators.py            # Data validation rules
 ```
 
-**excel_parser.py** — The most critical module. Reads Excel buildups using openpyxl, constructs a text representation of the cell grid, sends it to Claude API for field extraction, and returns structured `ScopeExtraction` objects. Handles all three buildup format types (A: simple, B: multi-scope, C: multi-building).
+**excel_parser.py** — The most critical module. Reads Excel buildups using openpyxl, constructs a text representation of the cell grid, sends it to Claude API for field extraction, and returns structured `ScopeExtraction` objects. Handles all four buildup format types (A: simple, B: multi-scope, C: multi-building, D: tabular takeoff).
 
-**pdf_parser.py** — Extracts data from customer-facing quote PDFs (template T-004B) and vendor quote PDFs. Uses PyMuPDF for text extraction from structured templates; falls back to Claude Vision for non-standard formats.
+**pdf_parser.py** — Extracts data from customer-facing quote PDFs (templates T-004A, T-004B, and T-004E) and vendor quote PDFs. Uses PyMuPDF for text extraction from structured templates; falls back to Claude Vision for non-standard formats.
 
-**plan_reader.py** — Phase 4 module. Renders PDF plan pages to images, sends to Claude Vision API, and extracts rooms, areas, ceiling types, and scope suggestions from architectural drawings.
+**plan_reader.py** — Phase 4 module. Classifies plan pages as vector, hybrid, or raster; extracts text and Bluebeam annotations with PyMuPDF first; then renders only the pages that require Claude Vision. Designed for ordinary PDFs and non-3D CAD drawing exports delivered as PDFs.
 
 **msg_parser.py** — Parses Outlook .msg files using extract-msg. Extracts sender, date, subject, body, and attachments. Lower priority — supplementary data source.
 
@@ -171,7 +173,6 @@ frontend/
 ├── package.json
 ├── pnpm-lock.yaml
 ├── next.config.js
-├── tailwind.config.ts
 ├── tsconfig.json
 │
 ├── app/
@@ -203,13 +204,15 @@ frontend/
 
 The frontend uses Next.js 15 App Router with server components for initial page loads and client components for interactive elements (estimate builder, charts).
 
+**Tailwind v4 note:** Tailwind v4 uses CSS-based configuration via `@import "tailwindcss"` in `app/globals.css` instead of a `tailwind.config.ts` file.
+
 ---
 
 ## scripts/ — Utility Scripts
 
 ```
 scripts/
-├── extract_all.py           # Batch extraction: process all 127+ project folders
+├── extract_all.py           # Batch extraction: process all 500+ project folders
 ├── train_models.py          # Model training: run full training pipeline
 └── seed_db.py               # Database seeding: populate from extracted data
 ```
@@ -262,7 +265,7 @@ data/
 
 The entire `data/` directory is gitignored. It contains:
 
-**raw/** — A symlink to the Dropbox `+ITBs` folder (`/Users/hannibalbaldwin/Library/CloudStorage/Dropbox-SiteZeus/Hannibal Baldwin/+ITBs`). This avoids copying 186MB of source files into the repo.
+**raw/** — A symlink to the source data folder (path configured via `DATA_SOURCE_PATH` in `.env`). This avoids copying 186MB of source files into the repo.
 
 **extracted/** — JSON files containing structured extraction results for each project. One file per project folder. These serve as a cache — if extraction needs to be re-run, only changed projects are reprocessed.
 

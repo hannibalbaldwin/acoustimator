@@ -6,17 +6,17 @@
 
 Commercial Acoustics (Tampa, FL) specializes in acoustical ceiling tile, wall panels, baffles, fabric walls, sound masking, and woodwork installations for commercial, healthcare, education, and hospitality projects across Florida.
 
-Over 500 historical client projects (125 active + 379 archive) live in Dropbox — comprising ~5,000+ files including Excel buildups, customer-facing quote PDFs, vendor quotes, marked-up architectural drawings, and correspondence. These files represent years of hard-won pricing knowledge, but the data is locked in semi-structured spreadsheets and scattered documents.
+Over 500 historical client projects (125 active + 379 archive) live in Dropbox — comprising ~4,700+ files including Excel buildups, customer-facing quote PDFs, vendor quotes, marked-up architectural drawings, and correspondence. These files represent years of hard-won pricing knowledge, but the data is locked in semi-structured spreadsheets and scattered documents.
 
-**Acoustimator** ingests that historical data, normalizes it into a structured database, trains parametric cost models on real project outcomes, and uses AI vision to read architectural plans — producing accurate estimates for new jobs in minutes instead of hours.
+**Acoustimator** ingests that historical data, normalizes it into a structured database, trains parametric cost models on real project outcomes, and uses a text-first plan reading pipeline to read architectural plans. Most non-3D CAD drawings arrive as vector PDF exports that can be parsed locally with PyMuPDF; Claude Vision is reserved for raster or minimal-text pages. The result is faster, cheaper, and more auditable estimates for new jobs.
 
 ## Planned Features
 
 - **Historical Data Extraction** — Parse 500+ project folders (Excel buildups, quote PDFs, vendor quotes, emails) into a structured database using openpyxl and Claude API
 - **Parametric Cost Modeling** — Train scope-specific models (ACT, AWP, Baffles, Fabric Wall, WoodWorks, etc.) that predict cost/SF, markup, and labor from project parameters
-- **AI Plan Reading** — Upload architectural drawings and let Claude Vision extract rooms, ceiling types, square footages, and suggested scope types
+- **AI Plan Reading** — Upload architectural drawings and regular PDFs; parse vector CAD-exported PDFs and Bluebeam annotations first, then fall back to Claude Vision for raster/minimal-text pages
 - **Automated Buildup Generation** — Combine plan reading output with cost models to produce full buildups matching the existing Excel format
-- **Quote Generation** — Auto-generate customer-facing quotes using the T-004B template
+- **Quote Generation** — Auto-generate customer-facing quotes using the existing T-004A / T-004B / T-004E template families
 - **Confidence Scoring** — Every estimate includes a confidence score and references to similar historical projects
 - **Continuous Learning** — Feedback loop from actual project costs to retrain and improve models over time
 
@@ -27,7 +27,7 @@ Over 500 historical client projects (125 active + 379 archive) live in Dropbox �
 | Backend | Python 3.12+, FastAPI, SQLAlchemy (async) |
 | Frontend | Next.js 15, TypeScript, Tailwind CSS, shadcn/ui |
 | Database | Neon serverless PostgreSQL |
-| AI | Claude API (sonnet) — extraction + vision |
+| AI | Claude API (claude-sonnet-4-6) — extraction + supplementary vision |
 | ML | scikit-learn, XGBoost, pandas |
 | Data Extraction | openpyxl, PyMuPDF, python-docx, extract-msg |
 | Infrastructure | Vercel (frontend + backend), Neon (DB), GitHub Actions |
@@ -38,6 +38,7 @@ Over 500 historical client projects (125 active + 379 archive) live in Dropbox �
 acoustimator/
 ├── docs/           # Analysis, roadmap, tech stack, schema docs
 ├── src/
+│   ├── config.py   # Application configuration (Pydantic BaseSettings)
 │   ├── extraction/ # Data extraction pipeline (Excel, PDF, plans)
 │   ├── models/     # ML cost/labor/markup models
 │   ├── estimation/ # Estimation engine combining models + plan reading
@@ -67,7 +68,7 @@ See [docs/REPO_STRUCTURE.md](docs/REPO_STRUCTURE.md) for detailed directory docu
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/acoustimator.git
+git clone https://github.com/hannibalbaldwin/acoustimator.git
 cd acoustimator
 
 # Install Python dependencies
@@ -102,4 +103,4 @@ DATABASE_URL=postgresql+asyncpg://user:pass@ep-xyz.us-east-2.aws.neon.tech/acous
 
 ## License
 
-MIT License. See [LICENSE](LICENSE) for details.
+MIT License. See LICENSE file for details.

@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Acoustimator is an AI-powered estimation engine for Commercial Acoustics (Tampa, FL). It ingests 500+ historical client projects (125 active + 379 archive) comprising ~5,000+ files (Excel buildups, quote PDFs, vendor quotes, architectural drawings) and uses that data to estimate new jobs from plans/drawings.
+Acoustimator is an AI-powered estimation engine for Commercial Acoustics (Tampa, FL). It ingests 500+ historical client projects (125 active + 379 archive) comprising ~4,700+ files (Excel buildups, quote PDFs, vendor quotes, architectural drawings) and uses that data to estimate new jobs from plans/drawings.
 
 ## Source Data Location
 
@@ -11,7 +11,7 @@ The raw project data is at:
 /Users/hannibalbaldwin/Library/CloudStorage/Dropbox-SiteZeus/Hannibal Baldwin/+ITBs
 ```
 
-This contains 126 folders (125 active projects + 1 `++Archive` with 379 historical projects) totaling ~5,000+ files (2,928 PDFs, 823 xlsx, 621 doc/docx, 304 msg, etc.). See `docs/ANALYSIS.md` for the full data analysis.
+This contains 126 folders (125 active projects + 1 `++Archive` with 379 historical projects) totaling ~4,700+ files (2,928 PDFs, 823 xlsx, 621 doc/docx, 304 msg, etc.). See `docs/ANALYSIS.md` for the full data analysis.
 
 ## Tech Stack
 
@@ -85,6 +85,7 @@ src/
 ## Domain Terminology
 
 - **Buildup** — Internal Excel cost spreadsheet with material, labor, and tax calculations
+  - Buildup formats: Format A (simple single-scope, ~25%), Format B (multi-scope with tags, ~50%), Format C (complex multi-building/multi-sheet, ~15%), Format D (tabular takeoff with column headers, ~5%)
 - **Takeoff** — Process of measuring quantities from architectural drawings
 - **Scope** — A line item category (e.g., ACT-1 for ceiling tile in area 1, AWP-1 for wall panels)
 - **Man-days** — Unit of labor (one crew working one day, $486-725/day loaded rate depending on base rate, hours, and multiplier)

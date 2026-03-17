@@ -13,12 +13,15 @@ projects ──< scopes >── products
     │
     ├──< additional_costs
     │
+    ├──< extraction_runs
+    │
 estimates ──< estimate_scopes >── products
 ```
 
 - A **project** has many **scopes** (one per line item: ACT-1, AWP-1, etc.)
 - A **scope** optionally links to a normalized **product**
 - A **project** has many **vendor_quotes** from different **vendors**
+- A **project** has many **extraction_runs** (one per file processed)
 - An **estimate** (AI-generated) has many **estimate_scopes**
 - An **estimate_scope** references comparable **projects** used in prediction
 
@@ -45,14 +48,15 @@ CREATE TABLE projects (
                     )),
     quote_number    TEXT,
     quote_date      DATE,
+    bid_due_date    DATE,
     payment_terms   TEXT,
     status          TEXT CHECK (status IN (
                         'bid', 'awarded', 'completed', 'lost', 'archived'
                     )) DEFAULT 'bid',
     source_path     TEXT,
     notes           TEXT,
-    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at      TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,  -- WITH TIME ZONE for Neon compatibility
+    updated_at      TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP  -- WITH TIME ZONE for Neon compatibility
 );
 ```
 
@@ -67,12 +71,13 @@ CREATE TABLE projects (
 | project_type | TEXT | Yes | Project category — constrained to enum values |
 | quote_number | TEXT | Yes | Commercial Acoustics quote number (e.g., "05906") |
 | quote_date | DATE | Yes | Date the quote was issued |
+| bid_due_date | DATE | Yes | Deadline for bid submission |
 | payment_terms | TEXT | Yes | Payment terms (e.g., "MILESTONE BILLING", "50% DOWN/NET 15") |
 | status | TEXT | Yes | Project status — defaults to "bid" |
 | source_path | TEXT | Yes | Absolute path to original folder on disk |
 | notes | TEXT | Yes | Free-form notes from extraction or manual entry |
-| created_at | TIMESTAMP | No | Record creation timestamp |
-| updated_at | TIMESTAMP | No | Last modification timestamp |
+| created_at | TIMESTAMPTZ | No | Record creation timestamp |
+| updated_at | TIMESTAMPTZ | No | Last modification timestamp. Managed by SQLAlchemy's `onupdate=func.now()` in the ORM model. |
 
 **Notes:**
 - `quote_number` is not unique — revisions share the base number (05906, 05906-R1, 05906-R2)
@@ -94,7 +99,7 @@ CREATE TABLE scopes (
                             'ACT', 'AWP', 'AP', 'Baffles', 'FW', 'SM', 'WW', 'RPG', 'Other'
                         )),
     product_name        TEXT,
-    product_id          UUID REFERENCES products(id),
+    product_id          UUID REFERENCES products(id) ON DELETE SET NULL,
     square_footage      DECIMAL(12,2),
     linear_footage      DECIMAL(12,2),
     quantity            DECIMAL(12,2),
@@ -120,7 +125,7 @@ CREATE TABLE scopes (
     extraction_confidence DECIMAL(3,2),
     source_file         TEXT,
     source_sheet        TEXT,
-    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at          TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP  -- WITH TIME ZONE for Neon compatibility
 );
 ```
 
@@ -157,7 +162,7 @@ CREATE TABLE scopes (
 | extraction_confidence | DECIMAL | Yes | 0.00-1.00 confidence from Claude extraction |
 | source_file | TEXT | Yes | Original Excel file path |
 | source_sheet | TEXT | Yes | Sheet name within the workbook |
-| created_at | TIMESTAMP | No | Record creation timestamp |
+| created_at | TIMESTAMPTZ | No | Record creation timestamp |
 
 **Notes:**
 - `markup_pct` is stored as a decimal (0.35), not a percentage (35%). This avoids confusion in calculations.
@@ -188,8 +193,8 @@ CREATE TABLE products (
     fire_rating     TEXT,
     aliases         TEXT[],
     notes           TEXT,
-    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at      TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,  -- WITH TIME ZONE for Neon compatibility
+    updated_at      TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP  -- WITH TIME ZONE for Neon compatibility
 );
 ```
 
@@ -206,8 +211,8 @@ CREATE TABLE products (
 | fire_rating | TEXT | Yes | Fire rating classification (Class A, Class 1, etc.) |
 | aliases | TEXT[] | Yes | All name variations seen in buildups |
 | notes | TEXT | Yes | Product notes, specifications |
-| created_at | TIMESTAMP | No | Record creation timestamp |
-| updated_at | TIMESTAMP | No | Last modification timestamp |
+| created_at | TIMESTAMPTZ | No | Record creation timestamp |
+| updated_at | TIMESTAMPTZ | No | Last modification timestamp |
 
 **Example entries:**
 
@@ -234,7 +239,7 @@ CREATE TABLE vendors (
     address             TEXT,
     product_categories  TEXT[],
     notes               TEXT,
-    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at          TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP  -- WITH TIME ZONE for Neon compatibility
 );
 ```
 
@@ -249,7 +254,7 @@ CREATE TABLE vendors (
 | address | TEXT | Yes | Vendor address |
 | product_categories | TEXT[] | Yes | Categories supplied (e.g., {"ceiling_tile", "grid"}) |
 | notes | TEXT | Yes | Vendor notes |
-| created_at | TIMESTAMP | No | Record creation timestamp |
+| created_at | TIMESTAMPTZ | No | Record creation timestamp |
 
 ---
 
@@ -261,7 +266,7 @@ Individual vendor quotes received for projects.
 CREATE TABLE vendor_quotes (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     project_id      UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-    vendor_id       UUID REFERENCES vendors(id),
+    vendor_id       UUID REFERENCES vendors(id) ON DELETE SET NULL,
     quote_number    TEXT,
     quote_date      DATE,
     items           JSONB,
@@ -271,7 +276,7 @@ CREATE TABLE vendor_quotes (
     lead_time       TEXT,
     source_file     TEXT,
     notes           TEXT,
-    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at      TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP  -- WITH TIME ZONE for Neon compatibility
 );
 ```
 
@@ -289,7 +294,7 @@ CREATE TABLE vendor_quotes (
 | lead_time | TEXT | Yes | Stated lead time (e.g., "2-3 weeks") |
 | source_file | TEXT | Yes | Path to original vendor quote file |
 | notes | TEXT | Yes | Extraction notes |
-| created_at | TIMESTAMP | No | Record creation timestamp |
+| created_at | TIMESTAMPTZ | No | Record creation timestamp |
 
 **Items JSONB structure:**
 
@@ -334,7 +339,7 @@ CREATE TABLE additional_costs (
     amount          DECIMAL(12,2),
     notes           TEXT,
     source_file     TEXT,
-    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at      TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP  -- WITH TIME ZONE for Neon compatibility
 );
 ```
 
@@ -347,7 +352,7 @@ CREATE TABLE additional_costs (
 | amount | DECIMAL | Yes | Dollar amount for this cost item |
 | notes | TEXT | Yes | Extraction notes |
 | source_file | TEXT | Yes | Original file path |
-| created_at | TIMESTAMP | No | Record creation timestamp |
+| created_at | TIMESTAMPTZ | No | Record creation timestamp |
 
 **Typical values by cost_type:**
 - `lift_rental`: $500-$1,800
@@ -387,10 +392,10 @@ CREATE TABLE estimates (
     overall_confidence DECIMAL(3,2),
     created_by      TEXT,
     reviewed_by     TEXT,
-    reviewed_at     TIMESTAMP,
+    reviewed_at     TIMESTAMPTZ,  -- WITH TIME ZONE for Neon compatibility
     notes           TEXT,
-    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at      TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,  -- WITH TIME ZONE for Neon compatibility
+    updated_at      TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP  -- WITH TIME ZONE for Neon compatibility
 );
 ```
 
@@ -407,10 +412,10 @@ CREATE TABLE estimates (
 | overall_confidence | DECIMAL | Yes | Weighted average of scope confidence scores |
 | created_by | TEXT | Yes | User who created the estimate |
 | reviewed_by | TEXT | Yes | User who reviewed/approved |
-| reviewed_at | TIMESTAMP | Yes | When the estimate was reviewed |
+| reviewed_at | TIMESTAMPTZ | Yes | When the estimate was reviewed |
 | notes | TEXT | Yes | Estimator notes |
-| created_at | TIMESTAMP | No | Record creation timestamp |
-| updated_at | TIMESTAMP | No | Last modification timestamp |
+| created_at | TIMESTAMPTZ | No | Record creation timestamp |
+| updated_at | TIMESTAMPTZ | No | Last modification timestamp |
 
 ---
 
@@ -427,7 +432,7 @@ CREATE TABLE estimate_scopes (
                                 'ACT', 'AWP', 'AP', 'Baffles', 'FW', 'SM', 'WW', 'RPG', 'Other'
                             )),
     product_name            TEXT,
-    product_id              UUID REFERENCES products(id),
+    product_id              UUID REFERENCES products(id) ON DELETE SET NULL,
     square_footage          DECIMAL(12,2),
     linear_footage          DECIMAL(12,2),
     quantity                DECIMAL(12,2),
@@ -439,7 +444,13 @@ CREATE TABLE estimate_scopes (
     man_days                DECIMAL(8,2),
     daily_labor_rate        DECIMAL(8,2),
     labor_price             DECIMAL(12,2),
+    labor_base_rate         DECIMAL(6,2),
+    labor_hours_per_day     DECIMAL(4,1) DEFAULT 8,
+    labor_multiplier        DECIMAL(4,2),
+    scrap_rate              DECIMAL(5,4),
     sales_tax_pct           DECIMAL(5,4) DEFAULT 0.06,
+    county_surtax_rate      DECIMAL(5,4) DEFAULT 0,
+    county_surtax_cap       DECIMAL(10,2) DEFAULT 5000,
     sales_tax               DECIMAL(12,2),
     total                   DECIMAL(12,2),
     confidence_score        DECIMAL(3,2),
@@ -450,8 +461,8 @@ CREATE TABLE estimate_scopes (
     building                TEXT,
     drawing_reference       TEXT,
     manually_adjusted       BOOLEAN DEFAULT FALSE,
-    created_at              TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at              TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at              TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,  -- WITH TIME ZONE for Neon compatibility
+    updated_at              TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP  -- WITH TIME ZONE for Neon compatibility
 );
 ```
 
@@ -466,8 +477,45 @@ CREATE TABLE estimate_scopes (
 | building | TEXT | Yes | Building name from plan reading |
 | drawing_reference | TEXT | Yes | Plan sheet number where this scope was identified |
 | manually_adjusted | BOOLEAN | No | Whether the user has overridden the AI estimate |
-| created_at | TIMESTAMP | No | Record creation timestamp |
-| updated_at | TIMESTAMP | No | Last modification timestamp |
+| created_at | TIMESTAMPTZ | No | Record creation timestamp |
+| updated_at | TIMESTAMPTZ | No | Last modification timestamp |
+
+---
+
+### extraction_runs
+
+Tracks each file extraction attempt, including status, confidence, and token usage. Used for auditing and debugging the extraction pipeline.
+
+```sql
+CREATE TABLE extraction_runs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    source_file TEXT NOT NULL,
+    file_type TEXT NOT NULL,  -- xlsx, pdf, doc, msg
+    extraction_status TEXT NOT NULL CHECK (extraction_status IN ('pending', 'success', 'partial', 'failed')),
+    confidence DECIMAL(3,2),  -- 0.00-1.00
+    error_message TEXT,
+    model_used TEXT,  -- e.g., 'claude-sonnet-4-6'
+    tokens_used INTEGER,
+    project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP  -- WITH TIME ZONE for Neon compatibility
+);
+
+CREATE INDEX idx_extraction_runs_project ON extraction_runs(project_id);
+CREATE INDEX idx_extraction_runs_status ON extraction_runs(extraction_status);
+```
+
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| id | UUID | No | Primary key |
+| source_file | TEXT | No | Path to the file that was extracted |
+| file_type | TEXT | No | File extension — xlsx, pdf, doc, msg |
+| extraction_status | TEXT | No | Status of the extraction — pending, success, partial, failed |
+| confidence | DECIMAL | Yes | Overall extraction confidence (0.00-1.00) |
+| error_message | TEXT | Yes | Error details if extraction failed or was partial |
+| model_used | TEXT | Yes | Claude model identifier used for extraction |
+| tokens_used | INTEGER | Yes | Total tokens consumed by the extraction call |
+| project_id | UUID | Yes | FK to projects — cascading delete |
+| created_at | TIMESTAMPTZ | No | Record creation timestamp |
 
 ---
 
@@ -509,6 +557,10 @@ CREATE INDEX idx_estimates_created_at ON estimates(created_at);
 -- Estimate Scopes
 CREATE INDEX idx_estimate_scopes_estimate_id ON estimate_scopes(estimate_id);
 CREATE INDEX idx_estimate_scopes_scope_type ON estimate_scopes(scope_type);
+
+-- Extraction Runs
+CREATE INDEX idx_extraction_runs_project ON extraction_runs(project_id);
+CREATE INDEX idx_extraction_runs_status ON extraction_runs(extraction_status);
 ```
 
 ---
@@ -524,7 +576,7 @@ CREATE INDEX idx_estimate_scopes_scope_type ON estimate_scopes(scope_type);
 | worship | Church, synagogue, mosque |
 | hospitality | Hotel, resort, event venue |
 | residential | Multi-family, condo, luxury residential |
-| government | Government building, courthouse, military |
+| government | Government building, courthouse, civic facility, military |
 | entertainment | Theater, arena, performing arts, recreation |
 | mixed_use | Multiple categories in one project |
 | other | Uncategorized |
@@ -541,6 +593,8 @@ CREATE INDEX idx_estimate_scopes_scope_type ON estimate_scopes(scope_type);
 | WW | WoodWorks | Armstrong WoodWorks, Soundply, 9Wood |
 | RPG | Specialty Diffusers | QRD, Flutterfree |
 | Other | Uncategorized | Catch-all for new/rare scope types |
+
+> **Tag mapping note:** Non-standard tags are mapped to canonical types during extraction: CL → Baffles or ACT (product-dependent), SF → FW, ACB → Baffles.
 
 ### project status
 | Value | Description |
@@ -561,30 +615,14 @@ CREATE INDEX idx_estimate_scopes_scope_type ON estimate_scopes(scope_type);
 
 ---
 
-## SQLite Compatibility Notes
+### Local Development
 
-For Phase 1-3 development using SQLite:
-
-- `UUID` columns use `TEXT` type with Python-generated UUIDs
-- `JSONB` columns use `TEXT` type with JSON serialized strings
-- `TEXT[]` array columns use `TEXT` type with JSON serialized arrays
-- `gen_random_uuid()` is replaced by application-level UUID generation
-- `DECIMAL` uses `REAL` type (SQLite does not have true decimal)
-- `CHECK` constraints are supported in SQLite 3.25+
-- `TIMESTAMP` uses `TEXT` with ISO 8601 format strings
-
-The SQLAlchemy ORM layer abstracts these differences — the same model code works with both SQLite and PostgreSQL.
+Neon PostgreSQL is used for all environments (dev, staging, prod) via branch-per-environment. No SQLite compatibility layer is needed — connect directly to the Neon dev branch for local development.
 
 ---
 
 ## Migration Strategy
 
-**Phase 1-3 (SQLite):**
-- Schema created directly from SQLAlchemy models via `Base.metadata.create_all()`
-- No formal migrations needed — database can be recreated from extraction pipeline
-
-**Phase 4+ (PostgreSQL):**
-- Migrate to PostgreSQL using Alembic
-- Initial migration creates all tables from the current SQLAlchemy models
-- Subsequent migrations handle schema evolution
-- Data migrated from SQLite using `seed_db.py` script
+- Manage schema changes with Alembic from the beginning
+- Initial migration creates all tables in Neon from the current SQLAlchemy models
+- Subsequent migrations handle schema evolution across dev, staging, and production branches

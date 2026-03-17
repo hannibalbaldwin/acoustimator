@@ -30,7 +30,7 @@ Deep analysis of the Commercial Acoustics historical project dataset. This docum
 | Location | Dropbox `+ITBs` folder |
 | Total client folders | 126 (125 active + 1 `++Archive` with 379 historical projects) |
 | Total projects | ~504 (125 active + 379 archive) |
-| Total files | ~5,000+ |
+| Total files | ~4,700+ |
 | Total size | ~186 MB |
 
 ### File Type Breakdown
@@ -49,7 +49,7 @@ Deep analysis of the Commercial Acoustics historical project dataset. This docum
 | .FCStd | 2 | FreeCAD 3D models |
 | .dwg | 1 | AutoCAD drawing |
 
-PDFs dominate at ~58% of all files. Excel buildups represent ~16% and are the primary structured data source. The remaining ~26% is correspondence, templates, and supplementary materials.
+PDFs dominate at ~62% of all files. Excel buildups represent ~17% and are the primary structured data source. The remaining ~21% is correspondence, templates, and supplementary materials.
 
 > **Note:** The original analysis only counted top-level files; recursive counts are much higher due to Archive subfolders within individual projects and the `++Archive` folder containing 379 historical projects.
 
@@ -91,9 +91,9 @@ Each client folder follows a roughly consistent document pattern. Not every fold
 | **Takeoff/Scope PDF** | Various | Most folders | Marked-up architectural drawings with measurements |
 | **Vendor Quote(s)** | Various | ~85 files across folders | Supplier pricing from MDC, FBM, GatorGyp, etc. |
 | **Bid Invite (.msg)** | `*.msg` | Many folders | Outlook email from GC with bid invitation |
-| **Layout (.pptx)** | `Layout - [Area].pptx` | 15/125 (12%) | Panel layout diagrams for wall panels/baffles |
+| **Layout (.pptx)** | `Layout - [Area].pptx` | ~10/125 (8%) | Panel layout diagrams for wall panels/baffles |
 | **Bid Form (.docx)** | `Bid Form.docx` | Rare (~5%) | Structured bid forms from large GCs |
-| **Spec PDFs** | `09 51 00.pdf`, `098430.pdf` | Some folders | CSI Division 09 acoustical specifications |
+| **Spec PDFs** | `09 51 00.pdf`, `098430.pdf` | Some folders | CSI (Construction Specifications Institute) Division 09 acoustical specifications |
 
 ### Coverage Implications
 
@@ -149,7 +149,7 @@ Row 10: Total                    $10,291.92
 - Summary row(s) at the bottom with grand total
 - Some have sub-totals by scope type
 - Column positions are more consistent within this format but still vary between projects
-- ~55% of all buildups follow this pattern
+- ~50% of all buildups follow this pattern
 
 ### Format C: Complex Multi-Building
 
@@ -332,7 +332,7 @@ Payment terms vary by client type:
 
 | Client Type | Typical Terms |
 |------------|---------------|
-| GC Projects (commercial) | MILESTONE BILLING — progress payments per AIA schedule |
+| GC Projects (commercial) | MILESTONE BILLING — progress payments per AIA (American Institute of Architects) schedule |
 | Direct Clients (owner-direct) | 50% DOWN / BALANCE NET 15 |
 | Large GC (national) | NET 30 per application |
 | Government/Public | Per contract terms |
@@ -358,7 +358,7 @@ All vendor quotes are billed to: **Residential Acoustics LLC DBA Commercial Acou
 | **J2 / Turf** | PET felt baffles and panels | Medium | Alternative to Zintra |
 | **Soelberg** | Custom acoustic panels, Gesto baffles | Low | Premium/custom |
 | **Koroseal / Panawall** | Wall coverings, Type II vinyl | Low | Wall finishing |
-| **LW Supply** | Ceiling tile and grid (distribution) | Medium | Alternative to FBM |
+| **L&W Supply** | Ceiling tile and grid (distribution) | Medium | Alternative to FBM |
 | **9Wood** | Wood ceiling systems | Low | Specialty wood |
 | **Soundply** | Wood veneer acoustic panels | Low | Specialty wood |
 | **ASI Architectural** | Acoustic wood ceilings and walls | Low | Specialty wood |
@@ -397,7 +397,7 @@ Vendor quotes typically include:
 The most frequently encountered ceiling tile products, in rough order of prevalence:
 
 1. **Armstrong Dune** — Commodity workhorse, #2 x 2, lay-in
-2. **Armstrong Cortega** — Budget option, lower NRC
+2. **Armstrong Cortega** — Budget option, lower NRC (Noise Reduction Coefficient)
 3. **Armstrong Cirrus** — Smooth face, clean look
 4. **Armstrong Ultima** — High-end, high NRC, healthcare
 5. **Armstrong Lyra PB** — Square-edge / concealed, premium
@@ -519,7 +519,7 @@ Analysis of all ~504 projects by type:
 | Type | Count | % |
 |------|-------|---|
 | Commercial Office | 109 | 21.7% |
-| Other/Unclassified | 99 | 19.7% |
+| Other/Unclassified | 100 | 19.8% |
 | Education | 77 | 15.3% |
 | Healthcare | 64 | 12.7% |
 | Government/Civic | 58 | 11.5% |
@@ -528,7 +528,7 @@ Analysis of all ~504 projects by type:
 | Residential | 18 | 3.6% |
 | Entertainment | 12 | 2.4% |
 
-Commercial office dominates, followed by education and healthcare. The "Other/Unclassified" category (19.7%) represents projects that could not be confidently categorized from folder names alone — many of these may be classifiable once project details are extracted from buildups and quotes.
+Commercial office dominates, followed by education and healthcare. The "Other/Unclassified" category (19.8%) represents projects that could not be confidently categorized from folder names alone — many of these may be classifiable once project details are extracted from buildups and quotes.
 
 ---
 
@@ -637,7 +637,7 @@ Based on manual review of a sample of buildups:
 
 ### Strategic Recommendations
 
-1. **Use Claude API for Excel parsing** — Rather than writing brittle regex/position-based parsers, send cell contents to Claude for intelligent field extraction. This handles all three formats with a single approach.
+1. **Use Claude API for Excel parsing** — Rather than writing brittle regex/position-based parsers, send cell contents to Claude for intelligent field extraction. This handles all four formats with a single approach.
 
 2. **Start with ACT scope type** — Highest data volume, simplest pricing (SF x $/SF), most consistent format. Build confidence before tackling complex scope types.
 

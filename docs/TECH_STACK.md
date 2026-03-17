@@ -47,6 +47,8 @@ Used to read cell values, sheet names, and workbook structure from the 421 Excel
 - Reading merged cell ranges
 - Sheet name enumeration for multi-sheet workbooks
 
+Also used in Phase 5 for generating Excel buildup exports with matching formatting.
+
 **Why not pandas?** Buildups are not tabular data — they lack consistent headers and have variable layouts. openpyxl gives cell-level access needed for semi-structured extraction.
 
 ### Claude API (claude-sonnet-4-6)
@@ -57,7 +59,7 @@ Used to read cell values, sheet names, and workbook structure from the 421 Excel
 pip: anthropic>=0.40.0
 ```
 
-The core AI engine for the extraction pipeline. Rather than writing brittle format-specific parsers, the cell grid from openpyxl is sent to Claude as structured text, and Claude extracts the fields intelligently regardless of format (A, B, or C).
+The core AI engine for the extraction pipeline. Rather than writing brittle format-specific parsers, the cell grid from openpyxl is sent to Claude as structured text, and Claude extracts the fields intelligently regardless of format (A, B, C, or D).
 
 **Prompt strategy:**
 - System prompt defines the domain (acoustical construction estimation)
@@ -95,6 +97,20 @@ The **primary extraction tool** for plan reading (Phase 4). Used for:
 4. **Page rendering** to images for Claude Vision API input (only for the 27% of raster/minimal-text pages)
 
 PyMuPDF is chosen over alternatives (pdfplumber, pdfminer) for its speed, reliability with complex layouts, built-in image rendering, and robust annotation extraction support. The discovery that 73% of drawing PDFs are vector-rich CAD exports makes PyMuPDF the most cost-effective extraction path — most plan data is extracted locally with zero API calls.
+
+### PDF / CAD Handling Strategy
+
+**Role:** Make ordinary PDFs and non-3D CAD exports first-class supported inputs
+
+The dataset shows that almost all usable drawing input arrives as PDF, even when it originated in CAD. The practical support matrix is:
+
+- **Vector CAD-exported PDFs** — primary case; parse text, schedules, dimensions, and Bluebeam annotations with PyMuPDF
+- **Ordinary text PDFs** — fully supported through the same text extraction path
+- **Hybrid PDFs** — extract what is available from the text layer, then render only the missing pages/regions for Vision
+- **Raster/scanned PDFs** — render to images and send to Claude Vision or OCR as needed
+- **Native DWG / FCStd files** — rare in the dataset and not a primary ingestion path; convert/export to PDF before production processing
+
+This keeps the production pipeline focused on the document types the business actually uses while still leaving a clear fallback for the handful of native CAD artifacts in the archive.
 
 ### python-docx
 
@@ -182,6 +198,16 @@ Primary ML library for:
 - **Pipeline API** — combine preprocessing and model in a single object
 
 scikit-learn is chosen over deep learning frameworks because the dataset (500-1,000 rows) is too small for neural networks, and tree-based methods excel on small tabular datasets.
+
+### rapidfuzz
+
+**Role:** Fast fuzzy string matching for product name normalization (Phase 2.1)
+
+```
+pip: rapidfuzz>=3.6.0
+```
+
+`rapidfuzz` — Fast fuzzy string matching for product name normalization (Phase 2.1)
 
 ### XGBoost
 
@@ -361,9 +387,12 @@ Hosts both the Next.js frontend and FastAPI backend as a single project. FastAPI
 - Native Python serverless function support for FastAPI (no Docker needed)
 - Auto-deploy from GitHub on push to main
 
-**Workarounds for serverless constraints:**
+**Workload split for serverless constraints:**
 - File uploads >4.5MB go through presigned S3/R2 URLs (Vercel has a 4.5MB request body limit)
-- Background processing (extraction pipeline, model training) uses Vercel Cron
+- User-facing extraction and estimate generation stay request-driven on Vercel
+- Scheduled orchestration can use Vercel Cron, but large historical backfills and model training should run from local/CI jobs against Neon rather than inside a single serverless request
+
+For plan PDF uploads exceeding Vercel's 4.5MB body limit, use Vercel Blob or presigned URLs to cloud storage (S3/R2). Decision deferred to Phase 6.
 
 ### Neon
 
@@ -392,6 +421,7 @@ Workflows:
 |---------|------|-------------|
 | Neon | Free | $0 |
 | Vercel | Hobby | $0 |
+| Anthropic Claude API | Usage-based | ~$5 one-time extraction; ~$0.01-0.05/estimate |
 | **Total** | | **$0/mo** |
 
 ---
@@ -472,9 +502,9 @@ The single external API dependency. Used for:
 
 **Cost Estimates:**
 
-| Task | Model | Input | Output | Cost/Call | Total (127 projects) |
+| Task | Model | Input | Output | Cost/Call | Total (125 active projects) |
 |------|-------|-------|--------|-----------|---------------------|
-| Buildup extraction | claude-sonnet-4-6 | ~2K tokens | ~500 tokens | ~$0.01 | ~$1.27 |
+| Buildup extraction | claude-sonnet-4-6 | ~2K tokens | ~500 tokens | ~$0.01 | ~$1.25 |
 | Quote PDF parsing | claude-sonnet-4-6 | ~1K tokens | ~300 tokens | ~$0.005 | ~$0.50 |
 | Vendor quote parsing | claude-sonnet-4-6 vision | ~1K image tokens | ~300 tokens | ~$0.003 | ~$0.25 |
 | Plan reading (Phase 4) | claude-sonnet-4-6 vision | ~2K image tokens | ~500 tokens | ~$0.008 | Per job |

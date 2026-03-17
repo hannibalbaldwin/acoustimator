@@ -34,7 +34,7 @@ Phased development plan for the Acoustimator estimation engine. Each phase build
 
 ### 1.1: Excel Buildup Parser
 
-The most critical component. Buildups are semi-structured Excel files with three format families (see [ANALYSIS.md — Excel Buildup Analysis](ANALYSIS.md#excel-buildup-analysis)).
+The most critical component. Buildups are semi-structured Excel files with four format families (see [ANALYSIS.md — Excel Buildup Analysis](ANALYSIS.md#excel-buildup-analysis)).
 
 **Approach:** Use openpyxl to read cell contents, then send the cell grid to Claude API (claude-sonnet-4-6) for intelligent field extraction. Claude handles format detection and field mapping in a single pass.
 
@@ -43,18 +43,19 @@ The most critical component. Buildups are semi-structured Excel files with three
 - Send to Claude with a structured extraction prompt
 - Parse Claude's response into a standardized `ScopeExtraction` schema
 - Validate extracted values (SF > 0, markup 0-100%, total = sum of components)
+- Detect and preserve sales tax formula type (standard 6%, county surtax with cap, tax-exempt, etc.) — see [ANALYSIS.md — Sales Tax Variations](ANALYSIS.md)
 - Handle multi-sheet workbooks (iterate all sheets, skip non-data sheets)
 
 **Acceptance criteria:**
-- Successfully extracts data from 90%+ of the 123 buildups with buildups
+- Successfully extracts data from 90%+ of the 123 active folders that contain buildups
 - Extracted totals match within 2% of quote totals for validation set
 - Handles all four format types (A, B, C, D)
 
 ### 1.2: Quote PDF Parser
 
-Extract structured data from customer-facing quote PDFs (template T-004B).
+Extract structured data from customer-facing quote PDFs (templates T-004A, T-004B, and T-004E).
 
-- Use PyMuPDF (fitz) for text extraction from the standardized template
+- Use PyMuPDF (fitz) for text extraction from standardized quote templates
 - Extract: quote number, date, client, project address, line items, totals
 - Cross-reference with buildup data for validation
 
@@ -83,15 +84,28 @@ Automated validation layer for all extracted data.
 - Check for missing required fields
 - Generate extraction quality report
 
+**Acceptance criteria:**
+- Validation report generated for 100% of extracted projects; outlier detection flags reviewed
+
 ### 1.5: Load into Database
 
-Persist all extracted data into the database.
+Persist all extracted data into the primary Neon PostgreSQL database.
 
-- Create SQLite database with schema from [DATA_SCHEMA.md](DATA_SCHEMA.md)
+- Create Neon PostgreSQL schema from [DATA_SCHEMA.md](DATA_SCHEMA.md)
 - Bulk insert all extracted projects, scopes, vendor quotes
 - Store extraction metadata (source file, extraction confidence, timestamp)
 
-**Phase 1 Deliverable:** All 500+ projects normalized into a structured SQLite database with quality metrics. Every data point traceable to its source file.
+**Acceptance criteria:**
+- All extracted data persisted in Neon PostgreSQL; every record traceable to source file
+
+### 1.6: Non-Standard Line Item Extraction
+
+Extract additional cost items (lift rental, travel, equipment, consumables, P&P bond, site visit, punch list, setup/unload, commission) from buildups — see [ANALYSIS.md — Non-Standard Line Items](ANALYSIS.md) Non-Standard Line Items section.
+
+**Acceptance criteria:**
+- All 11 non-standard cost types detected and extracted where present
+
+**Phase 1 Deliverable:** All 500+ projects normalized into a structured Neon PostgreSQL database with quality metrics. Every data point traceable to its source file.
 
 ---
 
@@ -130,7 +144,7 @@ Adjust historical prices for time-based cost changes.
 - Use quote dates to establish a timeline
 - Calculate cost/SF trends per product over time
 - Apply inflation adjustment to normalize prices to current dollars
-- Track labor rate changes ($522 -> $540 -> $558/day)
+- Track labor rate changes ($486 -> $522 -> $540 -> $558 -> $725/day)
 
 ### 2.4: Vendor Cost Tracking
 
@@ -182,8 +196,8 @@ Design the feature set for cost prediction models.
 
 Train per-scope-type models for cost/SF prediction.
 
-- **ACT model** (~200+ rows): Random Forest or XGBoost — predict cost/SF from product, project type, SF
-- **AWP model** (~80+ rows): Similar approach, add panel type and mounting method features
+- **ACT model** (~800-1,200 rows): Random Forest or XGBoost — predict cost/SF from product, project type, SF
+- **AWP model** (~300-500 rows): Similar approach, add panel type and mounting method features
 - **General model** (all scope types): Fallback model using scope type as a feature
 - Hyperparameter tuning with cross-validation
 - Feature importance analysis
@@ -227,6 +241,7 @@ Predict man-days from scope parameters.
 The primary extraction path — handles 73% of drawing PDFs with zero API cost.
 
 - Extract all text from vector PDF layers using PyMuPDF (fitz)
+- Treat standard non-3D CAD drawing exports delivered as PDFs as first-class input, not an edge case
 - Parse room names, ceiling heights, finish tags, product specs from text layer
 - Extract room finish schedule tables embedded in drawing sheets
 - **Parse Bluebeam polygon annotations for pre-calculated SF values** (e.g., "Area: 609.87 sq ft")
@@ -243,6 +258,8 @@ Fallback for the ~27% of PDFs without good text/annotations.
 - Prompt engineering for architectural drawing interpretation
 - Structured output parsing (rooms, areas, annotations)
 - **Only invoke Vision API for pages classified as raster or minimal-text** — skip for vector-rich pages
+- **For hybrid PDFs (~10%): extract available text first, then invoke Vision AI only for pages/regions where text extraction yields insufficient data**
+- Handle ordinary text PDFs, hybrid PDFs, and scanned PDFs in the same ingestion pipeline via page classification
 
 ### 4.3: Room/Area Extraction from Floor Plans
 
@@ -290,7 +307,7 @@ Use drawing annotations, keynotes, and specifications to suggest scope types.
 - Reference specification section numbers (09 51 00 = ACT, 09 84 30 = sound masking)
 - Output suggested scope tag and product for each room/area
 
-**Phase 4 Deliverable:** Upload a PDF plan set and receive a structured room-by-room breakdown with SF estimates, suggested ceiling/wall types, and scope tags. 73% of plans processed locally (no API cost); 27% use Vision AI as supplement. Manual review and correction UI.
+**Phase 4 Deliverable:** Upload a plan set containing ordinary PDFs, CAD-exported vector PDFs, Bluebeam-marked takeoffs, or scanned sheets and receive a structured room-by-room breakdown with SF estimates, suggested ceiling/wall types, and scope tags. 73% of plans are expected to process locally (no API cost); 27% use Vision AI as supplement. Manual review and correction UI.
 
 ---
 
@@ -395,7 +412,7 @@ Interactive estimate editing interface.
 
 Generate customer-facing quotes from estimates.
 
-- Match existing T-004B template format
+- Match the existing T-004A / T-004B / T-004E template families as appropriate
 - Auto-populate from estimate data
 - Editable fields (payment terms, exclusions, custom notes)
 - PDF export with professional formatting
@@ -472,6 +489,8 @@ Extend the system to handle new products and scope types as they emerge.
 
 **Total to MVP (Phase 5):** ~7 weeks
 **Total to Production App (Phase 6):** ~9 weeks
+
+> **Note:** Week ranges overlap intentionally — later tasks within a phase can begin while earlier tasks in the next phase start, assuming data dependencies are met.
 
 ---
 
