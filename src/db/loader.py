@@ -395,9 +395,7 @@ async def load_all_results(
             # None means the extraction itself failed (no project data) — skip, don't count as error
             return "skipped" if not extraction_result.success else "failed"
         except Exception as exc:
-            source = (
-                extraction_result.project.source_file if extraction_result.project else "unknown"
-            )
+            source = extraction_result.project.source_file if extraction_result.project else "unknown"
             logger.error("Failed to load %s: %s", source, exc)
             return "failed"
 

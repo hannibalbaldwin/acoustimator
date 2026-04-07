@@ -281,9 +281,7 @@ def _build_estimate_sheet(
             )
             addl_total_cell.font = _font(bold=True)
             addl_total_cell.number_format = FMT_MONEY
-            ws.cell(row=current_row, column=1, value="  Additional Costs Total").font = _font(
-                bold=True
-            )
+            ws.cell(row=current_row, column=1, value="  Additional Costs Total").font = _font(bold=True)
             current_row += 1
 
 
@@ -476,9 +474,7 @@ def _build_notes_sheet(
     include_comparables: bool,
 ) -> None:
     """Populate the Notes worksheet with warnings and optional comparables."""
-    ws.cell(row=1, column=1, value="Estimate Notes").font = _font(
-        bold=True, size=FONT_SIZE_GRAND_TOTAL
-    )
+    ws.cell(row=1, column=1, value="Estimate Notes").font = _font(bold=True, size=FONT_SIZE_GRAND_TOTAL)
 
     row = 3
 

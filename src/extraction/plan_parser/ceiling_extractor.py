@@ -198,9 +198,7 @@ def _parse_annotation_specs(annotations: list, source_page: int) -> list[dict[st
     specs: list[dict[str, Any]] = []
     for ann in annotations:
         label = getattr(ann, "label", None) or (ann.get("label") if isinstance(ann, dict) else None)
-        area_sf_raw = getattr(ann, "area_sf", None) or (
-            ann.get("area_sf") if isinstance(ann, dict) else None
-        )
+        area_sf_raw = getattr(ann, "area_sf", None) or (ann.get("area_sf") if isinstance(ann, dict) else None)
         if not label:
             continue
         m = _BB_LABEL_RE.match(label.strip())

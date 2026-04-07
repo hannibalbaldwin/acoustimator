@@ -302,11 +302,7 @@ class TestExtractCeilingMultiLine:
         assert act["height"] == "9'-0\""
 
     def test_multiple_ceiling_types(self):
-        text = (
-            "ACT-1 Armstrong Dune 2x4 Grid 9'-0\" AFF\n\n"
-            "GWB Ceiling 10'-0\" AFF\n\n"
-            "EXPOSED STRUCTURE 14'-0\" AFF"
-        )
+        text = "ACT-1 Armstrong Dune 2x4 Grid 9'-0\" AFF\n\nGWB Ceiling 10'-0\" AFF\n\nEXPOSED STRUCTURE 14'-0\" AFF"
         specs = extract_ceiling_specs(text)
         types = {s["ceiling_type"] for s in specs}
         assert "ACT" in types

@@ -138,25 +138,17 @@ async def build_report() -> None:
         console.print("\n[bold bright_cyan]━━━ SECTION 1: Dataset Overview ━━━[/bold bright_cyan]")
 
         # Counts
-        total_projects = await fetch_scalar(
-            session, select(func.count()).select_from(text("projects"))
-        )
+        total_projects = await fetch_scalar(session, select(func.count()).select_from(text("projects")))
         total_scopes = await fetch_scalar(session, select(func.count()).select_from(text("scopes")))
-        total_addl_costs = await fetch_scalar(
-            session, select(func.count()).select_from(text("additional_costs"))
-        )
+        total_addl_costs = await fetch_scalar(session, select(func.count()).select_from(text("additional_costs")))
 
         try:
-            total_vendor_quotes = await fetch_scalar(
-                session, select(func.count()).select_from(text("vendor_quotes"))
-            )
+            total_vendor_quotes = await fetch_scalar(session, select(func.count()).select_from(text("vendor_quotes")))
         except Exception:
             total_vendor_quotes = 0
 
         try:
-            total_products = await fetch_scalar(
-                session, select(func.count()).select_from(text("products"))
-            )
+            total_products = await fetch_scalar(session, select(func.count()).select_from(text("products")))
         except Exception:
             total_products = 0
 
@@ -185,9 +177,7 @@ async def build_report() -> None:
         try:
             status_rows = await fetch_all(
                 session,
-                text(
-                    "SELECT status, COUNT(*) as cnt FROM projects GROUP BY status ORDER BY cnt DESC"
-                ),
+                text("SELECT status, COUNT(*) as cnt FROM projects GROUP BY status ORDER BY cnt DESC"),
             )
         except Exception:
             status_rows = []
@@ -198,18 +188,14 @@ async def build_report() -> None:
             status_table.add_column("Count", justify="right")
             status_table.add_column("Pct", justify="right")
             for row in status_rows:
-                status_table.add_row(
-                    str(row[0] or "NULL"), str(row[1]), pct(row[1], total_projects or 1)
-                )
+                status_table.add_row(str(row[0] or "NULL"), str(row[1]), pct(row[1], total_projects or 1))
             console.print(status_table)
 
         # Date range
         try:
             date_row = await fetch_all(
                 session,
-                text(
-                    "SELECT MIN(quote_date), MAX(quote_date) FROM projects WHERE quote_date IS NOT NULL"
-                ),
+                text("SELECT MIN(quote_date), MAX(quote_date) FROM projects WHERE quote_date IS NOT NULL"),
             )
             if date_row and date_row[0][0]:
                 console.print(
@@ -221,9 +207,7 @@ async def build_report() -> None:
         # ===================================================================
         # SECTION 2: Scope Type Distribution
         # ===================================================================
-        console.print(
-            "\n[bold bright_cyan]━━━ SECTION 2: Scope Type Distribution ━━━[/bold bright_cyan]"
-        )
+        console.print("\n[bold bright_cyan]━━━ SECTION 2: Scope Type Distribution ━━━[/bold bright_cyan]")
 
         try:
             scope_dist_rows = await fetch_all(
@@ -276,9 +260,7 @@ async def build_report() -> None:
         # ===================================================================
         # SECTION 3: Extraction Quality
         # ===================================================================
-        console.print(
-            "\n[bold bright_cyan]━━━ SECTION 3: Extraction Quality ━━━[/bold bright_cyan]"
-        )
+        console.print("\n[bold bright_cyan]━━━ SECTION 3: Extraction Quality ━━━[/bold bright_cyan]")
 
         try:
             quality_rows = await fetch_all(
@@ -318,9 +300,7 @@ async def build_report() -> None:
             ]
             for fname, n in fields:
                 color = "green" if (n / total) >= 0.8 else "yellow" if (n / total) >= 0.5 else "red"
-                q_table.add_row(
-                    fname, str(n), f"[{color}]{pct(n, total)}[/{color}]", str(total - n)
-                )
+                q_table.add_row(fname, str(n), f"[{color}]{pct(n, total)}[/{color}]", str(total - n))
             console.print(q_table)
 
         # ===================================================================
@@ -361,9 +341,7 @@ async def build_report() -> None:
                     try:
                         mp = float(markup)
                         if mp > 1.0:
-                            high_markup_projects.append(
-                                f"{proj_name} / {scope.get('tag', '?')} ({mp * 100:.0f}%)"
-                            )
+                            high_markup_projects.append(f"{proj_name} / {scope.get('tag', '?')} ({mp * 100:.0f}%)")
                         if mp < 0.10 or mp > 1.00:
                             has_error = True
                             issue_type_counter["markup_pct:out_of_range:error"] += 1
@@ -384,11 +362,7 @@ async def build_report() -> None:
                     has_error = True
                     issue_type_counter["total:out_of_range:error"] += 1
 
-                if (
-                    scope.get("labor_price")
-                    and float(scope["labor_price"]) > 0
-                    and not scope.get("man_days")
-                ):
+                if scope.get("labor_price") and float(scope["labor_price"]) > 0 and not scope.get("man_days"):
                     has_warn = True
                     issue_type_counter["man_days:missing_required:warning"] += 1
 
@@ -443,22 +417,16 @@ async def build_report() -> None:
         # ===================================================================
         # SECTION 5: Quote PDF Coverage
         # ===================================================================
-        console.print(
-            "\n[bold bright_cyan]━━━ SECTION 5: Quote PDF Coverage ━━━[/bold bright_cyan]"
-        )
+        console.print("\n[bold bright_cyan]━━━ SECTION 5: Quote PDF Coverage ━━━[/bold bright_cyan]")
 
         quotes = load_extracted_quotes()
         total_quote_files = len(quotes)
         quote_success = sum(1 for q in quotes if q.get("success"))
         quote_with_number = sum(
-            1
-            for q in quotes
-            if q.get("success") and q.get("quote") and q["quote"].get("quote_number")
+            1 for q in quotes if q.get("success") and q.get("quote") and q["quote"].get("quote_number")
         )
         quote_with_total = sum(
-            1
-            for q in quotes
-            if q.get("success") and q.get("quote") and q["quote"].get("grand_total")
+            1 for q in quotes if q.get("success") and q.get("quote") and q["quote"].get("grand_total")
         )
 
         # Build a set of project names from buildup extractions
@@ -482,9 +450,7 @@ async def build_report() -> None:
         quote_table.add_column("Metric", style="bold")
         quote_table.add_column("Value", justify="right", style="bright_white")
         quote_table.add_row("Quote PDFs extracted", str(total_quote_files))
-        quote_table.add_row(
-            "Successfully parsed", f"{quote_success} ({pct(quote_success, total_quote_files or 1)})"
-        )
+        quote_table.add_row("Successfully parsed", f"{quote_success} ({pct(quote_success, total_quote_files or 1)})")
         quote_table.add_row(
             "Quote numbers found",
             f"{quote_with_number} ({pct(quote_with_number, quote_success or 1)})",
@@ -563,9 +529,7 @@ async def build_report() -> None:
         # ===================================================================
         # SECTION 7: ML Readiness
         # ===================================================================
-        console.print(
-            "\n[bold bright_cyan]━━━ SECTION 7: ML Readiness (Phase 3) ━━━[/bold bright_cyan]"
-        )
+        console.print("\n[bold bright_cyan]━━━ SECTION 7: ML Readiness (Phase 3) ━━━[/bold bright_cyan]")
 
         try:
             ml_rows = await fetch_all(
@@ -607,13 +571,7 @@ async def build_report() -> None:
                 total_ml_ready += ml_ready_r or 0
                 can_train = "[green]YES[/green]" if (ml_ready_r or 0) > 20 else "[red]NO[/red]"
                 readiness_pct = pct(ml_ready_r or 0, total_r or 1)
-                color = (
-                    "green"
-                    if (ml_ready_r or 0) > 20
-                    else "yellow"
-                    if (ml_ready_r or 0) >= 5
-                    else "red"
-                )
+                color = "green" if (ml_ready_r or 0) > 20 else "yellow" if (ml_ready_r or 0) >= 5 else "red"
                 ml_table.add_row(
                     str(stype or "NULL"),
                     str(total_r),
@@ -630,9 +588,7 @@ async def build_report() -> None:
 
         # Recommendation panel
         try:
-            trainable = (
-                [str(row[0]) for row in ml_rows if row[0] and (row[2] or 0) > 20] if ml_rows else []
-            )
+            trainable = [str(row[0]) for row in ml_rows if row[0] and (row[2] or 0) > 20] if ml_rows else []
         except Exception:
             trainable = []
 

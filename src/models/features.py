@@ -323,9 +323,7 @@ class FeatureEngineer:
         df = df[(df[target] >= lo) & (df[target] <= hi)]
 
         if df.empty:
-            raise ValueError(
-                f"No valid training rows for scope_type={scope_type!r}, target={target!r}"
-            )
+            raise ValueError(f"No valid training rows for scope_type={scope_type!r}, target={target!r}")
 
         # Build feature matrix
         feature_cols = [c for c in self.FEATURE_NAMES if c in df.columns]
@@ -431,17 +429,13 @@ class FeatureEngineer:
                 "log_square_footage": log_sf,
                 "scope_type_encoded": int(self._le.transform([st])[0]),
                 "has_labor_rate": int(has_labor_rate),
-                "labor_rate_normalized": labor_rate_normalized
-                if has_labor_rate
-                else 1.0,  # default = current rate
+                "labor_rate_normalized": labor_rate_normalized if has_labor_rate else 1.0,  # default = current rate
                 "project_scope_count": project_scope_count,
                 "product_tier": _product_tier(row.get("product_name")),
                 "is_healthcare": int(is_healthcare),
                 "is_education": int(is_education),
                 "is_church": int(is_church),
-                "markup_pct": markup_pct
-                if markup_pct is not None
-                else markup_medians.get(st, 0.30),
+                "markup_pct": markup_pct if markup_pct is not None else markup_medians.get(st, 0.30),
                 "man_days_per_sf": man_days_per_sf,  # imputed below
                 "material_cost_per_sf": material_cost_per_sf,  # imputed below
             }
@@ -463,9 +457,7 @@ class FeatureEngineer:
 
         # Impute log_square_footage with global median
         sf_med = df["log_square_footage"].median()
-        df["log_square_footage"] = df["log_square_footage"].fillna(
-            sf_med if not pd.isna(sf_med) else 0.0
-        )
+        df["log_square_footage"] = df["log_square_footage"].fillna(sf_med if not pd.isna(sf_med) else 0.0)
 
         logger.info("Built feature DataFrame: %d rows, %d columns", len(df), len(df.columns))
         return df

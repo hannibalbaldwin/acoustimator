@@ -152,9 +152,7 @@ def _parse_annotation_rooms(annotations: list) -> list[dict[str, Any]]:
     rooms: list[dict[str, Any]] = []
     for ann in annotations:
         label = getattr(ann, "label", None) or (ann.get("label") if isinstance(ann, dict) else None)
-        area_sf = getattr(ann, "area_sf", None) or (
-            ann.get("area_sf") if isinstance(ann, dict) else None
-        )
+        area_sf = getattr(ann, "area_sf", None) or (ann.get("area_sf") if isinstance(ann, dict) else None)
         if not label:
             continue
         # "ACT-1 - 2,450 SF" style
@@ -228,11 +226,7 @@ def extract_rooms(text: str, annotations: list | None = None) -> list[dict[str, 
         if not room_name_raw:
             for j in range(i + 1, min(i + 4, len(lines))):
                 candidate = lines[j].strip()
-                if (
-                    candidate
-                    and not _ROOM_HEADER_RE.match(candidate)
-                    and not _HEIGHT_RE.match(candidate)
-                ):
+                if candidate and not _ROOM_HEADER_RE.match(candidate) and not _HEIGHT_RE.match(candidate):
                     room_name_raw = candidate
                     break
 
@@ -268,9 +262,7 @@ def extract_rooms(text: str, annotations: list | None = None) -> list[dict[str, 
         room_name_raw = m.group(2).strip()
         ceiling_col = m.group(5)
         ceiling_type = _classify_ceiling_type(ceiling_col) if ceiling_col else None
-        scope_tag = (
-            ceiling_col.upper() if ceiling_col and _SCOPE_TAG_RE.match(ceiling_col) else None
-        )
+        scope_tag = ceiling_col.upper() if ceiling_col and _SCOPE_TAG_RE.match(ceiling_col) else None
         seen_numbers.add(room_no)
         rooms.append(
             _make_room(

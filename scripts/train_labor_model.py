@@ -170,10 +170,7 @@ def per_type_report(model: LaborModel, records: list[dict]) -> None:
         actuals = np.array(by_type[st]["actual"])
         preds = np.array(by_type[st]["predicted"])
         mape = float(np.mean(np.abs(preds - actuals) / np.maximum(actuals, 0.5)))
-        print(
-            f"{st:<10} {len(actuals):>4}  "
-            f"{np.mean(actuals):>10.2f}  {np.mean(preds):>10.2f}  {mape:>7.1%}"
-        )
+        print(f"{st:<10} {len(actuals):>4}  {np.mean(actuals):>10.2f}  {np.mean(preds):>10.2f}  {mape:>7.1%}")
     print()
 
 

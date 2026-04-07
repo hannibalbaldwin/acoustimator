@@ -419,8 +419,7 @@ def estimate_from_plan_result(
 
     if plan_result.extraction_confidence < 0.5:
         all_notes.append(
-            f"Low plan extraction confidence ({plan_result.extraction_confidence:.0%}); "
-            "estimates may be inaccurate."
+            f"Low plan extraction confidence ({plan_result.extraction_confidence:.0%}); estimates may be inaccurate."
         )
 
     scope_estimates = []
@@ -428,12 +427,8 @@ def estimate_from_plan_result(
     for scope in scope_suggestions:
         # Skip low-confidence or area-less scopes
         if scope.confidence < 0.3:
-            logger.debug(
-                "Skipping scope %s: confidence %.2f < 0.3", scope.scope_tag, scope.confidence
-            )
-            all_notes.append(
-                f"Skipped {scope.scope_tag}: plan confidence {scope.confidence:.0%} too low."
-            )
+            logger.debug("Skipping scope %s: confidence %.2f < 0.3", scope.scope_tag, scope.confidence)
+            all_notes.append(f"Skipped {scope.scope_tag}: plan confidence {scope.confidence:.0%} too low.")
             continue
 
         if scope.area_sf is None or scope.area_sf <= 0:
@@ -451,10 +446,7 @@ def estimate_from_plan_result(
         scope_estimates.append(se)
 
         if se.confidence < 0.5:
-            all_notes.append(
-                f"Low confidence on {scope.scope_tag} ({se.confidence:.0%}): "
-                "review estimate carefully."
-            )
+            all_notes.append(f"Low confidence on {scope.scope_tag} ({se.confidence:.0%}): review estimate carefully.")
 
     # Aggregate totals
     total_cost = Decimal("0")

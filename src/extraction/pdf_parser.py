@@ -505,7 +505,7 @@ def _extract_project_address(text: str) -> str | None:
     if match:
         raw = match.group(1).strip()
         # Keep only the first two lines if multi-line
-        lines = [l.strip() for l in raw.splitlines() if l.strip()]
+        lines = [ln.strip() for ln in raw.splitlines() if ln.strip()]
         return " | ".join(lines[:2]) if lines else None
     return None
 

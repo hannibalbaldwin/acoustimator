@@ -537,9 +537,7 @@ class TestExtractLineItems:
 
     def test_item_type_uppercased(self) -> None:
         """Item type codes are stored in uppercase."""
-        text = (
-            "QTY TYPE DESCRIPTION COST PER UNIT TOTAL\n1 act-1 Ceiling tile 45.00 45.00\nSUBTOTAL\n"
-        )
+        text = "QTY TYPE DESCRIPTION COST PER UNIT TOTAL\n1 act-1 Ceiling tile 45.00 45.00\nSUBTOTAL\n"
         items = _extract_line_items(text)
         if items:
             assert items[0].item_type == items[0].item_type.upper()  # type: ignore[union-attr]

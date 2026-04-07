@@ -76,10 +76,7 @@ def estimate_cost(results: list[ExtractionResult]) -> tuple[int, Decimal]:
     # Approximate 80/20 input/output split for cost estimate
     estimated_input = int(total_tokens * 0.8)
     estimated_output = total_tokens - estimated_input
-    cost = (
-        Decimal(estimated_input) * COST_PER_INPUT_TOKEN
-        + Decimal(estimated_output) * COST_PER_OUTPUT_TOKEN
-    )
+    cost = Decimal(estimated_input) * COST_PER_INPUT_TOKEN + Decimal(estimated_output) * COST_PER_OUTPUT_TOKEN
     return total_tokens, cost
 
 
@@ -138,9 +135,7 @@ async def run_dry_run(source_dir: Path, limit: int | None) -> None:
 
     print(f"Found {len(files)} buildup files in {source_dir}:\n")
     for i, (file_path, folder_name) in enumerate(files, 1):
-        rel = (
-            file_path.relative_to(source_dir) if file_path.is_relative_to(source_dir) else file_path
-        )
+        rel = file_path.relative_to(source_dir) if file_path.is_relative_to(source_dir) else file_path
         print(f"  {i:3d}. [{folder_name}] {rel.name}")
 
     print(f"\nTotal: {len(files)} files")
@@ -254,9 +249,7 @@ async def main() -> None:
     elif args.dry_run:
         await run_dry_run(source_dir, args.limit)
     else:
-        await run_batch(
-            source_dir, output_dir, args.concurrency, args.limit, skip_existing=args.skip_existing
-        )
+        await run_batch(source_dir, output_dir, args.concurrency, args.limit, skip_existing=args.skip_existing)
 
 
 if __name__ == "__main__":

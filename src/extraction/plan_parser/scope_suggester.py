@@ -321,15 +321,11 @@ def suggest_scopes(
             scope_prefix = scope_tag.split("-")[0]
             scope_type = _normalise_scope_type(scope_prefix)
             try:
-                area_sf: Decimal | None = (
-                    Decimal(str(area_sf_raw)) if area_sf_raw is not None else None
-                )
+                area_sf: Decimal | None = Decimal(str(area_sf_raw)) if area_sf_raw is not None else None
             except InvalidOperation:
                 area_sf = None
             try:
-                length_lf: Decimal | None = (
-                    Decimal(str(length_lf_raw)) if length_lf_raw is not None else None
-                )
+                length_lf: Decimal | None = Decimal(str(length_lf_raw)) if length_lf_raw is not None else None
             except InvalidOperation:
                 length_lf = None
             raw_suggestions.append(

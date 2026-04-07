@@ -221,9 +221,7 @@ class VendorCostTracker:
         """)
 
         items_result = await self._session.execute(items_sql)
-        items_map: dict[str, dict] = {
-            row["vendor_name"]: dict(row) for row in items_result.mappings().all()
-        }
+        items_map: dict[str, dict] = {row["vendor_name"]: dict(row) for row in items_result.mappings().all()}
 
         summaries: list[VendorSummary] = []
         for row in agg_rows:
@@ -232,9 +230,7 @@ class VendorCostTracker:
             products = item_data.get("products") or []
 
             avg_total = Decimal(str(row["avg_total"])) if row["avg_total"] is not None else None
-            avg_freight = (
-                Decimal(str(row["avg_freight"])) if row["avg_freight"] is not None else None
-            )
+            avg_freight = Decimal(str(row["avg_freight"])) if row["avg_freight"] is not None else None
 
             freight_pct: Decimal | None = None
             if avg_total and avg_freight and avg_total > 0:
@@ -246,12 +242,8 @@ class VendorCostTracker:
                     quote_count=int(row["quote_count"]),
                     total_line_items=int(item_data.get("total_items", 0)),
                     avg_quote_total=avg_total,
-                    min_quote_total=(
-                        Decimal(str(row["min_total"])) if row["min_total"] is not None else None
-                    ),
-                    max_quote_total=(
-                        Decimal(str(row["max_total"])) if row["max_total"] is not None else None
-                    ),
+                    min_quote_total=(Decimal(str(row["min_total"])) if row["min_total"] is not None else None),
+                    max_quote_total=(Decimal(str(row["max_total"])) if row["max_total"] is not None else None),
                     avg_freight=avg_freight,
                     freight_pct_of_total=freight_pct,
                     products_quoted=products[:10],  # cap at 10 for display
@@ -395,8 +387,4 @@ class VendorCostTracker:
                 if any(kw in product_lower for kw in keywords):
                     category_vendors[category][vname] += 1
 
-        return {
-            cat: [v for v, _ in counter.most_common(5)]
-            for cat, counter in category_vendors.items()
-            if counter
-        }
+        return {cat: [v for v, _ in counter.most_common(5)] for cat, counter in category_vendors.items() if counter}

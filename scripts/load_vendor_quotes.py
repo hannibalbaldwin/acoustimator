@@ -192,10 +192,7 @@ async def load_one_quote(
         total=_safe_decimal(quote.grand_total),
         lead_time=quote.lead_time,
         source_file=quote.source_file,
-        notes=(
-            f"extraction_method={quote.extraction_method} "
-            f"confidence={quote.extraction_confidence:.2f}"
-        ),
+        notes=(f"extraction_method={quote.extraction_method} confidence={quote.extraction_confidence:.2f}"),
     )
     session.add(vq)
     await session.flush()

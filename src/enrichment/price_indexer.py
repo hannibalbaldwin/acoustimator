@@ -221,14 +221,10 @@ class PriceIndex:
         if cost_per_unit is not None:
             bounds = COST_PER_SF_BOUNDS.get(scope_type, (0.5, 300.0))
             if cost_per_unit < bounds[0]:
-                outlier_reasons.append(
-                    f"cost_per_unit {cost_per_unit:.2f} < lower bound {bounds[0]}"
-                )
+                outlier_reasons.append(f"cost_per_unit {cost_per_unit:.2f} < lower bound {bounds[0]}")
                 is_outlier = True
             if cost_per_unit > bounds[1]:
-                outlier_reasons.append(
-                    f"cost_per_unit {cost_per_unit:.2f} > upper bound {bounds[1]}"
-                )
+                outlier_reasons.append(f"cost_per_unit {cost_per_unit:.2f} > upper bound {bounds[1]}")
                 is_outlier = True
         if markup_pct is not None and not (-0.20 <= markup_pct <= 2.50):
             outlier_reasons.append(f"markup_pct {markup_pct:.2%} outside [-20%, 250%]")

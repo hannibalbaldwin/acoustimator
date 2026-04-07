@@ -80,9 +80,7 @@ def print_model_result(report: TrainingReport, target_mape: float) -> None:  # n
     print(f"  Training rows : {report.n_training_rows}")
     print(f"  Test rows     : {report.n_test_rows}")
     print(f"  Train MAPE    : {_fmt_pct(report.train_mape)}")
-    print(
-        f"  Test MAPE     : {color}{_fmt_pct(report.test_mape)}{RESET}  {tick}  (target ≤ {_fmt_pct(target_mape)})"
-    )
+    print(f"  Test MAPE     : {color}{_fmt_pct(report.test_mape)}{RESET}  {tick}  (target ≤ {_fmt_pct(target_mape)})")
     print(f"  Test R²       : {report.test_r2:.4f}")
     print(f"  CV MAPE       : {_fmt_pct(report.cv_mape)}")
     top3 = list(report.feature_importances.items())[:3]
@@ -186,9 +184,7 @@ def main() -> None:
     trainable_types = ["ACT", "AWP", "AP", "Baffles", "FW", "WW", "RPG"]
     general_df = df[df["scope_type"].isin(trainable_types) & df["cost_per_sf_total"].notna()]
     n_general = len(general_df)
-    print(
-        f"\n  General model n={n_general} rows across {general_df['scope_type'].nunique()} scope types"
-    )
+    print(f"\n  General model n={n_general} rows across {general_df['scope_type'].nunique()} scope types")
 
     if n_general >= MIN_ROWS:
         try:
@@ -221,9 +217,7 @@ def main() -> None:
                 "target_mape": target_mape,
                 "target_met": gen_report.target_met,
                 "feature_names": gen_report.feature_names,
-                "feature_importances": {
-                    k: round(v, 4) for k, v in gen_report.feature_importances.items()
-                },
+                "feature_importances": {k: round(v, 4) for k, v in gen_report.feature_importances.items()},
                 "model_path": str(general_path.relative_to(ROOT)),
             }
     else:

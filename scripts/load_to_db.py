@@ -116,10 +116,7 @@ async def run(input_dir: Path, dry_run: bool) -> int:
         else:
             skipped_parse += 1
 
-    console.print(
-        f"Parsed [bold]{len(results)}[/bold] result(s) "
-        f"([yellow]{skipped_parse}[/yellow] parse error(s))."
-    )
+    console.print(f"Parsed [bold]{len(results)}[/bold] result(s) ([yellow]{skipped_parse}[/yellow] parse error(s)).")
 
     if not results:
         console.print("[yellow]Nothing to load.[/yellow]")
@@ -141,9 +138,7 @@ async def run(input_dir: Path, dry_run: bool) -> int:
         counts = await load_all_results(results, show_progress=True)
     except OperationalError as exc:
         console.print("\n[red]Database connection error.[/red]")
-        console.print(
-            "Make sure DATABASE_URL is set in your .env file and the database is reachable."
-        )
+        console.print("Make sure DATABASE_URL is set in your .env file and the database is reachable.")
         console.print(f"\nDetail: {exc.orig}")
         return 1
 

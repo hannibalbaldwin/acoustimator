@@ -239,7 +239,7 @@ class LaborModel:
         train_preds_log = self._model.predict(X)
         self._train_residual_std = float(np.std(y - train_preds_log))
 
-        importances = dict(zip(self._feature_names, self._model.feature_importances_.tolist()))
+        importances = dict(zip(self._feature_names, self._model.feature_importances_.tolist(), strict=False))
         metrics = {
             "n_samples": len(records),
             "cv_r2_mean": float(np.mean(cv_r2)),

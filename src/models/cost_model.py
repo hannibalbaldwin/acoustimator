@@ -153,9 +153,7 @@ class CostModel:
             X_train, X_test = X, X
             y_train, y_test = y, y
         else:
-            X_train, X_test, y_train, y_test = train_test_split(
-                X, y, test_size=test_size, random_state=random_state
-            )
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
 
         # Try both algorithms, keep the one with lower CV MAPE
         rf_model, rf_mape = self._fit_rf(X_train, y_train)
@@ -230,9 +228,7 @@ class CostModel:
         """
         from src.models.features import FeatureEngineer
 
-        fe = (
-            feature_engineer if feature_engineer is not None else FeatureEngineer(raw_data=raw_data)
-        )
+        fe = feature_engineer if feature_engineer is not None else FeatureEngineer(raw_data=raw_data)
         X, y, _ = fe.get_training_data(
             scope_type=self.scope_type,
             target=self.target,
@@ -309,7 +305,7 @@ class CostModel:
         except AttributeError:
             return {}
         names = self._feature_names or [f"f{i}" for i in range(len(imp))]
-        result = dict(zip(names, imp.tolist()))
+        result = dict(zip(names, imp.tolist(), strict=False))
         return dict(sorted(result.items(), key=lambda x: x[1], reverse=True))
 
     # ------------------------------------------------------------------

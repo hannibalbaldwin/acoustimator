@@ -266,9 +266,7 @@ def validate_scope(scope: ExtractedScope, scope_index: int) -> ScopeValidation:
     # 6. Total math: total ≈ material_price + labor_price + sales_tax
     # ------------------------------------------------------------------
     if scope.total is not None and float(scope.total) != 0:
-        components_available = any(
-            v is not None for v in [scope.material_price, scope.labor_price, scope.sales_tax]
-        )
+        components_available = any(v is not None for v in [scope.material_price, scope.labor_price, scope.sales_tax])
         if components_available:
             mat = float(scope.material_price or 0)
             lab = float(scope.labor_price or 0)
@@ -308,8 +306,7 @@ def validate_scope(scope: ExtractedScope, scope_index: int) -> ScopeValidation:
                     field="material_price",
                     issue_type="math_mismatch",
                     severity="warning",
-                    expected=f"{_fmt_money(expected_mp)} "
-                    f"(material_cost × (1 + {_fmt_pct(scope.markup_pct)}))",
+                    expected=f"{_fmt_money(expected_mp)} (material_cost × (1 + {_fmt_pct(scope.markup_pct)}))",
                     actual=_fmt_money(scope.material_price),
                     message=f"material_price {_fmt_money(scope.material_price)} does not match "
                     f"material_cost × (1 + markup) = {_fmt_money(expected_mp)} "
@@ -474,8 +471,7 @@ def validate_project(project: ExtractedProject) -> ProjectValidation:
     valid_scope_count = sum(1 for sv in scope_validations if sv.is_valid)
     if overall_valid:
         summary = (
-            f"Project is valid. {scope_count} scope(s) extracted, "
-            f"all passed validation. Confidence: {confidence:.0%}."
+            f"Project is valid. {scope_count} scope(s) extracted, all passed validation. Confidence: {confidence:.0%}."
         )
     else:
         summary = (
@@ -530,16 +526,14 @@ def validate_batch(results: list[ExtractionResult]) -> BatchValidationReport:
     projects_with_errors = sum(
         1
         for pv in project_validations
-        if any(i.severity == "error" for i in pv.project_issues)
-        or any(not sv.is_valid for sv in pv.scope_validations)
+        if any(i.severity == "error" for i in pv.project_issues) or any(not sv.is_valid for sv in pv.scope_validations)
     )
     projects_with_warnings = sum(
         1
         for pv in project_validations
         if not pv.overall_valid
         and not (
-            any(i.severity == "error" for i in pv.project_issues)
-            or any(not sv.is_valid for sv in pv.scope_validations)
+            any(i.severity == "error" for i in pv.project_issues) or any(not sv.is_valid for sv in pv.scope_validations)
         )
     )
 
@@ -635,12 +629,12 @@ def print_validation_report(report: BatchValidationReport) -> None:
         if pv.overall_valid:
             status = "[green]OK[/green]"
         else:
-            error_count = sum(
-                1 for sv in pv.scope_validations for i in sv.issues if i.severity == "error"
-            ) + sum(1 for i in pv.project_issues if i.severity == "error")
-            warn_count = sum(
-                1 for sv in pv.scope_validations for i in sv.issues if i.severity == "warning"
-            ) + sum(1 for i in pv.project_issues if i.severity == "warning")
+            error_count = sum(1 for sv in pv.scope_validations for i in sv.issues if i.severity == "error") + sum(
+                1 for i in pv.project_issues if i.severity == "error"
+            )
+            warn_count = sum(1 for sv in pv.scope_validations for i in sv.issues if i.severity == "warning") + sum(
+                1 for i in pv.project_issues if i.severity == "warning"
+            )
             parts = []
             if error_count:
                 parts.append(f"[red]{error_count}E[/red]")
@@ -673,13 +667,7 @@ def print_validation_report(report: BatchValidationReport) -> None:
 
         for ci in report.common_issues:
             sev = ci["severity"]
-            sev_str = (
-                f"[red]{sev}[/red]"
-                if sev == "error"
-                else f"[yellow]{sev}[/yellow]"
-                if sev == "warning"
-                else sev
-            )
+            sev_str = f"[red]{sev}[/red]" if sev == "error" else f"[yellow]{sev}[/yellow]" if sev == "warning" else sev
             issue_table.add_row(ci["field"], ci["issue_type"], sev_str, str(ci["count"]))
 
         console.print(issue_table)
@@ -696,10 +684,7 @@ def print_validation_report(report: BatchValidationReport) -> None:
             # Project-level issues
             for issue in pv.project_issues:
                 color = "red" if issue.severity == "error" else "yellow"
-                console.print(
-                    f"    [{color}][{issue.severity.upper()}][/{color}] "
-                    f"{issue.field}: {issue.message}"
-                )
+                console.print(f"    [{color}][{issue.severity.upper()}][/{color}] {issue.field}: {issue.message}")
 
             # Scope-level issues
             for sv in pv.scope_validations:
@@ -709,8 +694,7 @@ def print_validation_report(report: BatchValidationReport) -> None:
                 for issue in sv.issues:
                     color = "red" if issue.severity == "error" else "yellow"
                     console.print(
-                        f"    [{color}][{issue.severity.upper()}][/{color}] "
-                        f"{tag_str} / {issue.field}: {issue.message}"
+                        f"    [{color}][{issue.severity.upper()}][/{color}] {tag_str} / {issue.field}: {issue.message}"
                     )
     else:
         console.print("\n[bold green]All projects passed validation.[/bold green]")

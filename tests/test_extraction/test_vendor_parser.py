@@ -537,9 +537,7 @@ class TestExtractVendorQuoteVision:
         }
 
     @pytest.mark.asyncio
-    async def test_vision_success(
-        self, tmp_path: Path, mock_client: MagicMock, good_vision_response: dict
-    ) -> None:
+    async def test_vision_success(self, tmp_path: Path, mock_client: MagicMock, good_vision_response: dict) -> None:
         """Vision extraction should parse a well-formed API response."""
         pdf_file = tmp_path / "gatorgyp_quote.pdf"
         pdf_file.write_bytes(b"fake pdf bytes")
@@ -679,9 +677,7 @@ class TestExtractVendorQuote:
         assert result.quote.vendor_name == "Snap-Tex"
 
     @pytest.mark.asyncio
-    async def test_no_client_returns_text_result_even_if_low_confidence(
-        self, tmp_path: Path
-    ) -> None:
+    async def test_no_client_returns_text_result_even_if_low_confidence(self, tmp_path: Path) -> None:
         """Without a client, even a low-confidence text result should be returned."""
         pdf_file = tmp_path / "noapi.pdf"
         pdf_file.write_bytes(b"fake pdf bytes")

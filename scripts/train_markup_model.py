@@ -89,7 +89,7 @@ def print_per_type_report(
     from collections import defaultdict
 
     type_data: dict[str, dict] = defaultdict(lambda: {"true": [], "pred": []})
-    for rec, yt, yp in zip(records_test, y_true, y_pred):
+    for rec, yt, yp in zip(records_test, y_true, y_pred, strict=False):
         st = rec.get("scope_type") or "None"
         type_data[st]["true"].append(yt)
         type_data[st]["pred"].append(yp)
@@ -101,9 +101,7 @@ def print_per_type_report(
         trues = np.array(type_data[st]["true"])
         preds = np.array(type_data[st]["pred"])
         delta = np.mean(preds) - np.mean(trues)
-        print(
-            f"{st:<12} {len(trues):>4}  {np.mean(trues):>11.1%}  {np.mean(preds):>9.1%}  {delta:>+8.1%}"
-        )
+        print(f"{st:<12} {len(trues):>4}  {np.mean(trues):>11.1%}  {np.mean(preds):>9.1%}  {delta:>+8.1%}")
     print()
 
 
@@ -146,9 +144,7 @@ def main() -> None:
     scope_types = [r.get("scope_type") or "None" for r in records]
 
     try:
-        train_idx, test_idx = train_test_split(
-            indices, test_size=0.20, random_state=42, stratify=scope_types
-        )
+        train_idx, test_idx = train_test_split(indices, test_size=0.20, random_state=42, stratify=scope_types)
     except ValueError:
         # Stratification fails if any class has <2 samples
         log.warning("Stratified split failed; falling back to random split.")
@@ -189,9 +185,7 @@ def main() -> None:
     print("========================================")
     print(f"  Training samples : {len(records_train)}")
     print(f"  Test samples     : {len(records_test)}")
-    print(
-        f"  CV R²            : {train_metrics['cv_r2_mean']:.3f} ± {train_metrics['cv_r2_std']:.3f}"
-    )
+    print(f"  CV R²            : {train_metrics['cv_r2_mean']:.3f} ± {train_metrics['cv_r2_std']:.3f}")
     print(f"  Test MAPE        : {test_mape:.1%}")
     print(f"  Test R²          : {test_r2:.3f}")
     print()

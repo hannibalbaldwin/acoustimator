@@ -30,9 +30,7 @@ from src.db.session import async_session
 from src.enrichment.product_normalizer import ProductNormalizer
 
 CATALOG_PATH = Path(__file__).parent.parent / "data" / "products_catalog.json"
-REVIEW_QUEUE_PATH = (
-    Path(__file__).parent.parent / "data" / "extracted" / "product_review_queue.json"
-)
+REVIEW_QUEUE_PATH = Path(__file__).parent.parent / "data" / "extracted" / "product_review_queue.json"
 CONFIDENCE_THRESHOLD = 0.75
 
 # Map catalog category strings to ProductCategory enum values

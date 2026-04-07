@@ -154,11 +154,7 @@ async def find_comparable_projects(
     Returns:
         List of ComparableProject sorted by similarity_score descending.
     """
-    stmt = (
-        select(Scope, Project)
-        .join(Project, Scope.project_id == Project.id)
-        .where(Scope.square_footage.is_not(None))
-    )
+    stmt = select(Scope, Project).join(Project, Scope.project_id == Project.id).where(Scope.square_footage.is_not(None))
     result = await session.execute(stmt)
     rows = result.all()
 
@@ -237,11 +233,7 @@ async def find_comparable_scopes(
     Returns:
         List of ComparableScope sorted by similarity_score descending.
     """
-    stmt = (
-        select(Scope, Project)
-        .join(Project, Scope.project_id == Project.id)
-        .where(Scope.square_footage.is_not(None))
-    )
+    stmt = select(Scope, Project).join(Project, Scope.project_id == Project.id).where(Scope.square_footage.is_not(None))
     result = await session.execute(stmt)
     rows = result.all()
 

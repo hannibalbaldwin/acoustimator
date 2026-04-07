@@ -205,9 +205,7 @@ def run(source_dir: Path, output_dir: Path, limit: int | None, verbose: bool) ->
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Batch-extract Commercial Acoustics quote PDFs and save as JSON."
-    )
+    parser = argparse.ArgumentParser(description="Batch-extract Commercial Acoustics quote PDFs and save as JSON.")
     parser.add_argument(
         "--source",
         required=True,

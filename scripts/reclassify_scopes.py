@@ -65,10 +65,6 @@ RECLASSIFICATIONS: dict[str, tuple[str, str]] = {
         "Baffles",
         "Option - Additional Panels (21 White on Ceiling, 6 Silver on Wall): ceiling-dominant",
     ),
-    "7b1c09c9-6770-413c-88a3-bac2d618d558": (
-        "Baffles",
-        "FilzFelt AroPlank 1.5 (AP01): part of AP/CL group — hanging panel system",
-    ),
     "01b0fb83-6925-4f28-b1fb-647a01565c03": (
         "Baffles",
         "3Form Hush Screen SolaPanels (AP02): part of AP/CL group — screen/cloud type",
@@ -273,9 +269,7 @@ async def main() -> None:
         # 1. Snapshot before counts
         # ------------------------------------------------------------------
         before_rows = await session.execute(
-            text(
-                "SELECT scope_type, COUNT(*) as cnt FROM scopes GROUP BY scope_type ORDER BY cnt DESC"
-            )
+            text("SELECT scope_type, COUNT(*) as cnt FROM scopes GROUP BY scope_type ORDER BY cnt DESC")
         )
         before_counts = {r.scope_type: r.cnt for r in before_rows}
 
@@ -319,9 +313,7 @@ async def main() -> None:
         # 3. Snapshot after counts
         # ------------------------------------------------------------------
         after_rows = await session.execute(
-            text(
-                "SELECT scope_type, COUNT(*) as cnt FROM scopes GROUP BY scope_type ORDER BY cnt DESC"
-            )
+            text("SELECT scope_type, COUNT(*) as cnt FROM scopes GROUP BY scope_type ORDER BY cnt DESC")
         )
         after_counts = {r.scope_type: r.cnt for r in after_rows}
 
@@ -345,9 +337,7 @@ async def main() -> None:
         if leftover:
             print(f"Remaining AP/Other scopes not reclassified ({len(leftover)}):")
             for row in leftover:
-                print(
-                    f"  [{row.scope_type}] id={row.id}  tag={row.tag!r}  name={row.product_name!r}"
-                )
+                print(f"  [{row.scope_type}] id={row.id}  tag={row.tag!r}  name={row.product_name!r}")
         else:
             print("All AP and Other scopes have been reclassified.")
 

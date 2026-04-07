@@ -104,9 +104,7 @@ class MarkupModel:
         return int(self._label_encoder.transform([st])[0])
 
     @staticmethod
-    def _infer_project_flags(
-        project_name: str | None, gc_name: str | None
-    ) -> tuple[int, int, int]:
+    def _infer_project_flags(project_name: str | None, gc_name: str | None) -> tuple[int, int, int]:
         """Return (is_healthcare, is_education, is_church) from free-text fields."""
         text = " ".join(filter(None, [project_name, gc_name])).lower()
         is_healthcare = int(any(kw in text for kw in HEALTHCARE_KEYWORDS))
@@ -170,13 +168,11 @@ class MarkupModel:
 
         kf = KFold(n_splits=5, shuffle=True, random_state=42)
         self._cv_scores = cross_val_score(self._model, X, y, cv=kf, scoring="r2")
-        cv_mape_scores = cross_val_score(
-            self._model, X, y, cv=kf, scoring="neg_mean_absolute_percentage_error"
-        )
+        cv_mape_scores = cross_val_score(self._model, X, y, cv=kf, scoring="neg_mean_absolute_percentage_error")
 
         self._model.fit(X, y)
 
-        importances = dict(zip(self._feature_names, self._model.feature_importances_.tolist()))
+        importances = dict(zip(self._feature_names, self._model.feature_importances_.tolist(), strict=False))
         metrics = {
             "n_samples": len(records),
             "cv_r2_mean": float(np.mean(self._cv_scores)),
@@ -216,9 +212,7 @@ class MarkupModel:
         pred = float(np.clip(pred, 0.10, 1.00))
 
         # Estimate interval using staged predictions spread
-        staged_preds = np.array(
-            [float(stage_pred[0]) for stage_pred in self._model.staged_predict(x)]
-        )
+        staged_preds = np.array([float(stage_pred[0]) for stage_pred in self._model.staged_predict(x)])
         # Use later half of staged predictions to estimate variance
         spread_std = float(np.std(staged_preds[len(staged_preds) // 2 :]))
         margin = max(spread_std * 1.96, 0.05)

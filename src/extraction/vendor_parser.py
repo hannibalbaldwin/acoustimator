@@ -481,9 +481,7 @@ def _parse_json_response(text: str) -> dict[str, Any]:
     raise json.JSONDecodeError("No valid JSON found in response", text, 0)
 
 
-def _build_quote_from_dict(
-    data: dict[str, Any], source_file: str, method: str
-) -> ExtractedVendorQuote:
+def _build_quote_from_dict(data: dict[str, Any], source_file: str, method: str) -> ExtractedVendorQuote:
     """Construct an ExtractedVendorQuote from a parsed dict (vision or text path).
 
     Args:

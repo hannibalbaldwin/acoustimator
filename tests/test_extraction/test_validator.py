@@ -235,9 +235,7 @@ class TestTotalMismatch:
             total=Decimal("8900.00"),  # sum is 8456 → diff ~5.25%
         )
         sv = validate_scope(scope, 0)
-        total_warnings = [
-            i for i in sv.issues if i.field == "total" and i.issue_type == "math_mismatch"
-        ]
+        total_warnings = [i for i in sv.issues if i.field == "total" and i.issue_type == "math_mismatch"]
         assert len(total_warnings) >= 1
         assert total_warnings[0].severity == "warning"
 
@@ -251,9 +249,7 @@ class TestTotalMismatch:
             total=Decimal("8541.00"),  # ~1% over
         )
         sv = validate_scope(scope, 0)
-        total_mismatches = [
-            i for i in sv.issues if i.field == "total" and i.issue_type == "math_mismatch"
-        ]
+        total_mismatches = [i for i in sv.issues if i.field == "total" and i.issue_type == "math_mismatch"]
         assert total_mismatches == []
 
     def test_total_zero_or_negative_is_error(self):
@@ -280,9 +276,7 @@ class TestMaterialPriceMismatch:
             material_price=Decimal("7500.00"),
         )
         sv = validate_scope(scope, 0)
-        mp_warnings = [
-            i for i in sv.issues if i.field == "material_price" and i.issue_type == "math_mismatch"
-        ]
+        mp_warnings = [i for i in sv.issues if i.field == "material_price" and i.issue_type == "math_mismatch"]
         assert len(mp_warnings) >= 1
         assert mp_warnings[0].severity == "warning"
 
@@ -297,18 +291,14 @@ class TestMaterialPriceMismatch:
             material_price=mat_price,
         )
         sv = validate_scope(scope, 0)
-        mp_mismatches = [
-            i for i in sv.issues if i.field == "material_price" and i.issue_type == "math_mismatch"
-        ]
+        mp_mismatches = [i for i in sv.issues if i.field == "material_price" and i.issue_type == "math_mismatch"]
         assert mp_mismatches == []
 
     def test_missing_markup_skips_material_price_check(self):
         """If markup_pct is None, the material_price math check is skipped."""
         scope = _make_scope(markup_pct=None)
         sv = validate_scope(scope, 0)
-        mp_mismatches = [
-            i for i in sv.issues if i.field == "material_price" and i.issue_type == "math_mismatch"
-        ]
+        mp_mismatches = [i for i in sv.issues if i.field == "material_price" and i.issue_type == "math_mismatch"]
         assert mp_mismatches == []
 
 
@@ -322,9 +312,7 @@ class TestProjectNoScopes:
         """A project with no scopes must have a missing_required error at project level."""
         project = _make_project(scopes=[])
         pv = validate_project(project)
-        scope_errors = [
-            i for i in pv.project_issues if i.field == "scopes" and i.severity == "error"
-        ]
+        scope_errors = [i for i in pv.project_issues if i.field == "scopes" and i.severity == "error"]
         assert len(scope_errors) >= 1
         assert pv.overall_valid is False
 
@@ -332,9 +320,7 @@ class TestProjectNoScopes:
         """A project with at least one scope should not have a 'scopes' missing error."""
         project = _make_project()
         pv = validate_project(project)
-        scope_errors = [
-            i for i in pv.project_issues if i.field == "scopes" and i.severity == "error"
-        ]
+        scope_errors = [i for i in pv.project_issues if i.field == "scopes" and i.severity == "error"]
         assert scope_errors == []
 
     def test_confidence_zero_for_project_with_many_errors(self):
@@ -492,9 +478,7 @@ class TestConfidenceScore:
     def test_confidence_never_below_zero(self):
         """Confidence must never go below 0.0 regardless of issue count."""
         # Deliberately create 10 error scopes
-        bad_scopes = [
-            _make_scope(markup_pct=Decimal("2.0"), square_footage=Decimal("0")) for _ in range(10)
-        ]
+        bad_scopes = [_make_scope(markup_pct=Decimal("2.0"), square_footage=Decimal("0")) for _ in range(10)]
         project = _make_project(scopes=bad_scopes)
         pv = validate_project(project)
         assert pv.confidence_score >= 0.0
@@ -567,9 +551,7 @@ class TestAdditionalEdgeCases:
             total=total,
         )
         sv = validate_scope(scope, 0)
-        cpf_issues = [
-            i for i in sv.issues if i.field == "cost_per_sf" and i.issue_type == "suspicious"
-        ]
+        cpf_issues = [i for i in sv.issues if i.field == "cost_per_sf" and i.issue_type == "suspicious"]
         assert len(cpf_issues) >= 1
         assert cpf_issues[0].severity == "warning"
 
@@ -607,9 +589,7 @@ class TestAdditionalEdgeCases:
         inflated_grand = scope_total * Decimal("1.20")
         project = _make_project(scopes=[scope], grand_total=inflated_grand)
         pv = validate_project(project)
-        gt_issues = [
-            i for i in pv.project_issues if i.field == "grand_total" and i.severity == "warning"
-        ]
+        gt_issues = [i for i in pv.project_issues if i.field == "grand_total" and i.severity == "warning"]
         assert len(gt_issues) >= 1
 
     def test_scope_validation_is_valid_false_on_error(self):

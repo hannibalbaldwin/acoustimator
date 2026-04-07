@@ -228,12 +228,8 @@ def _parse_annotation_treatments(annotations: list) -> list[dict[str, Any]]:
     for ann in annotations:
         # Support both Pydantic models and plain dicts
         label = getattr(ann, "label", None) or (ann.get("label") if isinstance(ann, dict) else None)
-        area_sf = getattr(ann, "area_sf", None) or (
-            ann.get("area_sf") if isinstance(ann, dict) else None
-        )
-        length_lf = getattr(ann, "length_lf", None) or (
-            ann.get("length_lf") if isinstance(ann, dict) else None
-        )
+        area_sf = getattr(ann, "area_sf", None) or (ann.get("area_sf") if isinstance(ann, dict) else None)
+        length_lf = getattr(ann, "length_lf", None) or (ann.get("length_lf") if isinstance(ann, dict) else None)
 
         if not label:
             continue

@@ -168,21 +168,13 @@ def _find_matching_scope(
     matches on scope_type, returns (None, []).
     """
     # First, filter to scopes with matching scope_type
-    candidates = [
-        s
-        for s in extracted_scopes
-        if s.get("scope_type", "").upper() == expected["scope_type"].upper()
-    ]
+    candidates = [s for s in extracted_scopes if s.get("scope_type", "").upper() == expected["scope_type"].upper()]
     if not candidates:
         return None, []
 
     # If there's a product_name expectation, prefer scopes that match it
     if "product_name" in expected:
-        product_matches = [
-            s
-            for s in candidates
-            if _partial_match(s.get("product_name", ""), expected["product_name"])
-        ]
+        product_matches = [s for s in candidates if _partial_match(s.get("product_name", ""), expected["product_name"])]
         if product_matches:
             candidates = product_matches
 
@@ -251,9 +243,7 @@ def validate_project(project_name: str, expected: dict, result_data: dict) -> Pr
             expected=expected["format_type"],
             actual=actual_fmt,
             passed=ok,
-            message=""
-            if ok
-            else f"Expected format '{expected['format_type']}', got '{actual_fmt}'",
+            message="" if ok else f"Expected format '{expected['format_type']}', got '{actual_fmt}'",
         )
 
     # Check scopes
