@@ -77,7 +77,7 @@ class TestExtractedScope:
     def test_scope_type_required(self, sample_scope_data: dict) -> None:
         """scope_type is required and cannot be omitted."""
         del sample_scope_data["scope_type"]
-        with pytest.raises(Exception):
+        with pytest.raises((ValueError, TypeError)):
             ExtractedScope(**sample_scope_data)
 
     def test_scope_decimal_precision(self) -> None:

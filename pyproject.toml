@@ -28,14 +28,18 @@ dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.24.0",
     "ruff>=0.8.0",
+    "pre-commit>=3.8.0",
+    "detect-secrets>=1.5.0",
 ]
 
 [tool.ruff]
 target-version = "py312"
-line-length = 100
+line-length = 120
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+# E501 suppressed in scripts that contain long SQL/format strings where wrapping hurts readability
+per-file-ignores = {"scripts/*.py" = ["E501"], "src/extraction/excel_parser.py" = ["E501"]}
 
 [tool.ruff.lint.isort]
 known-first-party = ["src"]

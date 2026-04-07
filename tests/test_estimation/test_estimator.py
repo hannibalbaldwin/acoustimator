@@ -320,12 +320,9 @@ class TestComputeProjectConfidence:
         report = compute_project_confidence(plan_result, scopes)
         flag_text = " ".join(report.flags).lower()
         # Should mention review or keyword extraction
-        assert (
-            "keyword" in flag_text
-            or "review" in flag_text
-            or "text" in flag_text
-            or "raster" in flag_text
-        ), f"Expected low-confidence flag, got: {report.flags}"
+        assert "keyword" in flag_text or "review" in flag_text or "text" in flag_text or "raster" in flag_text, (
+            f"Expected low-confidence flag, got: {report.flags}"
+        )
 
     def test_raster_only_plan_flagged(self) -> None:
         """ConfidenceReport.flags contains expected strings for raster-only plan (conf=0.3)."""
@@ -364,15 +361,11 @@ class TestComputeProjectConfidence:
 
     def test_missing_total_sf_flagged(self) -> None:
         """plan_result.total_area_sf=None → flagged in report."""
-        plan_result = _make_plan_result_for_confidence(
-            extraction_confidence=0.95, total_area_sf=None
-        )
+        plan_result = _make_plan_result_for_confidence(extraction_confidence=0.95, total_area_sf=None)
         scopes = [_make_scope_estimate()]
         report = compute_project_confidence(plan_result, scopes)
         flag_text = " ".join(report.flags).lower()
-        assert "sf" in flag_text or "area" in flag_text, (
-            f"Expected SF/area flag, got: {report.flags}"
-        )
+        assert "sf" in flag_text or "area" in flag_text, f"Expected SF/area flag, got: {report.flags}"
 
     def test_bluebeam_annotations_flagged_positive(self) -> None:
         """extraction_confidence=1.0 (Bluebeam) → positive flag in report."""
@@ -421,7 +414,7 @@ class TestScopeEstimate:
         assert scope2.confidence == 1.0
 
     def test_confidence_out_of_range_raises(self) -> None:
-        with pytest.raises(Exception):
+        with pytest.raises(Exception, match=".*"):  # noqa: B017
             _make_scope_estimate(confidence=1.5)
 
     def test_nullable_fields(self) -> None:

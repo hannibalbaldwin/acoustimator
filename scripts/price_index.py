@@ -190,9 +190,7 @@ def analyze(scopes: list[dict]) -> dict:
         markups = [float(r["markup_pct"]) * 100 for r in rows if r.get("markup_pct") is not None]
         man_days_list = [float(r["man_days"]) for r in rows if r.get("man_days") is not None]
         sf_list = [float(r["square_footage"]) for r in rows if r.get("square_footage") is not None]
-        rates = [
-            float(r["daily_labor_rate"]) for r in rows if r.get("daily_labor_rate") is not None
-        ]
+        rates = [float(r["daily_labor_rate"]) for r in rows if r.get("daily_labor_rate") is not None]
 
         # Derived: man_days per 1000 SF productivity ratio
         prod_ratios: list[float] = []
@@ -249,7 +247,7 @@ def analyze(scopes: list[dict]) -> dict:
             era_groups[era].append(s)
 
     era_analysis: dict[str, dict] = {}
-    for era_label, _, era_name in LABOR_RATE_ERAS:
+    for _era_label, _, era_name in LABOR_RATE_ERAS:
         rows = era_groups.get(era_name, [])
         costs = [float(r["cost_per_unit"]) for r in rows if r.get("cost_per_unit")]
         # By scope type within era
@@ -293,13 +291,9 @@ def analyze(scopes: list[dict]) -> dict:
                 "man_days": md,
                 "original_labor": lp,
                 "normalized_labor_at_725": norm_labor,
-                "labor_adjustment_factor": round(labor_adjustment_factor, 4)
-                if labor_adjustment_factor
-                else None,
+                "labor_adjustment_factor": round(labor_adjustment_factor, 4) if labor_adjustment_factor else None,
                 "original_labor_per_sf": round(orig_labor_per_sf, 4) if orig_labor_per_sf else None,
-                "normalized_labor_per_sf": round(norm_labor_per_sf, 4)
-                if norm_labor_per_sf
-                else None,
+                "normalized_labor_per_sf": round(norm_labor_per_sf, 4) if norm_labor_per_sf else None,
                 "square_footage": sf,
                 "scope_type_normalized": s["scope_type"],
             }
@@ -361,8 +355,8 @@ def print_summary(result: dict) -> None:
 
     print("\n[DATA COVERAGE]")
     print(f"  Total scopes:             {meta['total_scopes']}")
-    n_date = meta['scopes_with_quote_date']
-    n_cost = meta['scopes_with_cost_per_unit']
+    n_date = meta["scopes_with_quote_date"]
+    n_cost = meta["scopes_with_cost_per_unit"]
     print(f"  With quote_date:          {n_date}  ({meta['date_coverage_pct']}%)")
     print(f"  With cost_per_unit:       {n_cost}  ({meta['cost_coverage_pct']}%)")
     print(f"  With man_days:            {meta['scopes_with_man_days']}")
@@ -443,10 +437,7 @@ def print_summary(result: dict) -> None:
         uplift = (factor_mean - 1) * 100
         ol_mean = ol["mean"] if ol["mean"] is not None else 0
         nl_mean = nl["mean"] if nl["mean"] is not None else 0
-        print(
-            f"{stype:<8} {nb['n']:>4} {factor_mean:>10.3f} "
-            f"{ol_mean:>13.4f} {nl_mean:>13.4f}  {uplift:+.1f}%"
-        )
+        print(f"{stype:<8} {nb['n']:>4} {factor_mean:>10.3f} {ol_mean:>13.4f} {nl_mean:>13.4f}  {uplift:+.1f}%")
 
     print("\n" + "-" * 80)
     print("OUTLIERS BY SCOPE TYPE (vs. ANALYSIS.md benchmarks)")
@@ -457,9 +448,7 @@ def print_summary(result: dict) -> None:
             continue
         print(f"\n  {stype}:  {stats['outlier_count']} outlier(s)")
         for o in stats["outliers"][:5]:
-            print(
-                f"    - {o['project']} [{o.get('tag', '?')}] ${o['cost_per_unit']:.2f}/SF — {', '.join(o['flags'])}"
-            )
+            print(f"    - {o['project']} [{o.get('tag', '?')}] ${o['cost_per_unit']:.2f}/SF — {', '.join(o['flags'])}")
         if stats["outlier_count"] > 5:
             print(f"    ... and {stats['outlier_count'] - 5} more (see price_index.json)")
 

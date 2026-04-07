@@ -114,9 +114,7 @@ async def _read_plan_async(
             raster_count += 1
             # Optionally fall back to Vision API (capped at MAX_VISION_PAGES)
             if use_vision and vision_pages_used < MAX_VISION_PAGES:
-                vision_data = await extract_raster_page_vision(
-                    fitz_page, page_num, plan_page.page_type
-                )
+                vision_data = await extract_raster_page_vision(fitz_page, page_num, plan_page.page_type)
                 vision_pages_used += 1
 
                 # Convert vision rooms to Room models

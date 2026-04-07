@@ -218,11 +218,7 @@ def read_workbook_cells(file_path: Path) -> tuple[str, str]:
         for row in ws.iter_rows():
             cells = []
             for cell in row:
-                if (
-                    cell.value is not None
-                    and isinstance(cell.value, str)
-                    and cell.value.startswith("=")
-                ):
+                if cell.value is not None and isinstance(cell.value, str) and cell.value.startswith("="):
                     cells.append(f"{cell.coordinate}: {cell.value}")
             if cells:
                 formula_lines.append("  " + "  |  ".join(cells))
@@ -551,9 +547,7 @@ async def extract_buildup(file_path: Path, folder_name: str) -> ExtractionResult
                     error="Anthropic API rate limit exceeded after 3 retries",
                 )
             wait = 30 * (2**attempt)  # 30s, 60s, 120s
-            logger.warning(
-                "Rate limited on %s — waiting %ds (attempt %d/3)", file_path.name, wait, attempt + 1
-            )
+            logger.warning("Rate limited on %s — waiting %ds (attempt %d/3)", file_path.name, wait, attempt + 1)
             await asyncio.sleep(wait)
         except anthropic.AuthenticationError:
             return ExtractionResult(

@@ -350,8 +350,7 @@ def run_batch(
             print(
                 f"  [{idx}/{total}] [OK] {project_name} "
                 f"→ {n_scopes} scopes, {_fmt_currency(total_cost)} total "
-                f"(confidence: {conf_label})  ({elapsed:.1f}s)"
-                + (f"\n{excel_note}" if excel_note else "")
+                f"(confidence: {conf_label})  ({elapsed:.1f}s)" + (f"\n{excel_note}" if excel_note else "")
             )
 
         except Exception as exc:

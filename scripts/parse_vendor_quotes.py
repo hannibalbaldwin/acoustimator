@@ -49,9 +49,7 @@ from src.extraction.vendor_parser import (
 # ---------------------------------------------------------------------------
 
 # Hard-coded Dropbox source — overridable via --source flag
-_DEFAULT_SOURCE = Path(
-    "/Users/hannibalbaldwin/Library/CloudStorage/Dropbox-SiteZeus/Hannibal Baldwin/+ITBs"
-)
+_DEFAULT_SOURCE = Path("/Users/hannibalbaldwin/Library/CloudStorage/Dropbox-SiteZeus/Hannibal Baldwin/+ITBs")
 _DEFAULT_OUTPUT = Path("data/extracted/vendor_quotes")
 
 # Tier-1 Anthropic rate limit mitigation (30K input tokens/min)
@@ -146,12 +144,8 @@ def print_summary(
     failed = [(p, r) for p, r in results if not r.success]
 
     total_tokens = sum(r.tokens_used for _, r in results)
-    vision_calls = sum(
-        1 for _, r in results if r.success and r.quote and r.quote.extraction_method == "vision"
-    )
-    text_calls = sum(
-        1 for _, r in results if r.success and r.quote and r.quote.extraction_method == "text"
-    )
+    vision_calls = sum(1 for _, r in results if r.success and r.quote and r.quote.extraction_method == "vision")
+    text_calls = sum(1 for _, r in results if r.success and r.quote and r.quote.extraction_method == "text")
 
     # Vendor breakdown for successful extractions
     vendor_counts: Counter[str] = Counter()
@@ -209,11 +203,7 @@ async def run_batch(
     if skip_existing:
         existing_stems = {p.stem for p in output_dir.glob("*.json")}
         before = len(all_files)
-        all_files = [
-            (fp, v)
-            for fp, v in all_files
-            if derive_output_path(fp, output_dir).stem not in existing_stems
-        ]
+        all_files = [(fp, v) for fp, v in all_files if derive_output_path(fp, output_dir).stem not in existing_stems]
         skipped = before - len(all_files)
         if skipped:
             print(f"Skipping {skipped} already-extracted files.")
@@ -268,8 +258,7 @@ async def run_batch(
                 pass
 
             print(
-                f"  [{idx:4d}/{total}] [{status}] {method} {confidence:10s}"
-                f"  {file_path.parent.name}/{file_path.name}",
+                f"  [{idx:4d}/{total}] [{status}] {method} {confidence:10s}  {file_path.parent.name}/{file_path.name}",
                 flush=True,
             )
 
