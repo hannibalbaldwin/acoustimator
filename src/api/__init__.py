@@ -1,0 +1,1 @@
+"""Acoustimator FastAPI application package."""
