@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 # Constants
 # ---------------------------------------------------------------------------
 
-MODEL = "claude-sonnet-4-6-20250514"
+MODEL = "claude-sonnet-4-6"
 MAX_TOKENS = 8192
 
 # Files to skip during batch extraction
@@ -530,40 +530,50 @@ async def extract_buildup(file_path: Path, folder_name: str) -> ExtractionResult
             error="Workbook contains no data",
         )
 
-    # --- Step 2: Call Claude API ---
+    # --- Step 2: Call Claude API (with exponential backoff on rate limit) ---
     user_message = _build_user_prompt(file_path, folder_name, values_text, formulas_text)
 
-    try:
-        client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
-        response = await client.messages.create(
-            model=MODEL,
-            max_tokens=MAX_TOKENS,
-            system=SYSTEM_PROMPT,
-            messages=[
-                {"role": "user", "content": user_message},
-            ],
-        )
-    except anthropic.AuthenticationError:
-        return ExtractionResult(
-            success=False,
-            error="Anthropic API authentication failed — check ANTHROPIC_API_KEY",
-        )
-    except anthropic.RateLimitError:
-        return ExtractionResult(
-            success=False,
-            error="Anthropic API rate limit exceeded — retry later",
-        )
-    except anthropic.APIConnectionError as e:
-        return ExtractionResult(
-            success=False,
-            error=f"Anthropic API connection error: {e}",
-        )
-    except anthropic.APIError as e:
-        logger.exception("Anthropic API error during extraction of %s", file_path)
-        return ExtractionResult(
-            success=False,
-            error=f"Anthropic API error: {type(e).__name__}: {e}",
-        )
+    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+    response = None
+    for attempt in range(4):  # up to 3 retries
+        try:
+            response = await client.messages.create(
+                model=MODEL,
+                max_tokens=MAX_TOKENS,
+                system=SYSTEM_PROMPT,
+                messages=[{"role": "user", "content": user_message}],
+            )
+            break  # success
+        except anthropic.RateLimitError:
+            if attempt == 3:
+                return ExtractionResult(
+                    success=False,
+                    error="Anthropic API rate limit exceeded after 3 retries",
+                )
+            wait = 30 * (2**attempt)  # 30s, 60s, 120s
+            logger.warning(
+                "Rate limited on %s — waiting %ds (attempt %d/3)", file_path.name, wait, attempt + 1
+            )
+            await asyncio.sleep(wait)
+        except anthropic.AuthenticationError:
+            return ExtractionResult(
+                success=False,
+                error="Anthropic API authentication failed — check ANTHROPIC_API_KEY",
+            )
+        except anthropic.APIConnectionError as e:
+            return ExtractionResult(
+                success=False,
+                error=f"Anthropic API connection error: {e}",
+            )
+        except anthropic.APIError as e:
+            logger.exception("Anthropic API error during extraction of %s", file_path)
+            return ExtractionResult(
+                success=False,
+                error=f"Anthropic API error: {type(e).__name__}: {e}",
+            )
+
+    if response is None:
+        return ExtractionResult(success=False, error="No response received after retries")
 
     # Calculate token usage
     tokens_used = (response.usage.input_tokens or 0) + (response.usage.output_tokens or 0)
@@ -693,7 +703,9 @@ def find_buildup_files(source_dir: Path) -> list[tuple[Path, str]]:
 
 async def extract_all_buildups(
     source_dir: Path,
-    concurrency: int = 5,
+    concurrency: int = 2,
+    request_delay: float = 15.0,
+    files: list[tuple[Path, str]] | None = None,
 ) -> list[ExtractionResult]:
     """Extract all buildups from the ITBs folder with concurrent processing.
 
@@ -704,11 +716,16 @@ async def extract_all_buildups(
     Args:
         source_dir: Root directory containing project folders (e.g., the +ITBs folder).
         concurrency: Maximum number of concurrent Claude API calls.
+        request_delay: Seconds to wait between requests to respect token rate limits.
+            Default 15s → ~4 requests/min → ~20K input tokens/min (safe for Tier 1).
+        files: Pre-computed list of (file_path, folder_name) tuples. If None, walks
+            source_dir automatically.
 
     Returns:
         List of ExtractionResult objects, one per file processed.
     """
-    files = find_buildup_files(source_dir)
+    if files is None:
+        files = find_buildup_files(source_dir)
 
     if not files:
         logger.warning("No buildup files found in %s", source_dir)
@@ -720,7 +737,7 @@ async def extract_all_buildups(
     total = len(files)
 
     try:
-        from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+        from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn
     except ImportError:
         Progress = None  # type: ignore[assignment, misc]
 
@@ -739,6 +756,9 @@ async def extract_all_buildups(
                     status,
                     result.tokens_used,
                 )
+            # Pace requests to stay within token rate limits (Tier 1: 30K tokens/min)
+            if request_delay > 0:
+                await asyncio.sleep(request_delay)
             return result
 
     if Progress is not None:
@@ -750,9 +770,7 @@ async def extract_all_buildups(
         ) as progress:
             task = progress.add_task("Extracting buildups...", total=total)
 
-            async def _process_with_progress(
-                file_path: Path, folder_name: str
-            ) -> ExtractionResult:
+            async def _process_with_progress(file_path: Path, folder_name: str) -> ExtractionResult:
                 result = await _process(file_path, folder_name)
                 status = "OK" if result.success else "FAIL"
                 progress.update(

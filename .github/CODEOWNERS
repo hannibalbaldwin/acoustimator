@@ -1,0 +1,6 @@
+# Default reviewer for all files
+* @hannibalbaldwin
+
+# Python source gets extra attention
+src/ @hannibalbaldwin
+tests/ @hannibalbaldwin

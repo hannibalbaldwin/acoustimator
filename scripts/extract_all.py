@@ -29,7 +29,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.config import settings
 from src.extraction.excel_parser import (
     ExtractionResult,
-    extract_all_buildups,
     extract_buildup,
     find_buildup_files,
 )
@@ -67,22 +66,21 @@ def derive_output_name(source_path: Path) -> str:
     return f"{folder_name}.json"
 
 
-def estimate_cost(results: list[ExtractionResult]) -> tuple[int, int, Decimal]:
+def estimate_cost(results: list[ExtractionResult]) -> tuple[int, Decimal]:
     """Calculate total tokens used and estimated API cost.
 
     Returns:
-        Tuple of (total_input_tokens, total_output_tokens, estimated_cost_usd).
+        Tuple of (total_tokens, estimated_cost_usd).
     """
-    total_input = 0
-    total_output = 0
-    for result in results:
-        total_input += result.input_tokens
-        total_output += result.output_tokens
+    total_tokens = sum(r.tokens_used for r in results)
+    # Approximate 80/20 input/output split for cost estimate
+    estimated_input = int(total_tokens * 0.8)
+    estimated_output = total_tokens - estimated_input
     cost = (
-        Decimal(total_input) * COST_PER_INPUT_TOKEN
-        + Decimal(total_output) * COST_PER_OUTPUT_TOKEN
+        Decimal(estimated_input) * COST_PER_INPUT_TOKEN
+        + Decimal(estimated_output) * COST_PER_OUTPUT_TOKEN
     )
-    return total_input, total_output, cost
+    return total_tokens, cost
 
 
 def print_summary(
@@ -92,7 +90,7 @@ def print_summary(
     """Print a human-readable summary of the extraction batch."""
     successful = [r for r in results if r.success]
     failed = [r for r in results if not r.success]
-    total_input, total_output, cost = estimate_cost(results)
+    total_tokens, cost = estimate_cost(results)
 
     print("\n" + "=" * 60)
     print("EXTRACTION SUMMARY")
@@ -100,8 +98,7 @@ def print_summary(
     print(f"  Total files processed:   {len(results)}")
     print(f"  Successful extractions:  {len(successful)}")
     print(f"  Failed extractions:      {len(failed)}")
-    print(f"  Total input tokens:      {total_input:,}")
-    print(f"  Total output tokens:     {total_output:,}")
+    print(f"  Total tokens used:       {total_tokens:,}")
     print(f"  Estimated API cost:      ${cost:.4f}")
     print(f"  Elapsed time:            {elapsed_seconds:.1f}s")
     print("=" * 60)
@@ -109,7 +106,8 @@ def print_summary(
     if failed:
         print("\nFailed files:")
         for result in failed:
-            print(f"  - {result.source_file}: {result.error}")
+            src = result.project.source_file if result.project else "unknown"
+            print(f"  - {src}: {result.error}")
 
 
 async def run_single(file_path: Path) -> None:
@@ -121,8 +119,9 @@ async def run_single(file_path: Path) -> None:
         print(f"Error: Expected .xlsx file, got: {file_path.suffix}", file=sys.stderr)
         sys.exit(1)
 
+    folder_name = file_path.parent.name
     print(f"Extracting: {file_path}")
-    result = await extract_buildup(file_path)
+    result = await extract_buildup(file_path, folder_name)
 
     if result.success:
         print(result_to_json(result))
@@ -138,9 +137,11 @@ async def run_dry_run(source_dir: Path, limit: int | None) -> None:
         files = files[:limit]
 
     print(f"Found {len(files)} buildup files in {source_dir}:\n")
-    for i, f in enumerate(files, 1):
-        rel = f.relative_to(source_dir) if f.is_relative_to(source_dir) else f
-        print(f"  {i:3d}. {rel}")
+    for i, (file_path, folder_name) in enumerate(files, 1):
+        rel = (
+            file_path.relative_to(source_dir) if file_path.is_relative_to(source_dir) else file_path
+        )
+        print(f"  {i:3d}. [{folder_name}] {rel.name}")
 
     print(f"\nTotal: {len(files)} files")
 
@@ -150,6 +151,7 @@ async def run_batch(
     output_dir: Path,
     concurrency: int,
     limit: int | None,
+    skip_existing: bool = False,
 ) -> None:
     """Extract all buildups and save results as JSON files."""
     files = find_buildup_files(source_dir)
@@ -162,28 +164,40 @@ async def run_batch(
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    print(f"Extracting {len(files)} buildups (concurrency={concurrency})...")
+    if skip_existing:
+        existing = {p.stem for p in output_dir.glob("*.json")}
+        before = len(files)
+        files = [(fp, fn) for fp, fn in files if fn not in existing]
+        print(f"Skipping {before - len(files)} already-extracted files.")
+
+    if not files:
+        print("All files already extracted.")
+        return
+
+    total = len(files)
+    print(f"Extracting {total} buildups (concurrency={concurrency}, delay=15s)...")
     print(f"Output directory: {output_dir}\n")
 
+    semaphore = asyncio.Semaphore(concurrency)
+    results: list[ExtractionResult] = []
     start_time = time.monotonic()
-    results = await extract_all_buildups(
-        files=files,
-        concurrency=concurrency,
-    )
+
+    async def _extract_and_save(idx: int, file_path: Path, folder_name: str) -> ExtractionResult:
+        async with semaphore:
+            result = await extract_buildup(file_path, folder_name)
+            src = result.project.source_file if result.project else None
+            output_name = derive_output_name(Path(src)) if src else f"{folder_name}.json"
+            output_path = output_dir / output_name
+            output_path.write_text(result_to_json(result), encoding="utf-8")
+            status = "OK" if result.success else "FAIL"
+            print(f"  [{idx}/{total}] [{status}] {output_name}", flush=True)
+            # Pace requests: 15s delay keeps us under Tier 1 token rate limit
+            await asyncio.sleep(15.0)
+            return result
+
+    tasks = [_extract_and_save(i + 1, fp, fn) for i, (fp, fn) in enumerate(files)]
+    results = list(await asyncio.gather(*tasks))
     elapsed = time.monotonic() - start_time
-
-    # Save each result as a JSON file
-    for result in results:
-        if result.source_file:
-            output_name = derive_output_name(Path(result.source_file))
-        else:
-            output_name = "unknown.json"
-
-        output_path = output_dir / output_name
-        output_path.write_text(result_to_json(result), encoding="utf-8")
-
-        status = "OK" if result.success else "FAIL"
-        print(f"  [{status}] {output_name}")
 
     print_summary(results, elapsed)
 
@@ -225,6 +239,11 @@ async def main() -> None:
         type=int,
         help="Limit number of files to process",
     )
+    parser.add_argument(
+        "--skip-existing",
+        action="store_true",
+        help="Skip files that already have a JSON output in the output directory",
+    )
     args = parser.parse_args()
 
     source_dir = Path(args.source) if args.source else settings.data_source_path
@@ -235,7 +254,9 @@ async def main() -> None:
     elif args.dry_run:
         await run_dry_run(source_dir, args.limit)
     else:
-        await run_batch(source_dir, output_dir, args.concurrency, args.limit)
+        await run_batch(
+            source_dir, output_dir, args.concurrency, args.limit, skip_existing=args.skip_existing
+        )
 
 
 if __name__ == "__main__":

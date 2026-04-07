@@ -13,6 +13,14 @@ dependencies = [
     "pydantic-settings>=2.0.0",
     "python-dotenv>=1.0.0",
     "rich>=13.0.0",
+    "pymupdf>=1.27.2.2",
+    "rapidfuzz>=3.14.3",
+    "psycopg2-binary>=2.9.11",
+    "scikit-learn>=1.8.0",
+    "xgboost>=3.2.0",
+    "pandas>=3.0.2",
+    "numpy>=2.4.4",
+    "joblib>=1.5.3",
 ]
 
 [project.optional-dependencies]
@@ -27,7 +35,10 @@ target-version = "py312"
 line-length = 100
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "N", "W"]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["src"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

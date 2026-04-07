@@ -169,7 +169,8 @@ def _find_matching_scope(
     """
     # First, filter to scopes with matching scope_type
     candidates = [
-        s for s in extracted_scopes
+        s
+        for s in extracted_scopes
         if s.get("scope_type", "").upper() == expected["scope_type"].upper()
     ]
     if not candidates:
@@ -178,7 +179,8 @@ def _find_matching_scope(
     # If there's a product_name expectation, prefer scopes that match it
     if "product_name" in expected:
         product_matches = [
-            s for s in candidates
+            s
+            for s in candidates
             if _partial_match(s.get("product_name", ""), expected["product_name"])
         ]
         if product_matches:
@@ -191,37 +193,43 @@ def _find_matching_scope(
     if "product_name" in expected:
         actual_name = best.get("product_name", "")
         ok = _partial_match(actual_name, expected["product_name"])
-        checks.append(FieldCheck(
-            field_name="product_name",
-            expected=expected["product_name"],
-            actual=actual_name,
-            passed=ok,
-            message="" if ok else f"Expected '{expected['product_name']}' in '{actual_name}'",
-        ))
+        checks.append(
+            FieldCheck(
+                field_name="product_name",
+                expected=expected["product_name"],
+                actual=actual_name,
+                passed=ok,
+                message="" if ok else f"Expected '{expected['product_name']}' in '{actual_name}'",
+            )
+        )
 
     if "square_footage" in expected:
         actual_sf = _decimal_from_json(best.get("square_footage"))
         expected_sf = expected["square_footage"]
         ok = _approx_equal_pct(actual_sf, expected_sf, SF_TOLERANCE_PCT)
-        checks.append(FieldCheck(
-            field_name="square_footage",
-            expected=str(expected_sf),
-            actual=str(actual_sf),
-            passed=ok,
-            message="" if ok else f"Off by {abs(actual_sf - expected_sf)} SF",
-        ))
+        checks.append(
+            FieldCheck(
+                field_name="square_footage",
+                expected=str(expected_sf),
+                actual=str(actual_sf),
+                passed=ok,
+                message="" if ok else f"Off by {abs(actual_sf - expected_sf)} SF",
+            )
+        )
 
     if "markup_pct" in expected:
         actual_markup = _decimal_from_json(best.get("markup_pct"))
         expected_markup = expected["markup_pct"]
         ok = _approx_equal_abs(actual_markup, expected_markup, MARKUP_TOLERANCE_ABS)
-        checks.append(FieldCheck(
-            field_name="markup_pct",
-            expected=str(expected_markup),
-            actual=str(actual_markup),
-            passed=ok,
-            message="" if ok else f"Expected {expected_markup}, got {actual_markup}",
-        ))
+        checks.append(
+            FieldCheck(
+                field_name="markup_pct",
+                expected=str(expected_markup),
+                actual=str(actual_markup),
+                passed=ok,
+                message="" if ok else f"Expected {expected_markup}, got {actual_markup}",
+            )
+        )
 
     return best, checks
 
@@ -230,40 +238,47 @@ def validate_project(project_name: str, expected: dict, result_data: dict) -> Pr
     """Validate a single project's extraction result against expected values."""
     validation = ProjectValidation(project_name=project_name, found=True)
 
+    # Normalise: extraction results wrap everything under a "project" key.
+    # Fall back to the top-level dict for compatibility with any flat format.
+    project_data = result_data.get("project", result_data)
+
     # Check format type
     if "format_type" in expected:
-        actual_fmt = result_data.get("format_type", "")
+        actual_fmt = project_data.get("format_type", "")
         ok = actual_fmt.upper() == expected["format_type"].upper()
         validation.format_check = FieldCheck(
             field_name="format_type",
             expected=expected["format_type"],
             actual=actual_fmt,
             passed=ok,
-            message="" if ok else f"Expected format '{expected['format_type']}', got '{actual_fmt}'",
+            message=""
+            if ok
+            else f"Expected format '{expected['format_type']}', got '{actual_fmt}'",
         )
 
     # Check scopes
-    extracted_scopes = result_data.get("scopes", [])
-    # Handle the case where project data is nested under a "project" key
-    if not extracted_scopes and "project" in result_data:
-        extracted_scopes = result_data["project"].get("scopes", [])
+    extracted_scopes = project_data.get("scopes", [])
 
     for i, expected_scope in enumerate(expected.get("scopes", [])):
         label = f"{expected_scope['scope_type']}-{i + 1}"
         matched_scope, field_checks = _find_matching_scope(extracted_scopes, expected_scope)
 
         if matched_scope is None:
-            validation.scope_checks.append(ScopeCheck(
-                scope_label=label,
-                matched=False,
-                message=f"No scope with type '{expected_scope['scope_type']}' found",
-            ))
+            validation.scope_checks.append(
+                ScopeCheck(
+                    scope_label=label,
+                    matched=False,
+                    message=f"No scope with type '{expected_scope['scope_type']}' found",
+                )
+            )
         else:
-            validation.scope_checks.append(ScopeCheck(
-                scope_label=label,
-                matched=True,
-                field_checks=field_checks,
-            ))
+            validation.scope_checks.append(
+                ScopeCheck(
+                    scope_label=label,
+                    matched=True,
+                    field_checks=field_checks,
+                )
+            )
 
     return validation
 

@@ -4,18 +4,18 @@ Tests Pydantic model validation, cell formatting, file discovery, and edge
 cases. Does NOT test actual Claude API calls — that is an integration test.
 """
 
-import pytest
 from decimal import Decimal
 from pathlib import Path
 
-from src.extraction.excel_parser import (
-    ExtractedScope,
-    ExtractedProject,
-    ExtractionResult,
-    format_cell_contents,
-    find_buildup_files,
-)
+import pytest
 
+from src.extraction.excel_parser import (
+    ExtractedProject,
+    ExtractedScope,
+    ExtractionResult,
+    find_buildup_files,
+    format_cell_contents,
+)
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -123,12 +123,14 @@ class TestExtractedProject:
 
     def test_project_multiple_scopes(self, sample_project_data: dict) -> None:
         """A project can contain multiple scopes."""
-        sample_project_data["scopes"].append({
-            "scope_type": "AWP",
-            "tag": "AWP-1",
-            "product_name": "Fabric Wall Panel",
-            "square_footage": Decimal("800"),
-        })
+        sample_project_data["scopes"].append(
+            {
+                "scope_type": "AWP",
+                "tag": "AWP-1",
+                "product_name": "Fabric Wall Panel",
+                "square_footage": Decimal("800"),
+            }
+        )
         project = ExtractedProject(**sample_project_data)
         assert len(project.scopes) == 2
         assert project.scopes[1].scope_type == "AWP"
