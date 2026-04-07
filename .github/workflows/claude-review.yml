@@ -1,0 +1,45 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  claude-code-review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Code Review
+        uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          use_bedrock: false
+          model: claude-sonnet-4-6
+          direct_prompt: |
+            Please review this pull request for the Acoustimator project — an AI-powered cost estimation engine for Commercial Acoustics (Tampa, FL).
+
+            Domain context:
+            - ACT = Acoustical Ceiling Tile, AWP = Acoustic Wall Panels, FW = Fabric Wall, SM = Sound Masking, WW = WoodWorks, Baffles = suspended acoustic clouds
+            - SF = square feet (primary unit), LF = linear feet (baffles/trim), man-days = labor unit ($725/day current rate)
+            - Markup is applied to material cost (typical range 15-100%, median ~33%)
+            - The DB is Neon PostgreSQL via asyncpg; use Decimal not float for all money
+            - ML models: ACT MAPE 13.5%, AWP 18.4%, FW 21%; general model is fallback
+
+            Review checklist:
+            1. Correctness — does the logic match acoustics domain rules (cost formulas, scope types, SF calculations)?
+            2. Safety — no hardcoded API keys, no raw SQL injection risk, no unvalidated file paths from user input
+            3. Types — all monetary Decimal, no float for money, full type hints on public functions
+            4. Tests — are new public functions covered? Are existing tests still passing?
+            5. DB patterns — use SQLAlchemy 2.0 async style, no sync DB calls in async context
+            6. Data handling — never commit to data/ directory, never hardcode paths (use src/config.py settings)
+
+            Be specific and actionable. Summarize your findings as a PR review comment.
