@@ -19,10 +19,11 @@ jobs:
       - name: Run Claude Code Review
         uses: anthropics/claude-code-action@beta
         with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           use_bedrock: false
           model: claude-sonnet-4-6
-          system_prompt: |
-            You are reviewing a pull request for Acoustimator, an AI-powered cost estimation engine for Commercial Acoustics (Tampa, FL).
+          direct_prompt: |
+            Please review this pull request for the Acoustimator project — an AI-powered cost estimation engine for Commercial Acoustics (Tampa, FL).
 
             Domain context:
             - ACT = Acoustical Ceiling Tile, AWP = Acoustic Wall Panels, FW = Fabric Wall, SM = Sound Masking, WW = WoodWorks, Baffles = suspended acoustic clouds
@@ -39,6 +40,4 @@ jobs:
             5. DB patterns — use SQLAlchemy 2.0 async style, no sync DB calls in async context
             6. Data handling — never commit to data/ directory, never hardcode paths (use src/config.py settings)
 
-            Be specific and actionable. Approve if the PR looks good.
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+            Be specific and actionable. Summarize your findings as a PR review comment.
