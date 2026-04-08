@@ -6,7 +6,7 @@ import { EstimateSummary } from '@/components/estimates/EstimateSummary'
 import { EstimateTable } from '@/components/estimates/EstimateTable'
 import { ComparableProjects } from '@/components/estimates/ComparableProjects'
 import { formatCurrency } from '@/lib/utils'
-import { getEstimate, updateScope, exportEstimate } from '@/lib/api'
+import { getEstimate, updateScope, exportEstimate, generateQuote } from '@/lib/api'
 import type { EstimateResponse, ScopeResponse, UpdateScopeRequest } from '@/lib/types'
 
 export default function EstimateDetailPage() {
@@ -17,6 +17,8 @@ export default function EstimateDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [quoteLoading, setQuoteLoading] = useState(false)
+  const [quoteSuccess, setQuoteSuccess] = useState<string | null>(null)
 
   useEffect(() => {
     if (!id) return
@@ -73,8 +75,20 @@ export default function EstimateDetailPage() {
     }
   }
 
-  const handleGenerateQuote = () => {
-    alert('Generate quote PDF — backend integration pending.')
+  const handleGenerateQuote = async () => {
+    if (!id) return
+    setQuoteLoading(true)
+    setSaveError(null)
+    setQuoteSuccess(null)
+    try {
+      await generateQuote(id, 'T-004B')
+      setQuoteSuccess('Quote downloaded')
+      setTimeout(() => setQuoteSuccess(null), 4000)
+    } catch (err: unknown) {
+      setSaveError(err instanceof Error ? err.message : 'Quote generation failed')
+    } finally {
+      setQuoteLoading(false)
+    }
   }
 
   if (loading) {
@@ -250,6 +264,9 @@ export default function EstimateDetailPage() {
           {saveError && (
             <span className="text-[12px]" style={{ color: '#f05252' }}>{saveError}</span>
           )}
+          {quoteSuccess && (
+            <span className="text-[12px]" style={{ color: '#a1d67c' }}>{quoteSuccess}</span>
+          )}
           <button
             onClick={handleExport}
             className="flex items-center gap-2 px-4 py-2 text-[13px] font-medium rounded-[6px] transition-all"
@@ -279,20 +296,39 @@ export default function EstimateDetailPage() {
           </button>
           <button
             onClick={handleGenerateQuote}
+            disabled={quoteLoading}
             className="flex items-center gap-2 px-4 py-2 text-[13px] font-semibold rounded-[6px] transition-all duration-100"
             style={{
-              background: 'linear-gradient(135deg, #5a8a1e 0%, #a1d67c 100%)',
+              background: quoteLoading
+                ? 'rgba(161,214,124,0.4)'
+                : 'linear-gradient(135deg, #5a8a1e 0%, #a1d67c 100%)',
               color: '#080b10',
-              boxShadow: '0 0 20px rgba(161,214,124,0.2)',
+              boxShadow: quoteLoading ? 'none' : '0 0 20px rgba(161,214,124,0.2)',
+              cursor: quoteLoading ? 'not-allowed' : 'pointer',
             }}
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z"
-                strokeWidth="2"
-              />
-            </svg>
-            Generate Quote
+            {quoteLoading ? (
+              <>
+                <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    d="M12 2a10 10 0 1 0 10 10"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                </svg>
+                Generating...
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z"
+                    strokeWidth="2"
+                  />
+                </svg>
+                Generate Quote
+              </>
+            )}
           </button>
         </div>
       </div>

@@ -24,8 +24,8 @@ from src.api.schemas.estimates import (
     ScopeResponse,
     UpdateScopeRequest,
 )
-from src.api.schemas.exports import QuoteRequest, QuoteResponse
-from src.db.models import Estimate, EstimateScope, EstimateStatus, Project
+from src.api.schemas.exports import QuoteRequest
+from src.db.models import Estimate, EstimateScope, EstimateStatus, Project, Quote
 
 logger = logging.getLogger(__name__)
 
@@ -478,21 +478,316 @@ async def export_estimate(
 
 
 # ---------------------------------------------------------------------------
-# POST /api/estimates/{id}/quote  (stub — Phase 6.5)
+# POST /api/estimates/{id}/quote  (Phase 6.5)
 # ---------------------------------------------------------------------------
 
 
-@router.post("/{estimate_id}/quote", response_model=QuoteResponse)
+@router.post("/{estimate_id}/quote")
 async def create_quote(
     estimate_id: UUID,
     body: QuoteRequest,
     db: AsyncSession = Depends(get_db),
-) -> QuoteResponse:
-    """Stub endpoint — quote generation is implemented in Phase 6.5."""
-    # Verify estimate exists
-    await _fetch_estimate_or_404(estimate_id, db)
-    return QuoteResponse(
-        quote_id="stub",
-        template=body.template,
-        message="Quote generation coming in Phase 6.5",
+) -> object:
+    """Generate a quote letter PDF for the given estimate."""
+    from datetime import datetime
+
+    from fastapi.responses import StreamingResponse
+    from sqlalchemy import extract, func
+
+    estimate = await _fetch_estimate_or_404(estimate_id, db)
+
+    # --- Generate sequential quote number: CA-YYYY-NNNN ---
+    current_year = datetime.now().year
+    count_result = await db.execute(
+        select(func.count(Quote.id)).where(
+            extract("year", Quote.generated_at) == current_year
+        )
     )
+    count = count_result.scalar() or 0
+    quote_number = f"CA-{current_year}-{count + 1:04d}"
+
+    # --- Build PDF in executor (reportlab is synchronous) ---
+    loop = asyncio.get_running_loop()
+    pdf_bytes: bytes = await loop.run_in_executor(
+        None,
+        lambda: _build_quote_pdf(estimate, quote_number, body.template),
+    )
+
+    # --- Persist Quote record ---
+    quote_record = Quote(
+        estimate_id=estimate_id,
+        quote_number=quote_number,
+        template=body.template,
+    )
+    db.add(quote_record)
+    await db.commit()
+
+    filename = f"quote-{quote_number}.pdf"
+    return StreamingResponse(
+        io.BytesIO(pdf_bytes),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+def _build_quote_pdf(estimate: Estimate, quote_number: str, template: str) -> bytes:
+    """Build and return a quote letter PDF as bytes using reportlab."""
+    from datetime import date
+    from decimal import Decimal as D
+
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.units import inch
+    from reportlab.platypus import (
+        Paragraph,
+        SimpleDocTemplate,
+        Spacer,
+        Table,
+        TableStyle,
+    )
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buf,
+        pagesize=letter,
+        leftMargin=1 * inch,
+        rightMargin=1 * inch,
+        topMargin=1 * inch,
+        bottomMargin=1 * inch,
+    )
+
+    styles = getSampleStyleSheet()
+    normal = styles["Normal"]
+
+    header_style = ParagraphStyle(
+        "ca_header",
+        parent=normal,
+        fontSize=18,
+        fontName="Helvetica-Bold",
+        spaceAfter=2,
+    )
+    subheader_style = ParagraphStyle(
+        "ca_subheader",
+        parent=normal,
+        fontSize=10,
+        fontName="Helvetica",
+        textColor=colors.HexColor("#555555"),
+        spaceAfter=6,
+    )
+    label_style = ParagraphStyle(
+        "label",
+        parent=normal,
+        fontSize=9,
+        fontName="Helvetica-Bold",
+        textColor=colors.HexColor("#333333"),
+    )
+    value_style = ParagraphStyle(
+        "value",
+        parent=normal,
+        fontSize=9,
+        fontName="Helvetica",
+        textColor=colors.HexColor("#111111"),
+    )
+    footer_style = ParagraphStyle(
+        "footer",
+        parent=normal,
+        fontSize=8,
+        fontName="Helvetica-Oblique",
+        textColor=colors.HexColor("#777777"),
+        spaceAfter=4,
+    )
+
+    story: list = []
+
+    # ---- Header ----
+    story.append(Paragraph("COMMERCIAL ACOUSTICS", header_style))
+    story.append(Paragraph("Tampa, FL", subheader_style))
+    story.append(Spacer(1, 0.1 * inch))
+
+    # Divider line via single-cell table
+    story.append(
+        Table(
+            [[""]],
+            colWidths=[6.5 * inch],
+            rowHeights=[2],
+            style=TableStyle([
+                ("LINEBELOW", (0, 0), (-1, -1), 1.5, colors.HexColor("#222222")),
+                ("TOPPADDING", (0, 0), (-1, -1), 0),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+            ]),
+        )
+    )
+    story.append(Spacer(1, 0.15 * inch))
+
+    # ---- Quote meta ----
+    today_str = date.today().strftime("%B %d, %Y")
+    meta_data = [
+        [Paragraph("Quote Number:", label_style), Paragraph(quote_number, value_style),
+         Paragraph("Template:", label_style), Paragraph(template, value_style)],
+        [Paragraph("Date:", label_style), Paragraph(today_str, value_style),
+         Paragraph("Valid For:", label_style), Paragraph("30 days", value_style)],
+    ]
+    meta_table = Table(meta_data, colWidths=[1.2 * inch, 2.0 * inch, 1.2 * inch, 2.1 * inch])
+    meta_table.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+    ]))
+    story.append(meta_table)
+    story.append(Spacer(1, 0.15 * inch))
+
+    # ---- Project info ----
+    project_name = estimate.name or "N/A"
+    gc_name = estimate.gc_name or "N/A"
+    address = estimate.project_address or "N/A"
+
+    proj_data = [
+        [Paragraph("Project Name:", label_style), Paragraph(project_name, value_style)],
+        [Paragraph("General Contractor:", label_style), Paragraph(gc_name, value_style)],
+        [Paragraph("Project Address:", label_style), Paragraph(address, value_style)],
+    ]
+    proj_table = Table(proj_data, colWidths=[1.5 * inch, 5.0 * inch])
+    proj_table.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+    ]))
+    story.append(proj_table)
+    story.append(Spacer(1, 0.2 * inch))
+
+    # ---- Line items table ----
+    col_header_style = ParagraphStyle(
+        "col_header",
+        parent=normal,
+        fontSize=8,
+        fontName="Helvetica-Bold",
+        textColor=colors.white,
+    )
+    cell_style = ParagraphStyle(
+        "cell",
+        parent=normal,
+        fontSize=8,
+        fontName="Helvetica",
+        textColor=colors.HexColor("#111111"),
+    )
+
+    table_data = [[
+        Paragraph("Scope Type", col_header_style),
+        Paragraph("Description", col_header_style),
+        Paragraph("Area (SF)", col_header_style),
+        Paragraph("Unit Cost", col_header_style),
+        Paragraph("Total", col_header_style),
+    ]]
+
+    subtotal = D(0)
+    total_tax = D(0)
+
+    for s in estimate.estimate_scopes:
+        scope_type = str(s.scope_type) if s.scope_type else "Other"
+        description = s.product_name or "—"
+        area = f"{s.square_footage:,.0f}" if s.square_footage else "—"
+        unit_cost = f"${s.cost_per_unit:,.4f}" if s.cost_per_unit else "—"
+        line_total = s.total or D(0)
+        total_str = f"${line_total:,.2f}"
+
+        subtotal += line_total
+        total_tax += s.sales_tax or D(0)
+
+        table_data.append([
+            Paragraph(scope_type, cell_style),
+            Paragraph(description, cell_style),
+            Paragraph(area, cell_style),
+            Paragraph(unit_cost, cell_style),
+            Paragraph(total_str, cell_style),
+        ])
+
+    col_widths = [1.0 * inch, 2.3 * inch, 0.9 * inch, 1.0 * inch, 1.3 * inch]
+    items_table = Table(table_data, colWidths=col_widths, repeatRows=1)
+    items_table.setStyle(TableStyle([
+        # Header row
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1a1a2e")),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.HexColor("#f9f9f9"), colors.white]),
+        ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#cccccc")),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        # Align numeric columns right
+        ("ALIGN", (2, 1), (-1, -1), "RIGHT"),
+        ("ALIGN", (2, 0), (-1, 0), "CENTER"),
+    ]))
+    story.append(items_table)
+    story.append(Spacer(1, 0.15 * inch))
+
+    # ---- Totals ----
+    grand_total = subtotal + total_tax
+    totals_data = [
+        ["", "Subtotal:", f"${subtotal:,.2f}"],
+        ["", f"Sales Tax:", f"${total_tax:,.2f}"],
+        ["", "Grand Total:", f"${grand_total:,.2f}"],
+    ]
+    totals_table = Table(totals_data, colWidths=[4.0 * inch, 1.5 * inch, 1.0 * inch])
+
+    total_label_style = ParagraphStyle(
+        "total_label", parent=normal, fontSize=9, fontName="Helvetica-Bold"
+    )
+
+    totals_table.setStyle(TableStyle([
+        ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ("LINEABOVE", (1, 2), (-1, 2), 1, colors.HexColor("#222222")),
+        ("FONTNAME", (1, 2), (-1, 2), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 9),
+    ]))
+    story.append(totals_table)
+    story.append(Spacer(1, 0.3 * inch))
+
+    # ---- Footer ----
+    story.append(
+        Table(
+            [[""]],
+            colWidths=[6.5 * inch],
+            rowHeights=[1],
+            style=TableStyle([
+                ("LINEBELOW", (0, 0), (-1, -1), 0.5, colors.HexColor("#aaaaaa")),
+                ("TOPPADDING", (0, 0), (-1, -1), 0),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+            ]),
+        )
+    )
+    story.append(Spacer(1, 0.1 * inch))
+    story.append(Paragraph("This quote is valid for 30 days from the date above.", footer_style))
+    story.append(Paragraph(
+        "Pricing is subject to change based on final material quantities and field conditions.",
+        footer_style,
+    ))
+    story.append(Spacer(1, 0.3 * inch))
+
+    # ---- Signature block ----
+    sig_label = ParagraphStyle(
+        "sig_label", parent=normal, fontSize=8, fontName="Helvetica",
+        textColor=colors.HexColor("#555555"),
+    )
+    sig_data = [
+        [Paragraph("Authorized Signature", sig_label), Paragraph("Date", sig_label)],
+        ["_" * 42, "_" * 20],
+        [Paragraph("Commercial Acoustics Representative", sig_label), ""],
+    ]
+    sig_table = Table(sig_data, colWidths=[4.5 * inch, 2.0 * inch])
+    sig_table.setStyle(TableStyle([
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("FONTSIZE", (0, 0), (-1, -1), 9),
+    ]))
+    story.append(sig_table)
+
+    doc.build(story)
+    return buf.getvalue()
