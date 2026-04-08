@@ -18,6 +18,15 @@ const navItems = [
     ),
   },
   {
+    href: '/estimates',
+    label: 'Estimates',
+    icon: (
+      <svg className="w-[15px] h-[15px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path d="M9 12h6M9 16h6M9 8h6M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" strokeWidth="1.75" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
     href: '/estimates/new',
     label: 'New Estimate',
     icon: (
