@@ -60,7 +60,12 @@ def _load_cost_model(model_name: str) -> Any | None:
     if model_name in _cost_models:
         return _cost_models[model_name]
 
-    from src.models.cost_model import CostModel
+    try:
+        from src.models.cost_model import CostModel
+    except ImportError:
+        logger.warning("ML dependencies not available; cost model disabled")
+        _cost_models[model_name] = None
+        return None
 
     path = _models_dir() / f"{model_name}.joblib"
     if not path.exists():
@@ -85,7 +90,11 @@ def _get_markup_model() -> Any | None:
     if _markup_model is not None:
         return _markup_model
 
-    from src.models.markup_model import MarkupModel
+    try:
+        from src.models.markup_model import MarkupModel
+    except ImportError:
+        logger.warning("ML dependencies not available; markup model disabled")
+        return None
 
     path = _models_dir() / "markup_model.joblib"
     if not path.exists():
@@ -107,7 +116,11 @@ def _get_labor_model() -> Any | None:
     if _labor_model is not None:
         return _labor_model
 
-    from src.models.labor_model import LaborModel
+    try:
+        from src.models.labor_model import LaborModel
+    except ImportError:
+        logger.warning("ML dependencies not available; labor model disabled")
+        return None
 
     path = _models_dir() / "labor_model.joblib"
     if not path.exists():
@@ -355,7 +368,8 @@ def _estimate_scope(
 
     if area_sf_float is not None and cost_per_sf is not None and markup_pct is not None:
         # cost_per_sf is the TOTAL $/SF (includes markup).  Back out material:
-        # total_per_sf = material_per_sf * (1 + markup_pct)  →  material_per_sf = total_per_sf / (1 + markup_pct)
+        # total_per_sf = material_per_sf * (1 + markup_pct)
+        # → material_per_sf = total_per_sf / (1 + markup_pct)
         material_per_sf = cost_per_sf / (1.0 + markup_pct)
         material_cost = area_sf_float * material_per_sf
         labor_cost = (man_days or 0.0) * daily_labor_rate
