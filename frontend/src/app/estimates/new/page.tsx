@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { PlanUploadZone } from '@/components/upload/PlanUploadZone'
 import { cn } from '@/lib/utils'
+import { createEstimate } from '@/lib/api'
 import type { ScopeType } from '@/lib/types'
 
 type Step = 1 | 2 | 3
@@ -135,22 +136,53 @@ export default function NewEstimatePage() {
   const [scopeHints, setScopeHints] = useState<ScopeType[]>([])
   const [processingStep, setProcessingStep] = useState(0)
   const [complete, setComplete] = useState(false)
+  const [estimateId, setEstimateId] = useState<string | null>(null)
+  const [apiError, setApiError] = useState<string | null>(null)
+  const apiCalledRef = useRef(false)
 
+  // Animate the first 4 steps while the API call is in-flight,
+  // then hold at step 5 "Building estimate" until it resolves.
   useEffect(() => {
     if (step !== 3) return
     if (complete) return
+    if (apiCalledRef.current) return
+
+    apiCalledRef.current = true
+    setProcessingStep(1)
+
+    // Simulate the first 4 steps
     const interval = setInterval(() => {
       setProcessingStep((prev) => {
-        if (prev >= PROCESSING_STEPS.length) {
+        if (prev >= 4) {
           clearInterval(interval)
-          setComplete(true)
-          return prev
+          return 5 // Hold at "Building estimate" (running)
         }
         return prev + 1
       })
     }, 1800)
+
+    // Fire the real API call
+    const formData = new FormData()
+    files.forEach((f) => formData.append('plans', f))
+    formData.append('project_name', projectName)
+    if (gcName.trim()) formData.append('gc_name', gcName)
+    if (address.trim()) formData.append('address', address)
+    scopeHints.forEach((h) => formData.append('scope_type_hints[]', h))
+
+    createEstimate(formData)
+      .then((estimate) => {
+        clearInterval(interval)
+        setProcessingStep(PROCESSING_STEPS.length + 1) // all done
+        setEstimateId(estimate.id)
+        setComplete(true)
+      })
+      .catch((err: unknown) => {
+        clearInterval(interval)
+        setApiError(err instanceof Error ? err.message : 'Estimation failed. Please try again.')
+      })
+
     return () => clearInterval(interval)
-  }, [step, complete])
+  }, [step, complete, files, projectName, gcName, address, scopeHints])
 
   const toggleScopeHint = (t: ScopeType) => {
     setScopeHints((prev) =>
@@ -162,6 +194,15 @@ export default function NewEstimatePage() {
     if (processingStep > stepIndex) return 'done'
     if (processingStep === stepIndex) return 'running'
     return 'pending'
+  }
+
+  const handleTryAgain = () => {
+    setStep(1)
+    setProcessingStep(0)
+    setComplete(false)
+    setEstimateId(null)
+    setApiError(null)
+    apiCalledRef.current = false
   }
 
   const primaryBtn: React.CSSProperties = {
@@ -399,7 +440,29 @@ export default function NewEstimatePage() {
               ))}
             </div>
 
-            {complete && (
+            {apiError && (
+              <div
+                className="mt-5 pt-5"
+                style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}
+              >
+                <p className="text-[13px] mb-3" style={{ color: '#f05252' }}>
+                  {apiError}
+                </p>
+                <button
+                  onClick={handleTryAgain}
+                  className="px-4 py-2 rounded-[6px] text-[13px] font-semibold transition-all"
+                  style={{
+                    background: 'rgba(255,255,255,0.07)',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    color: '#d8e4f5',
+                  }}
+                >
+                  ← Try again
+                </button>
+              </div>
+            )}
+
+            {complete && estimateId && (
               <div
                 className="mt-5 pt-5"
                 style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}
@@ -421,12 +484,12 @@ export default function NewEstimatePage() {
                       Estimate complete
                     </p>
                     <p className="text-[11px]" style={{ color: '#3a4f6a' }}>
-                      3 scopes detected · High confidence
+                      Review your scopes and adjust as needed
                     </p>
                   </div>
                 </div>
                 <Link
-                  href="/estimates/est-001"
+                  href={`/estimates/${estimateId}`}
                   className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-[6px] text-[13px] font-semibold transition-all"
                   style={{
                     background: 'linear-gradient(135deg, #5a8a1e 0%, #a1d67c 100%)',
@@ -440,7 +503,7 @@ export default function NewEstimatePage() {
             )}
           </div>
 
-          {!complete && (
+          {!complete && !apiError && (
             <p className="text-[11px] text-center" style={{ color: '#3a4f6a' }}>
               Do not close this tab. Estimation in progress...
             </p>

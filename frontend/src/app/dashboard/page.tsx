@@ -1,14 +1,15 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { StatCard } from '@/components/dashboard/StatCard'
 import { CostTrendChart } from '@/components/dashboard/CostTrendChart'
 import { ConfidenceBadge } from '@/components/estimates/ConfidenceBadge'
 import { ScopeTypeBadge } from '@/components/estimates/ScopeTypeBadge'
-import { mockDashboardEstimates, mockTrendData } from '@/lib/mock-data'
+import { listEstimates, getCostTrends, type EstimateListItem } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
-import type { ScopeType } from '@/lib/types'
+import type { ScopeType, TrendDataPoint } from '@/lib/types'
 
 const STATUS_STYLES: Record<string, { color: string; bg: string; border: string }> = {
   draft:     { color: '#6b82a0', bg: 'rgba(107,130,160,0.10)', border: 'rgba(107,130,160,0.18)' },
@@ -18,6 +19,31 @@ const STATUS_STYLES: Record<string, { color: string; bg: string; border: string 
 }
 
 export default function DashboardPage() {
+  const [estimates, setEstimates] = useState<EstimateListItem[]>([])
+  const [trendData, setTrendData] = useState<TrendDataPoint[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    Promise.all([
+      listEstimates({ limit: 7 }),
+      getCostTrends(),
+    ])
+      .then(([estimatesRes, trends]) => {
+        if (cancelled) return
+        setEstimates(estimatesRes.items)
+        setTrendData(trends)
+        setLoading(false)
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return
+        setError(err instanceof Error ? err.message : 'Failed to load dashboard data')
+        setLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [])
+
   return (
     <div className="px-8 py-8 max-w-7xl">
 
@@ -52,6 +78,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Stat cards ── */}
+      {/* TODO: These need separate DB aggregate queries */}
       <div className="grid grid-cols-4 gap-3.5 mb-6">
         <StatCard
           label="Total Projects"
@@ -78,7 +105,7 @@ export default function DashboardPage() {
 
       {/* ── Trend chart ── */}
       <div className="mb-6">
-        <CostTrendChart data={mockTrendData} />
+        <CostTrendChart data={trendData} />
       </div>
 
       {/* ── Recent estimates table ── */}
@@ -106,97 +133,105 @@ export default function DashboardPage() {
           </Link>
         </div>
 
-        <table className="w-full text-[13px]">
-          <thead>
-            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-              {['Project', 'Scopes', 'Total', 'Confidence', 'Status', 'Date', ''].map(
-                (col, i) => (
-                  <th
-                    key={i}
-                    className={`px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.09em] ${
-                      col === 'Total' ? 'text-right' : 'text-left'
-                    }`}
-                    style={{ color: '#3a4f6a' }}
+        {error && (
+          <div className="px-5 py-4 text-[13px]" style={{ color: '#f05252' }}>
+            {error}
+          </div>
+        )}
+
+        <div className={loading ? 'opacity-50 pointer-events-none' : undefined}>
+          <table className="w-full text-[13px]">
+            <thead>
+              <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                {['Project', 'Scopes', 'Total', 'Confidence', 'Status', 'Date', ''].map(
+                  (col, i) => (
+                    <th
+                      key={i}
+                      className={`px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.09em] ${
+                        col === 'Total' ? 'text-right' : 'text-left'
+                      }`}
+                      style={{ color: '#3a4f6a' }}
+                    >
+                      {col}
+                    </th>
+                  )
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {estimates.map((est) => {
+                const st = STATUS_STYLES[est.status] ?? STATUS_STYLES.draft
+                return (
+                  <tr
+                    key={est.id}
+                    className="group transition-colors"
+                    style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+                    onMouseEnter={(e) =>
+                      ((e.currentTarget as HTMLTableRowElement).style.background =
+                        'rgba(255,255,255,0.025)')
+                    }
+                    onMouseLeave={(e) =>
+                      ((e.currentTarget as HTMLTableRowElement).style.background = 'transparent')
+                    }
                   >
-                    {col}
-                  </th>
+                    <td className="px-4 py-2.5">
+                      <p className="font-medium" style={{ color: '#d8e4f5' }}>
+                        {est.project_name}
+                      </p>
+                      <p className="text-[11px] mt-0.5" style={{ color: '#3a4f6a' }}>
+                        {est.gc_name}
+                      </p>
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <div className="flex flex-wrap gap-1">
+                        {est.scope_types.map((s) => (
+                          <ScopeTypeBadge key={s} type={s as ScopeType} />
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-4 py-2.5 text-right tabular-nums font-semibold"
+                      style={{
+                        fontFamily: 'var(--font-jetbrains-mono), monospace',
+                        color: '#d8e4f5',
+                      }}
+                    >
+                      {formatCurrency(est.total_cost)}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <ConfidenceBadge level={(est.confidence_level ?? 'low') as 'high' | 'medium' | 'low'} />
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <span
+                        className="text-[11px] px-2 py-0.5 rounded-[4px] font-medium"
+                        style={{ color: st.color, background: st.bg, border: `1px solid ${st.border}` }}
+                      >
+                        {est.status.charAt(0).toUpperCase() + est.status.slice(1)}
+                      </span>
+                    </td>
+                    <td
+                      className="px-4 py-2.5 text-[11px] tabular-nums"
+                      style={{
+                        color: '#3a4f6a',
+                        fontFamily: 'var(--font-jetbrains-mono), monospace',
+                      }}
+                    >
+                      {est.created_at.slice(0, 10)}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <Link
+                        href={`/estimates/${est.id}`}
+                        className="text-[12px] font-medium opacity-0 group-hover:opacity-100 transition-opacity"
+                        style={{ color: '#a1d67c' }}
+                      >
+                        Review →
+                      </Link>
+                    </td>
+                  </tr>
                 )
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {mockDashboardEstimates.map((est) => {
-              const st = STATUS_STYLES[est.status] ?? STATUS_STYLES.draft
-              return (
-                <tr
-                  key={est.id}
-                  className="group transition-colors"
-                  style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
-                  onMouseEnter={(e) =>
-                    ((e.currentTarget as HTMLTableRowElement).style.background =
-                      'rgba(255,255,255,0.025)')
-                  }
-                  onMouseLeave={(e) =>
-                    ((e.currentTarget as HTMLTableRowElement).style.background = 'transparent')
-                  }
-                >
-                  <td className="px-4 py-2.5">
-                    <p className="font-medium" style={{ color: '#d8e4f5' }}>
-                      {est.project_name}
-                    </p>
-                    <p className="text-[11px] mt-0.5" style={{ color: '#3a4f6a' }}>
-                      {est.gc_name}
-                    </p>
-                  </td>
-                  <td className="px-4 py-2.5">
-                    <div className="flex flex-wrap gap-1">
-                      {est.scopes.map((s) => (
-                        <ScopeTypeBadge key={s} type={s as ScopeType} />
-                      ))}
-                    </div>
-                  </td>
-                  <td className="px-4 py-2.5 text-right tabular-nums font-semibold"
-                    style={{
-                      fontFamily: 'var(--font-jetbrains-mono), monospace',
-                      color: '#d8e4f5',
-                    }}
-                  >
-                    {formatCurrency(est.total_cost)}
-                  </td>
-                  <td className="px-4 py-2.5">
-                    <ConfidenceBadge level={est.confidence_level} />
-                  </td>
-                  <td className="px-4 py-2.5">
-                    <span
-                      className="text-[11px] px-2 py-0.5 rounded-[4px] font-medium"
-                      style={{ color: st.color, background: st.bg, border: `1px solid ${st.border}` }}
-                    >
-                      {est.status.charAt(0).toUpperCase() + est.status.slice(1)}
-                    </span>
-                  </td>
-                  <td
-                    className="px-4 py-2.5 text-[11px] tabular-nums"
-                    style={{
-                      color: '#3a4f6a',
-                      fontFamily: 'var(--font-jetbrains-mono), monospace',
-                    }}
-                  >
-                    {est.created_at}
-                  </td>
-                  <td className="px-4 py-2.5">
-                    <Link
-                      href={`/estimates/${est.id}`}
-                      className="text-[12px] font-medium opacity-0 group-hover:opacity-100 transition-opacity"
-                      style={{ color: '#a1d67c' }}
-                    >
-                      Review →
-                    </Link>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   )

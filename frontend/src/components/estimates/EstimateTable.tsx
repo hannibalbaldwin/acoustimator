@@ -280,11 +280,12 @@ function ScopeRow({ scope, onAccept, onSave }: RowProps) {
 interface EstimateTableProps {
   scopes: ScopeResponse[]
   onScopesChange?: (scopes: ScopeResponse[]) => void
+  onScopeUpdate?: (scopeId: string, edits: EditState) => void
 }
 
 const BLANK_SCOPE_TYPES: ScopeType[] = ['ACT', 'AWP', 'FW', 'SM', 'WW', 'Baffles', 'RPG', 'Other']
 
-export function EstimateTable({ scopes, onScopesChange }: EstimateTableProps) {
+export function EstimateTable({ scopes, onScopesChange, onScopeUpdate }: EstimateTableProps) {
   const [localScopes, setLocalScopes] = useState<ScopeResponse[]>(scopes)
 
   const handleAccept = (id: string, accepted: boolean) => {
@@ -307,6 +308,7 @@ export function EstimateTable({ scopes, onScopesChange }: EstimateTableProps) {
     })
     setLocalScopes(updated)
     onScopesChange?.(updated)
+    onScopeUpdate?.(id, edits)
   }
 
   const handleAddScope = () => {

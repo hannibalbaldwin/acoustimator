@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
-import { mockProjects } from '@/lib/mock-data'
 import { formatCurrency, formatCurrencyFull, formatSF } from '@/lib/utils'
 import { ScopeTypeBadge } from '@/components/estimates/ScopeTypeBadge'
-import type { ScopeType } from '@/lib/types'
+import { listProjects } from '@/lib/api'
+import type { ProjectResponse, ScopeType } from '@/lib/types'
 
 const ALL_GCS = ['All GCs', 'Skanska USA', 'Turner Construction', 'DPR Construction', 'Balfour Beatty', 'Hensel Phelps']
 const ALL_SCOPES = ['All Scopes', 'ACT', 'AWP', 'FW', 'SM', 'WW', 'Baffles', 'RPG']
@@ -34,15 +34,44 @@ export default function ProjectsPage() {
   const [yearFilter, setYearFilter] = useState('All Years')
   const [search, setSearch] = useState('')
 
+  const [projects, setProjects] = useState<ProjectResponse[]>([])
+  const [totalCount, setTotalCount] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+
+    const params: Parameters<typeof listProjects>[0] = { limit: 50 }
+    if (scopeFilter !== 'All Scopes') params.scope_type = scopeFilter
+    if (gcFilter !== 'All GCs') params.gc_name = gcFilter
+    if (yearFilter !== 'All Years') params.year = yearFilter
+
+    listProjects(params)
+      .then((res) => {
+        if (cancelled) return
+        setProjects(res.items)
+        setTotalCount(res.total)
+        setLoading(false)
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return
+        setError(err instanceof Error ? err.message : 'Failed to load projects')
+        setLoading(false)
+      })
+
+    return () => { cancelled = true }
+  }, [gcFilter, scopeFilter, yearFilter])
+
+  // Client-side search filter
   const filtered = useMemo(() => {
-    return mockProjects.filter((p) => {
-      if (gcFilter !== 'All GCs' && p.gc_name !== gcFilter) return false
-      if (scopeFilter !== 'All Scopes' && !p.scopes.some((s) => s.scope_type === scopeFilter)) return false
-      if (yearFilter !== 'All Years' && p.quote_date && !p.quote_date.startsWith(yearFilter)) return false
-      if (search.trim() && !p.folder_name.toLowerCase().includes(search.toLowerCase())) return false
-      return true
-    })
-  }, [gcFilter, scopeFilter, yearFilter, search])
+    if (!search.trim()) return projects
+    return projects.filter((p) =>
+      p.folder_name.toLowerCase().includes(search.toLowerCase())
+    )
+  }, [projects, search])
 
   const avgCostPerSF = useMemo(() => {
     const rows = filtered.flatMap((p) =>
@@ -79,7 +108,7 @@ export default function ProjectsPage() {
             Projects
           </h1>
           <p className="text-[13px] mt-1" style={{ color: '#3a4f6a' }}>
-            Historical project database · {mockProjects.length} projects total
+            Historical project database · {totalCount} projects total
           </p>
         </div>
         <Link
@@ -213,7 +242,7 @@ export default function ProjectsPage() {
           <span className="font-semibold" style={{ color: '#6b82a0' }}>
             {filtered.length}
           </span>{' '}
-          of {mockProjects.length} projects
+          of {totalCount} projects
         </span>
         {avgCostPerSF != null && (
           <span
@@ -235,9 +264,13 @@ export default function ProjectsPage() {
         </span>
       </div>
 
+      {error && (
+        <div className="mb-4 text-[13px]" style={{ color: '#f05252' }}>{error}</div>
+      )}
+
       {/* Table */}
       <div
-        className="rounded-[8px] overflow-hidden"
+        className={`rounded-[8px] overflow-hidden ${loading ? 'opacity-50 pointer-events-none' : ''}`}
         style={{
           background: '#131822',
           border: '1px solid rgba(255,255,255,0.08)',
@@ -364,20 +397,22 @@ export default function ProjectsPage() {
           </tbody>
         </table>
 
-        {filtered.length === 0 && (
+        {!loading && filtered.length === 0 && (
           <div className="py-16 text-center">
             <p className="text-[13px]" style={{ color: '#3a4f6a' }}>
               No projects match the current filters
             </p>
-            <button
-              onClick={clearFilters}
-              className="mt-2 text-[12px] font-medium transition-colors"
-              style={{ color: '#3a4f6a' }}
-              onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = '#a1d67c')}
-              onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = '#3a4f6a')}
-            >
-              Clear all filters
-            </button>
+            {hasActiveFilter && (
+              <button
+                onClick={clearFilters}
+                className="mt-2 text-[12px] font-medium transition-colors"
+                style={{ color: '#3a4f6a' }}
+                onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = '#a1d67c')}
+                onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = '#3a4f6a')}
+              >
+                Clear all filters
+              </button>
+            )}
           </div>
         )}
       </div>
