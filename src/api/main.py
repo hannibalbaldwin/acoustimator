@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.routes import estimates as estimates_router
 from src.api.routes import projects as projects_router
+from src.api.routes import stats as stats_router
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +49,7 @@ app.add_middleware(
 
 app.include_router(estimates_router.router)
 app.include_router(projects_router.router)
+app.include_router(stats_router.router)
 
 
 # ---------------------------------------------------------------------------
