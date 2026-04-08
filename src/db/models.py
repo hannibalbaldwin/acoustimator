@@ -30,7 +30,7 @@ class Base(DeclarativeBase):
 # --- Enum types ---
 
 
-class ProjectType(str, enum.Enum):
+class ProjectType(enum.StrEnum):
     COMMERCIAL_OFFICE = "commercial_office"
     HEALTHCARE = "healthcare"
     EDUCATION = "education"
@@ -43,7 +43,7 @@ class ProjectType(str, enum.Enum):
     OTHER = "other"
 
 
-class ProjectStatus(str, enum.Enum):
+class ProjectStatus(enum.StrEnum):
     BID = "bid"
     AWARDED = "awarded"
     COMPLETED = "completed"
@@ -51,7 +51,7 @@ class ProjectStatus(str, enum.Enum):
     ARCHIVED = "archived"
 
 
-class ScopeType(str, enum.Enum):
+class ScopeType(enum.StrEnum):
     ACT = "ACT"
     AWP = "AWP"
     AP = "AP"
@@ -63,7 +63,7 @@ class ScopeType(str, enum.Enum):
     OTHER = "Other"
 
 
-class ProductCategory(str, enum.Enum):
+class ProductCategory(enum.StrEnum):
     CEILING_TILE = "ceiling_tile"
     GRID = "grid"
     WALL_PANEL = "wall_panel"
@@ -77,7 +77,7 @@ class ProductCategory(str, enum.Enum):
     OTHER = "other"
 
 
-class AdditionalCostType(str, enum.Enum):
+class AdditionalCostType(enum.StrEnum):
     LIFT_RENTAL = "lift_rental"
     TRAVEL_PER_DIEM = "travel_per_diem"
     TRAVEL_FLIGHTS = "travel_flights"
@@ -92,14 +92,14 @@ class AdditionalCostType(str, enum.Enum):
     OTHER = "other"
 
 
-class EstimateStatus(str, enum.Enum):
+class EstimateStatus(enum.StrEnum):
     DRAFT = "draft"
     REVIEWED = "reviewed"
     FINALIZED = "finalized"
     EXPORTED = "exported"
 
 
-class ExtractionStatus(str, enum.Enum):
+class ExtractionStatus(enum.StrEnum):
     PENDING = "pending"
     SUCCESS = "success"
     PARTIAL = "partial"

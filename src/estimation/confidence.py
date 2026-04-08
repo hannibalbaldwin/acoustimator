@@ -8,8 +8,8 @@ No database dependency and no model loading — pure computation.
 
 from __future__ import annotations
 
+import enum
 from dataclasses import dataclass, field
-from enum import Enum
 
 from src.estimation.models import ScopeEstimate
 from src.extraction.plan_parser.models import PlanReadResult
@@ -44,7 +44,7 @@ _MEDIUM_THRESHOLD: float = 0.50
 # ---------------------------------------------------------------------------
 
 
-class ConfidenceLevel(str, Enum):
+class ConfidenceLevel(enum.StrEnum):
     HIGH = "high"  # >= 0.75
     MEDIUM = "medium"  # 0.50 – 0.74
     LOW = "low"  # < 0.50

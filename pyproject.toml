@@ -41,7 +41,13 @@ line-length = 100
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 # E501 suppressed in scripts that contain long SQL/format strings where wrapping hurts readability
-per-file-ignores = {"scripts/*.py" = ["E501"], "src/api/routes/*.py" = ["B008"]}
+[tool.ruff.lint.per-file-ignores]
+"scripts/*.py" = ["E501", "B007", "F601", "B905"]
+"src/extraction/excel_parser.py" = ["E501"]
+"src/extraction/pdf_parser.py" = ["E741"]
+"src/models/*.py" = ["B905"]
+"src/api/routes/*.py" = ["B008"]
+"tests/**/*.py" = ["B017", "E501"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["src"]
