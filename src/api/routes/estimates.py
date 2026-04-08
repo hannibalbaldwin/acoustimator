@@ -43,9 +43,7 @@ def _confidence_label(score: float | None) -> str | None:
 async def _fetch_estimate_or_404(estimate_id: UUID, db: AsyncSession) -> Estimate:
     """Fetch an Estimate with its scopes, or raise 404."""
     result = await db.execute(
-        select(Estimate)
-        .where(Estimate.id == estimate_id)
-        .options(selectinload(Estimate.estimate_scopes))
+        select(Estimate).where(Estimate.id == estimate_id).options(selectinload(Estimate.estimate_scopes))
     )
     estimate = result.scalar_one_or_none()
     if estimate is None:
@@ -58,9 +56,7 @@ def _build_response(estimate: Estimate) -> EstimateResponse:
     scopes = estimate.estimate_scopes or []
 
     total_cost = float(estimate.total_estimate) if estimate.total_estimate is not None else None
-    confidence_score = (
-        float(estimate.overall_confidence) if estimate.overall_confidence is not None else None
-    )
+    confidence_score = float(estimate.overall_confidence) if estimate.overall_confidence is not None else None
 
     # Compute total_sf and man_days from scope estimates
     total_sf: float | None = None
@@ -334,9 +330,7 @@ async def export_estimate(
 
     pe = ProjectEstimate(
         source_plan=str(estimate.source_plans[0]) if estimate.source_plans else "",
-        extraction_confidence=(
-            float(estimate.overall_confidence) if estimate.overall_confidence else 0.5
-        ),
+        extraction_confidence=(float(estimate.overall_confidence) if estimate.overall_confidence else 0.5),
         scope_estimates=scope_estimates,
         total_estimated_cost=estimate.total_estimate or D(0),
         total_area_sf=None,

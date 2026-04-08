@@ -141,9 +141,7 @@ def compute_project_confidence(
         weighted_model_sum += accuracy * weight
         total_weight += weight
 
-    model_score: float = (
-        weighted_model_sum / total_weight if total_weight > 0.0 else _GENERAL_MODEL_ACCURACY
-    )
+    model_score: float = weighted_model_sum / total_weight if total_weight > 0.0 else _GENERAL_MODEL_ACCURACY
 
     # ------------------------------------------------------------------
     # Overall score
@@ -163,9 +161,7 @@ def compute_project_confidence(
     else:
         # Low extraction confidence
         if plan_reading_score < 0.6:
-            flags.append(
-                "Plan reading used keyword/text extraction only — review scope types manually"
-            )
+            flags.append("Plan reading used keyword/text extraction only — review scope types manually")
 
         # Perfect confidence → Bluebeam annotations
         if plan_reading_score == 1.0:
@@ -174,15 +170,10 @@ def compute_project_confidence(
         # Per-scope low confidence
         low_conf_tags = [s.scope_tag for s in scope_estimates if s.confidence < 0.5]
         if low_conf_tags:
-            flags.append(
-                f"{len(low_conf_tags)} scope(s) flagged as low confidence: "
-                + ", ".join(low_conf_tags)
-            )
+            flags.append(f"{len(low_conf_tags)} scope(s) flagged as low confidence: " + ", ".join(low_conf_tags))
 
         # Scopes using the general (fallback) model
-        general_model_scopes = [
-            s for s in scope_estimates if s.scope_type.upper() not in _MODEL_ACCURACY
-        ]
+        general_model_scopes = [s for s in scope_estimates if s.scope_type.upper() not in _MODEL_ACCURACY]
         if general_model_scopes:
             unique_types = sorted({s.scope_type for s in general_model_scopes})
             flags.append(

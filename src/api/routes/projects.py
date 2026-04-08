@@ -40,9 +40,7 @@ async def list_projects(
 
     if scope_type:
         base_query = base_query.where(
-            Project.id.in_(
-                select(Scope.project_id).where(Scope.scope_type.cast(str).ilike(scope_type))
-            )
+            Project.id.in_(select(Scope.project_id).where(Scope.scope_type.cast(str).ilike(scope_type)))
         )
 
     if gc_name:
@@ -79,9 +77,7 @@ async def get_project(
     db: AsyncSession = Depends(get_db),
 ) -> ProjectResponse:
     """Fetch a single project by ID with its scopes."""
-    result = await db.execute(
-        select(Project).where(Project.id == project_id).options(selectinload(Project.scopes))
-    )
+    result = await db.execute(select(Project).where(Project.id == project_id).options(selectinload(Project.scopes)))
     project = result.scalar_one_or_none()
     if project is None:
         raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
