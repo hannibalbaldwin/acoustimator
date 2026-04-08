@@ -1,20 +1,103 @@
 'use client'
 
-import { mockEstimate } from '@/lib/mock-data'
+import { useState, useEffect } from 'react'
+import { useParams } from 'next/navigation'
 import { EstimateSummary } from '@/components/estimates/EstimateSummary'
 import { EstimateTable } from '@/components/estimates/EstimateTable'
 import { ComparableProjects } from '@/components/estimates/ComparableProjects'
 import { formatCurrency } from '@/lib/utils'
+import { getEstimate, updateScope, exportEstimate } from '@/lib/api'
+import type { EstimateResponse, ScopeResponse, UpdateScopeRequest } from '@/lib/types'
 
 export default function EstimateDetailPage() {
-  const estimate = mockEstimate
+  const params = useParams<{ id: string }>()
+  const id = params.id
 
-  const handleExport = () => {
-    alert('Export to .xlsx — backend integration pending.')
+  const [estimate, setEstimate] = useState<EstimateResponse | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!id) return
+    let cancelled = false
+    getEstimate(id)
+      .then((data) => {
+        if (cancelled) return
+        setEstimate(data)
+        setLoading(false)
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return
+        setError(err instanceof Error ? err.message : 'Failed to load estimate')
+        setLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [id])
+
+  const handleScopesChange = (scopes: ScopeResponse[]) => {
+    if (!estimate) return
+    setEstimate({ ...estimate, scopes })
+  }
+
+  const handleScopeUpdate = async (scopeId: string, edits: {
+    product_name: string
+    area_sf: string
+    material_cost_per_sf: string
+    markup_pct: string
+    labor_days: string
+  }) => {
+    if (!estimate) return
+    setSaveError(null)
+    const body: UpdateScopeRequest = {}
+    if (edits.product_name) body.product_name = edits.product_name
+    if (edits.area_sf) body.area_sf = parseFloat(edits.area_sf)
+    if (edits.material_cost_per_sf) body.material_cost_per_sf = parseFloat(edits.material_cost_per_sf)
+    if (edits.markup_pct) body.markup_pct = parseFloat(edits.markup_pct) / 100
+    if (edits.labor_days) body.labor_days = parseFloat(edits.labor_days)
+
+    try {
+      const updated = await updateScope(estimate.id, scopeId, body)
+      setEstimate(updated)
+    } catch (err: unknown) {
+      setSaveError(err instanceof Error ? err.message : 'Failed to save scope')
+    }
+  }
+
+  const handleExport = async () => {
+    if (!id) return
+    try {
+      await exportEstimate(id)
+    } catch (err: unknown) {
+      setSaveError(err instanceof Error ? err.message : 'Export failed')
+    }
   }
 
   const handleGenerateQuote = () => {
     alert('Generate quote PDF — backend integration pending.')
+  }
+
+  if (loading) {
+    return (
+      <div className="px-8 py-8 animate-pulse">
+        <div className="h-4 w-48 rounded mb-5" style={{ background: 'rgba(255,255,255,0.07)' }} />
+        <div className="h-28 rounded-[8px] mb-5" style={{ background: 'rgba(255,255,255,0.05)' }} />
+        <div className="flex gap-5">
+          <div className="flex-1 h-64 rounded-[8px]" style={{ background: 'rgba(255,255,255,0.05)' }} />
+          <div className="w-72 h-64 rounded-[8px]" style={{ background: 'rgba(255,255,255,0.05)' }} />
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !estimate) {
+    return (
+      <div className="px-8 py-8">
+        <p className="text-[13px]" style={{ color: '#f05252' }}>
+          {error ?? 'Estimate not found'}
+        </p>
+      </div>
+    )
   }
 
   return (
@@ -52,7 +135,11 @@ export default function EstimateDetailPage() {
         <div className="flex gap-5">
           {/* Table */}
           <div className="flex-1 min-w-0">
-            <EstimateTable scopes={estimate.scopes} />
+            <EstimateTable
+              scopes={estimate.scopes}
+              onScopesChange={handleScopesChange}
+              onScopeUpdate={handleScopeUpdate}
+            />
           </div>
 
           {/* Sidebar */}
@@ -160,6 +247,9 @@ export default function EstimateDetailPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          {saveError && (
+            <span className="text-[12px]" style={{ color: '#f05252' }}>{saveError}</span>
+          )}
           <button
             onClick={handleExport}
             className="flex items-center gap-2 px-4 py-2 text-[13px] font-medium rounded-[6px] transition-all"
