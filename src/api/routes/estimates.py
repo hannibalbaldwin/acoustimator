@@ -10,15 +10,22 @@ from decimal import Decimal
 from pathlib import Path
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.api.dependencies import get_db
-from src.api.schemas.estimates import EstimateResponse, ScopeResponse, UpdateScopeRequest
+from src.api.schemas.common import PaginatedResponse
+from src.api.schemas.estimates import (
+    ComparableProjectResponse,
+    EstimateListItem,
+    EstimateResponse,
+    ScopeResponse,
+    UpdateScopeRequest,
+)
 from src.api.schemas.exports import QuoteRequest, QuoteResponse
-from src.db.models import Estimate, EstimateScope, EstimateStatus
+from src.db.models import Estimate, EstimateScope, EstimateStatus, Project
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +58,7 @@ async def _fetch_estimate_or_404(estimate_id: UUID, db: AsyncSession) -> Estimat
     return estimate
 
 
-def _build_response(estimate: Estimate) -> EstimateResponse:
+async def _build_response(estimate: Estimate, db: AsyncSession) -> EstimateResponse:
     """Build an EstimateResponse from an ORM Estimate (with loaded scopes)."""
     scopes = estimate.estimate_scopes or []
 
@@ -78,11 +85,53 @@ def _build_response(estimate: Estimate) -> EstimateResponse:
         cost_per_sf = total_cost / total_sf
 
     # Gather comparable project IDs from scope annotations
-    comparable: list[str] = []
+    comparable_ids: list[str] = []
     for s in scopes:
         ids = s.comparable_project_ids or []
-        comparable.extend(str(i) for i in ids)
-    comparable = list(dict.fromkeys(comparable))
+        comparable_ids.extend(str(i) for i in ids)
+    comparable_ids = list(dict.fromkeys(comparable_ids))[:5]  # deduplicate, cap at 5
+
+    # Enrich comparable projects with DB data
+    comparable_projects: list[ComparableProjectResponse] = []
+    if comparable_ids:
+        try:
+            uuid_list = [UUID(cid) for cid in comparable_ids]
+            proj_result = await db.execute(
+                select(Project).options(selectinload(Project.scopes)).where(Project.id.in_(uuid_list))
+            )
+            projects = proj_result.scalars().all()
+            proj_map = {str(p.id): p for p in projects}
+            for cid in comparable_ids:
+                p = proj_map.get(cid)
+                if p is None:
+                    continue
+                # Derive year from quote_date
+                year = p.quote_date.year if p.quote_date else None
+                # Use first scope's cost_per_sf as representative (if loaded)
+                scope_type_val: str | None = None
+                area_sf_val: float | None = None
+                cost_per_sf_val: float | None = None
+                total_cost_val: float | None = None
+                if hasattr(p, "scopes") and p.scopes:
+                    first_scope = p.scopes[0]
+                    scope_type_val = str(first_scope.scope_type) if first_scope.scope_type else None
+                    area_sf_val = float(first_scope.square_footage) if first_scope.square_footage else None
+                    cost_per_sf_val = float(first_scope.cost_per_unit) if first_scope.cost_per_unit else None
+                    total_cost_val = float(first_scope.total) if first_scope.total else None
+                comparable_projects.append(
+                    ComparableProjectResponse(
+                        id=cid,
+                        folder_name=p.folder_name or p.name,
+                        scope_type=scope_type_val,
+                        area_sf=area_sf_val,
+                        cost_per_sf=cost_per_sf_val,
+                        total_cost=total_cost_val,
+                        year=year,
+                        similarity_score=0.8,
+                    )
+                )
+        except Exception:
+            logger.warning("Failed to enrich comparable projects", exc_info=True)
 
     scope_responses = [ScopeResponse.from_orm_scope(s) for s in scopes]
 
@@ -98,9 +147,67 @@ def _build_response(estimate: Estimate) -> EstimateResponse:
         man_days=man_days_total,
         confidence_score=confidence_score,
         confidence_level=_confidence_label(confidence_score),
+        created_at=estimate.created_at,
         scopes=scope_responses,
-        comparable_projects=comparable,
+        comparable_projects=comparable_projects,
     )
+
+
+# ---------------------------------------------------------------------------
+# GET /api/estimates  (list)
+# ---------------------------------------------------------------------------
+
+
+from sqlalchemy import func  # noqa: E402 — placed after router to avoid circular at module level
+
+
+@router.get("", response_model=PaginatedResponse[EstimateListItem])
+async def list_estimates(
+    status: str | None = Query(None),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+) -> PaginatedResponse[EstimateListItem]:
+    """List estimates with optional status filter, ordered by created_at DESC."""
+    base_query = select(Estimate).options(selectinload(Estimate.estimate_scopes))
+
+    if status is not None:
+        try:
+            status_enum = EstimateStatus(status)
+        except ValueError as err:
+            raise HTTPException(status_code=422, detail=f"Invalid status: {status}") from err
+        base_query = base_query.where(Estimate.status == status_enum)
+
+    # Count total
+    count_result = await db.execute(select(func.count()).select_from(base_query.subquery()))
+    total: int = count_result.scalar_one()
+
+    # Fetch page
+    page_query = base_query.order_by(Estimate.created_at.desc()).offset(offset).limit(limit)
+    result = await db.execute(page_query)
+    estimates = result.scalars().all()
+
+    items: list[EstimateListItem] = []
+    for est in estimates:
+        total_cost = float(est.total_estimate) if est.total_estimate is not None else None
+        confidence_score = float(est.overall_confidence) if est.overall_confidence is not None else None
+        scope_types = list(
+            dict.fromkeys(str(s.scope_type) for s in (est.estimate_scopes or []) if s.scope_type is not None)
+        )
+        items.append(
+            EstimateListItem(
+                id=est.id,
+                project_name=est.name,
+                gc_name=est.gc_name,
+                status=str(est.status) if est.status else "draft",
+                total_cost=total_cost,
+                confidence_level=_confidence_label(confidence_score),
+                created_at=est.created_at,
+                scope_types=scope_types,
+            )
+        )
+
+    return PaginatedResponse(items=items, total=total, limit=limit, offset=offset)
 
 
 # ---------------------------------------------------------------------------
@@ -138,7 +245,7 @@ async def create_estimate(
         # Run plan reading + estimation in executor to avoid blocking the event loop
         from src.estimation.estimator import estimate_from_pdf
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         project_estimates = []
         for pdf_path in saved_paths:
             try:
@@ -209,7 +316,7 @@ async def create_estimate(
 
     # Reload with scopes
     estimate = await _fetch_estimate_or_404(estimate.id, db)
-    return _build_response(estimate)
+    return await _build_response(estimate, db)
 
 
 # ---------------------------------------------------------------------------
@@ -224,7 +331,7 @@ async def get_estimate(
 ) -> EstimateResponse:
     """Fetch a single estimate by ID."""
     estimate = await _fetch_estimate_or_404(estimate_id, db)
-    return _build_response(estimate)
+    return await _build_response(estimate, db)
 
 
 # ---------------------------------------------------------------------------
@@ -285,7 +392,7 @@ async def update_scope(
     await db.commit()
     await db.refresh(estimate)
     estimate = await _fetch_estimate_or_404(estimate.id, db)
-    return _build_response(estimate)
+    return await _build_response(estimate, db)
 
 
 # ---------------------------------------------------------------------------
@@ -344,7 +451,7 @@ async def export_estimate(
 
     from src.estimation.excel_writer import write_estimate_to_excel
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     await loop.run_in_executor(
         None,
         lambda: write_estimate_to_excel(

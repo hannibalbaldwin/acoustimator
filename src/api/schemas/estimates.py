@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
@@ -59,6 +60,19 @@ class ScopeResponse(BaseModel):
         )
 
 
+class ComparableProjectResponse(BaseModel):
+    """Enriched comparable project returned within an EstimateResponse."""
+
+    id: str
+    folder_name: str
+    scope_type: str | None = None
+    area_sf: float | None = None
+    cost_per_sf: float | None = None
+    total_cost: float | None = None
+    year: int | None = None
+    similarity_score: float = 0.0
+
+
 class EstimateResponse(BaseModel):
     """Full estimate returned from the API."""
 
@@ -75,8 +89,9 @@ class EstimateResponse(BaseModel):
     man_days: float | None = None
     confidence_score: float | None = None
     confidence_level: str | None = None
+    created_at: datetime
     scopes: list[ScopeResponse] = []
-    comparable_projects: list[str] = []
+    comparable_projects: list[ComparableProjectResponse] = []
 
     @classmethod
     def from_orm(cls, estimate: object, scopes: list[object] | None = None) -> EstimateResponse:
@@ -112,13 +127,6 @@ class EstimateResponse(BaseModel):
         orm_scopes = scopes if scopes is not None else []
         scope_responses = [ScopeResponse.from_orm_scope(s) for s in orm_scopes]
 
-        # Gather comparable project IDs from scopes
-        comparable: list[str] = []
-        for s in orm_scopes:
-            ids = getattr(s, "comparable_project_ids", None) or []
-            comparable.extend(str(i) for i in ids)
-        comparable = list(dict.fromkeys(comparable))  # deduplicate, preserve order
-
         return cls(
             id=estimate.id,  # type: ignore[attr-defined]
             project_name=estimate.name,  # type: ignore[attr-defined]
@@ -131,9 +139,23 @@ class EstimateResponse(BaseModel):
             man_days=None,  # computed from scopes if needed
             confidence_score=confidence_score,
             confidence_level=confidence_level,
+            created_at=estimate.created_at,  # type: ignore[attr-defined]
             scopes=scope_responses,
-            comparable_projects=comparable,
+            comparable_projects=[],
         )
+
+
+class EstimateListItem(BaseModel):
+    """Lightweight estimate summary for the list endpoint."""
+
+    id: UUID
+    project_name: str
+    gc_name: str | None = None
+    status: str
+    total_cost: float | None = None
+    confidence_level: str | None = None
+    created_at: datetime
+    scope_types: list[str] = []
 
 
 class CreateEstimateRequest(BaseModel):

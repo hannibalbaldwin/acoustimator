@@ -18,24 +18,38 @@ const PROCESSING_STEPS = [
   { id: 5, label: 'Building estimate' },
 ]
 
+// Scope badge colors matching ScopeTypeBadge
+const SCOPE_COLORS: Record<ScopeType, { color: string; bg: string; border: string }> = {
+  ACT:     { color: '#60a5fa', bg: 'rgba(96,165,250,0.10)',   border: 'rgba(96,165,250,0.20)'   },
+  AWP:     { color: '#a1d67c', bg: 'rgba(161,214,124,0.10)', border: 'rgba(161,214,124,0.20)'   },
+  AP:      { color: '#a1d67c', bg: 'rgba(161,214,124,0.10)', border: 'rgba(161,214,124,0.20)'   },
+  FW:      { color: '#2dd4bf', bg: 'rgba(45,212,191,0.10)',   border: 'rgba(45,212,191,0.20)'   },
+  SM:      { color: '#c084fc', bg: 'rgba(192,132,252,0.10)', border: 'rgba(192,132,252,0.20)'   },
+  WW:      { color: '#fb923c', bg: 'rgba(251,146,60,0.10)',   border: 'rgba(251,146,60,0.20)'   },
+  Baffles: { color: '#f472b6', bg: 'rgba(244,114,182,0.10)', border: 'rgba(244,114,182,0.20)'   },
+  RPG:     { color: '#818cf8', bg: 'rgba(129,140,248,0.10)', border: 'rgba(129,140,248,0.20)'   },
+  Other:   { color: '#6b7280', bg: 'rgba(107,114,128,0.10)', border: 'rgba(107,114,128,0.20)'   },
+}
+
 function StepIndicator({ current, step }: { current: Step; step: Step }) {
   const done = current > step
   const active = current === step
+  const label = step === 1 ? 'Upload Plans' : step === 2 ? 'Project Details' : 'Processing'
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2.5">
       <div
-        className={cn(
-          'w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold border-2 transition-all',
+        className="w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-semibold flex-shrink-0 transition-all"
+        style={
           done
-            ? 'bg-green-600 border-green-600 text-white'
+            ? { background: 'rgba(161,214,124,0.15)', border: '2px solid #a1d67c', color: '#a1d67c' }
             : active
-            ? 'bg-blue-600 border-blue-600 text-white'
-            : 'bg-white border-zinc-300 text-zinc-400'
-        )}
+            ? { background: 'rgba(161,214,124,0.15)', border: '2px solid #a1d67c', color: '#a1d67c' }
+            : { background: 'transparent', border: '2px solid rgba(255,255,255,0.12)', color: '#3a4f6a' }
+        }
       >
         {done ? (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path d="M5 13l4 4L19 7" strokeWidth="2.5" strokeLinecap="round" />
           </svg>
         ) : (
@@ -43,12 +57,10 @@ function StepIndicator({ current, step }: { current: Step; step: Step }) {
         )}
       </div>
       <span
-        className={cn(
-          'text-sm font-medium',
-          done ? 'text-green-700' : active ? 'text-zinc-900' : 'text-zinc-400'
-        )}
+        className="text-[13px] font-medium"
+        style={{ color: active || done ? '#d8e4f5' : '#3a4f6a' }}
       >
-        {step === 1 ? 'Upload Plans' : step === 2 ? 'Project Details' : 'Processing'}
+        {label}
       </span>
     </div>
   )
@@ -61,33 +73,56 @@ interface ProcessingStepRowProps {
 
 function ProcessingStepRow({ label, status }: ProcessingStepRowProps) {
   return (
-    <div className="flex items-center gap-3 py-2.5">
+    <div
+      className="flex items-center gap-3 py-3"
+      style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}
+    >
       <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
         {status === 'done' && (
-          <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center">
-            <svg className="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div
+            className="w-5 h-5 rounded-full flex items-center justify-center"
+            style={{ background: 'rgba(161,214,124,0.12)', border: '1px solid rgba(161,214,124,0.25)' }}
+          >
+            <svg className="w-2.5 h-2.5" fill="none" stroke="#a1d67c" viewBox="0 0 24 24">
               <path d="M5 13l4 4L19 7" strokeWidth="2.5" strokeLinecap="round" />
             </svg>
           </div>
         )}
         {status === 'running' && (
-          <div className="w-4 h-4 rounded-full border-2 border-blue-600 border-t-transparent animate-spin" />
+          <div
+            className="w-4 h-4 rounded-full border-2 animate-spin"
+            style={{ borderColor: 'rgba(161,214,124,0.2)', borderTopColor: '#a1d67c' }}
+          />
         )}
         {status === 'pending' && (
-          <div className="w-3.5 h-3.5 rounded-full border-2 border-zinc-300" />
+          <div
+            className="w-3.5 h-3.5 rounded-full"
+            style={{ border: '2px solid rgba(255,255,255,0.1)' }}
+          />
         )}
       </div>
       <span
-        className={cn(
-          'text-sm',
-          status === 'done' ? 'text-green-700 font-medium' : status === 'running' ? 'text-blue-700 font-medium' : 'text-zinc-400'
-        )}
+        className="text-[13px] font-medium"
+        style={{
+          color:
+            status === 'done' ? '#a1d67c' : status === 'running' ? '#d8e4f5' : '#3a4f6a',
+        }}
       >
         {label}
-        {status === 'done' && ' ✓'}
+        {status === 'done' && (
+          <span className="ml-1.5 text-[11px] opacity-60">✓</span>
+        )}
       </span>
     </div>
   )
+}
+
+const inputClass =
+  'w-full px-3 py-2 text-[13px] rounded-[6px] transition-all focus:outline-none'
+const inputStyle: React.CSSProperties = {
+  background: '#0e1219',
+  border: '1px solid rgba(255,255,255,0.12)',
+  color: '#d8e4f5',
 }
 
 export default function NewEstimatePage() {
@@ -101,11 +136,9 @@ export default function NewEstimatePage() {
   const [processingStep, setProcessingStep] = useState(0)
   const [complete, setComplete] = useState(false)
 
-  // Simulate processing progression
   useEffect(() => {
     if (step !== 3) return
     if (complete) return
-
     const interval = setInterval(() => {
       setProcessingStep((prev) => {
         if (prev >= PROCESSING_STEPS.length) {
@@ -116,7 +149,6 @@ export default function NewEstimatePage() {
         return prev + 1
       })
     }, 1800)
-
     return () => clearInterval(interval)
   }, [step, complete])
 
@@ -132,43 +164,57 @@ export default function NewEstimatePage() {
     return 'pending'
   }
 
+  const primaryBtn: React.CSSProperties = {
+    background: 'linear-gradient(135deg, #5a8a1e 0%, #a1d67c 100%)',
+    color: '#080b10',
+    boxShadow: '0 0 20px rgba(161,214,124,0.15)',
+  }
+
+  const disabledBtn: React.CSSProperties = {
+    background: 'rgba(255,255,255,0.05)',
+    color: '#3a4f6a',
+    cursor: 'not-allowed',
+  }
+
   return (
     <div className="px-8 py-8 max-w-3xl">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-zinc-900">New Estimate</h1>
-        <p className="text-sm text-zinc-500 mt-0.5">Upload architectural plans to generate a cost estimate</p>
+      <div className="mb-7">
+        <h1 className="text-[22px] font-semibold tracking-tight" style={{ color: '#d8e4f5' }}>
+          New Estimate
+        </h1>
+        <p className="text-[13px] mt-1" style={{ color: '#3a4f6a' }}>
+          Upload architectural plans to generate a cost estimate
+        </p>
       </div>
 
       {/* Step indicators */}
-      <div className="flex items-center gap-6 mb-8">
+      <div className="flex items-center gap-4 mb-8">
         <StepIndicator current={step} step={1} />
-        <div className="flex-1 h-px bg-zinc-200" />
+        <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
         <StepIndicator current={step} step={2} />
-        <div className="flex-1 h-px bg-zinc-200" />
+        <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
         <StepIndicator current={step} step={3} />
       </div>
 
-      {/* Step 1: Upload */}
+      {/* ── Step 1: Upload ── */}
       {step === 1 && (
-        <div className="space-y-6">
+        <div className="space-y-5">
           <div>
-            <h2 className="text-base font-semibold text-zinc-800 mb-1">Upload PDF Plans</h2>
-            <p className="text-sm text-zinc-500">
-              Upload the architectural plans. The AI will extract scope areas and room tags.
+            <h2 className="text-[14px] font-semibold mb-0.5" style={{ color: '#d8e4f5' }}>
+              Upload PDF Plans
+            </h2>
+            <p className="text-[12px]" style={{ color: '#3a4f6a' }}>
+              The AI will extract scope areas and room tags from the architectural plans.
             </p>
           </div>
           <PlanUploadZone onFilesChange={setFiles} />
-          <div className="flex justify-end pt-2">
+          <div className="flex justify-end pt-1">
             <button
               onClick={() => setStep(2)}
               disabled={files.length === 0}
-              className={cn(
-                'px-5 py-2 rounded-lg text-sm font-medium transition-colors',
-                files.length > 0
-                  ? 'bg-blue-600 text-white hover:bg-blue-700'
-                  : 'bg-zinc-100 text-zinc-400 cursor-not-allowed'
-              )}
+              className="px-5 py-2 rounded-[6px] text-[13px] font-semibold transition-all duration-100"
+              style={files.length > 0 ? primaryBtn : disabledBtn}
             >
               Continue →
             </button>
@@ -176,33 +222,47 @@ export default function NewEstimatePage() {
         </div>
       )}
 
-      {/* Step 2: Project Details */}
+      {/* ── Step 2: Project Details ── */}
       {step === 2 && (
-        <div className="space-y-6">
+        <div className="space-y-5">
           <div>
-            <h2 className="text-base font-semibold text-zinc-800 mb-1">Project Details</h2>
-            <p className="text-sm text-zinc-500">
+            <h2 className="text-[14px] font-semibold mb-0.5" style={{ color: '#d8e4f5' }}>
+              Project Details
+            </h2>
+            <p className="text-[12px]" style={{ color: '#3a4f6a' }}>
               Fill in project metadata to improve estimate accuracy.
             </p>
           </div>
 
-          <div className="bg-white border border-zinc-200 rounded-lg p-6 space-y-5">
+          <div
+            className="rounded-[8px] p-5 space-y-5"
+            style={{ background: '#131822', border: '1px solid rgba(255,255,255,0.08)' }}
+          >
+            {/* Project Name */}
             <div>
-              <label className="block text-xs font-semibold text-zinc-700 mb-1.5 uppercase tracking-wide">
-                Project Name <span className="text-red-500">*</span>
+              <label
+                className="block text-[10px] font-semibold uppercase tracking-[0.09em] mb-1.5"
+                style={{ color: '#3a4f6a' }}
+              >
+                Project Name <span style={{ color: '#f05252' }}>*</span>
               </label>
               <input
                 type="text"
                 value={projectName}
                 onChange={(e) => setProjectName(e.target.value)}
                 placeholder="e.g. Seven Pines Jax — AWP/ACT Renovation"
-                className="w-full border border-zinc-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className={inputClass}
+                style={inputStyle}
               />
             </div>
 
+            {/* GC + SF row */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-zinc-700 mb-1.5 uppercase tracking-wide">
+                <label
+                  className="block text-[10px] font-semibold uppercase tracking-[0.09em] mb-1.5"
+                  style={{ color: '#3a4f6a' }}
+                >
                   General Contractor
                 </label>
                 <input
@@ -210,11 +270,15 @@ export default function NewEstimatePage() {
                   value={gcName}
                   onChange={(e) => setGcName(e.target.value)}
                   placeholder="e.g. DPR Construction"
-                  className="w-full border border-zinc-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className={inputClass}
+                  style={inputStyle}
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-zinc-700 mb-1.5 uppercase tracking-wide">
+                <label
+                  className="block text-[10px] font-semibold uppercase tracking-[0.09em] mb-1.5"
+                  style={{ color: '#3a4f6a' }}
+                >
                   Estimated SF
                 </label>
                 <input
@@ -222,13 +286,21 @@ export default function NewEstimatePage() {
                   value={estSF}
                   onChange={(e) => setEstSF(e.target.value)}
                   placeholder="e.g. 5000"
-                  className="w-full border border-zinc-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono"
+                  className={inputClass}
+                  style={{
+                    ...inputStyle,
+                    fontFamily: 'var(--font-jetbrains-mono), monospace',
+                  }}
                 />
               </div>
             </div>
 
+            {/* Address */}
             <div>
-              <label className="block text-xs font-semibold text-zinc-700 mb-1.5 uppercase tracking-wide">
+              <label
+                className="block text-[10px] font-semibold uppercase tracking-[0.09em] mb-1.5"
+                style={{ color: '#3a4f6a' }}
+              >
                 Address
               </label>
               <input
@@ -236,52 +308,64 @@ export default function NewEstimatePage() {
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 placeholder="e.g. 4000 Seven Pines Dr, Jacksonville, FL 32256"
-                className="w-full border border-zinc-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className={inputClass}
+                style={inputStyle}
               />
             </div>
 
+            {/* Scope hints */}
             <div>
-              <label className="block text-xs font-semibold text-zinc-700 mb-2 uppercase tracking-wide">
+              <label
+                className="block text-[10px] font-semibold uppercase tracking-[0.09em] mb-2"
+                style={{ color: '#3a4f6a' }}
+              >
                 Scope Type Hints
               </label>
               <div className="flex flex-wrap gap-2">
-                {SCOPE_TYPES.map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => toggleScopeHint(t)}
-                    className={cn(
-                      'px-3 py-1.5 rounded text-xs font-semibold border transition-all font-mono',
-                      scopeHints.includes(t)
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white text-zinc-600 border-zinc-300 hover:border-zinc-400'
-                    )}
-                  >
-                    {t}
-                  </button>
-                ))}
+                {SCOPE_TYPES.map((t) => {
+                  const c = SCOPE_COLORS[t] ?? SCOPE_COLORS.Other
+                  const active = scopeHints.includes(t)
+                  return (
+                    <button
+                      key={t}
+                      onClick={() => toggleScopeHint(t)}
+                      className="px-2.5 py-1 rounded-[4px] text-[11px] font-semibold font-mono tracking-wide transition-all"
+                      style={
+                        active
+                          ? { color: c.color, background: c.bg, border: `1px solid ${c.border}` }
+                          : {
+                              color: '#3a4f6a',
+                              background: 'transparent',
+                              border: '1px solid rgba(255,255,255,0.1)',
+                            }
+                      }
+                    >
+                      {t}
+                    </button>
+                  )
+                })}
               </div>
-              <p className="text-xs text-zinc-400 mt-1.5">
+              <p className="text-[11px] mt-1.5" style={{ color: '#3a4f6a' }}>
                 Optional — helps the AI focus on specific scope types
               </p>
             </div>
           </div>
 
-          <div className="flex items-center justify-between pt-2">
+          <div className="flex items-center justify-between pt-1">
             <button
               onClick={() => setStep(1)}
-              className="px-4 py-2 text-sm font-medium text-zinc-600 hover:text-zinc-900 transition-colors"
+              className="text-[13px] font-medium transition-colors"
+              style={{ color: '#3a4f6a' }}
+              onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = '#6b82a0')}
+              onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = '#3a4f6a')}
             >
               ← Back
             </button>
             <button
               onClick={() => setStep(3)}
               disabled={!projectName.trim()}
-              className={cn(
-                'px-5 py-2 rounded-lg text-sm font-medium transition-colors',
-                projectName.trim()
-                  ? 'bg-blue-600 text-white hover:bg-blue-700'
-                  : 'bg-zinc-100 text-zinc-400 cursor-not-allowed'
-              )}
+              className="px-5 py-2 rounded-[6px] text-[13px] font-semibold transition-all duration-100"
+              style={projectName.trim() ? primaryBtn : disabledBtn}
             >
               Start Estimation →
             </button>
@@ -289,18 +373,23 @@ export default function NewEstimatePage() {
         </div>
       )}
 
-      {/* Step 3: Processing */}
+      {/* ── Step 3: Processing ── */}
       {step === 3 && (
-        <div className="space-y-6">
+        <div className="space-y-5">
           <div>
-            <h2 className="text-base font-semibold text-zinc-800 mb-1">Running Estimation</h2>
-            <p className="text-sm text-zinc-500">
+            <h2 className="text-[14px] font-semibold mb-0.5" style={{ color: '#d8e4f5' }}>
+              Running Estimation
+            </h2>
+            <p className="text-[12px]" style={{ color: '#3a4f6a' }}>
               AI is reading plans and running cost models. This takes 30–60 seconds.
             </p>
           </div>
 
-          <div className="bg-white border border-zinc-200 rounded-lg p-6">
-            <div className="space-y-0 divide-y divide-zinc-100">
+          <div
+            className="rounded-[8px] p-5"
+            style={{ background: '#131822', border: '1px solid rgba(255,255,255,0.08)' }}
+          >
+            <div>
               {PROCESSING_STEPS.map((s, idx) => (
                 <ProcessingStepRow
                   key={s.id}
@@ -311,21 +400,39 @@ export default function NewEstimatePage() {
             </div>
 
             {complete && (
-              <div className="mt-6 pt-5 border-t border-zinc-200">
+              <div
+                className="mt-5 pt-5"
+                style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}
+              >
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-                    <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div
+                    className="w-8 h-8 rounded-full flex items-center justify-center"
+                    style={{
+                      background: 'rgba(161,214,124,0.12)',
+                      border: '1px solid rgba(161,214,124,0.25)',
+                    }}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="#a1d67c" viewBox="0 0 24 24">
                       <path d="M5 13l4 4L19 7" strokeWidth="2.5" strokeLinecap="round" />
                     </svg>
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-zinc-800">Estimate complete</p>
-                    <p className="text-xs text-zinc-500">3 scopes detected · High confidence</p>
+                    <p className="text-[13px] font-semibold" style={{ color: '#d8e4f5' }}>
+                      Estimate complete
+                    </p>
+                    <p className="text-[11px]" style={{ color: '#3a4f6a' }}>
+                      3 scopes detected · High confidence
+                    </p>
                   </div>
                 </div>
                 <Link
                   href="/estimates/est-001"
-                  className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                  className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-[6px] text-[13px] font-semibold transition-all"
+                  style={{
+                    background: 'linear-gradient(135deg, #5a8a1e 0%, #a1d67c 100%)',
+                    color: '#080b10',
+                    boxShadow: '0 0 20px rgba(161,214,124,0.2)',
+                  }}
                 >
                   View Estimate →
                 </Link>
@@ -334,7 +441,7 @@ export default function NewEstimatePage() {
           </div>
 
           {!complete && (
-            <p className="text-xs text-zinc-400 text-center">
+            <p className="text-[11px] text-center" style={{ color: '#3a4f6a' }}>
               Do not close this tab. Estimation in progress...
             </p>
           )}

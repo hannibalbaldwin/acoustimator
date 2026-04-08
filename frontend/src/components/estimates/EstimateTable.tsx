@@ -5,7 +5,6 @@ import type { ScopeResponse, ScopeType } from '@/lib/types'
 import { formatCurrency, formatPct, cn } from '@/lib/utils'
 import { ScopeTypeBadge } from './ScopeTypeBadge'
 import { ConfidenceBadge } from './ConfidenceBadge'
-import { Input } from '@/components/ui/input'
 
 interface EditState {
   product_name: string
@@ -21,6 +20,38 @@ interface RowProps {
   onSave: (id: string, edits: EditState) => void
 }
 
+const inputStyle: React.CSSProperties = {
+  background: '#0e1219',
+  border: '1px solid rgba(255,255,255,0.15)',
+  color: '#d8e4f5',
+  borderRadius: '4px',
+  fontSize: '11px',
+  padding: '2px 6px',
+  height: '24px',
+  outline: 'none',
+  fontFamily: 'var(--font-jetbrains-mono), monospace',
+  width: '100%',
+}
+
+function InlineInput({
+  value,
+  onChange,
+  className,
+}: {
+  value: string
+  onChange: (v: string) => void
+  className?: string
+}) {
+  return (
+    <input
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      style={inputStyle}
+      className={cn('tabular-nums', className)}
+    />
+  )
+}
+
 function ScopeRow({ scope, onAccept, onSave }: RowProps) {
   const [editing, setEditing] = useState(false)
   const [edits, setEdits] = useState<EditState>({
@@ -31,9 +62,7 @@ function ScopeRow({ scope, onAccept, onSave }: RowProps) {
     labor_days: scope.labor_days?.toString() ?? '',
   })
 
-  const borderColor = scope.is_accepted
-    ? 'border-l-2 border-l-green-500'
-    : 'border-l-2 border-l-amber-400'
+  const accentColor = scope.is_accepted ? '#a1d67c' : '#f59e0b'
 
   const handleSave = () => {
     onSave(scope.id, edits)
@@ -41,13 +70,28 @@ function ScopeRow({ scope, onAccept, onSave }: RowProps) {
   }
 
   return (
-    <tr className={cn('hover:bg-zinc-50 transition-colors group', borderColor)}>
+    <tr
+      className="group transition-colors"
+      style={{
+        borderBottom: '1px solid rgba(255,255,255,0.04)',
+        borderLeft: `2px solid ${accentColor}`,
+      }}
+      onMouseEnter={(e) =>
+        ((e.currentTarget as HTMLTableRowElement).style.background = 'rgba(255,255,255,0.025)')
+      }
+      onMouseLeave={(e) =>
+        ((e.currentTarget as HTMLTableRowElement).style.background = 'transparent')
+      }
+    >
       {/* Scope Type */}
       <td className="px-3 py-2 whitespace-nowrap">
         <div className="flex items-center gap-1.5">
           <ScopeTypeBadge type={scope.scope_type} />
           {scope.is_ai_suggested && (
-            <span className="text-[9px] font-semibold bg-blue-600 text-white px-1 py-0.5 rounded uppercase tracking-wide">
+            <span
+              className="text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wide"
+              style={{ background: 'rgba(129,140,248,0.15)', color: '#818cf8', border: '1px solid rgba(129,140,248,0.25)' }}
+            >
               AI
             </span>
           )}
@@ -57,73 +101,72 @@ function ScopeRow({ scope, onAccept, onSave }: RowProps) {
       {/* Product */}
       <td className="px-3 py-2 max-w-[200px]">
         {editing ? (
-          <Input
+          <InlineInput
             value={edits.product_name}
-            onChange={(e) => setEdits((p) => ({ ...p, product_name: e.target.value }))}
-            className="h-6 text-xs px-1.5 py-0"
+            onChange={(v) => setEdits((p) => ({ ...p, product_name: v }))}
           />
         ) : (
           <span
-            className="text-xs text-zinc-700 cursor-pointer hover:text-blue-600 truncate block"
+            className="text-[12px] truncate block cursor-pointer transition-colors"
+            style={{ color: scope.product_name ? '#d8e4f5' : '#3a4f6a' }}
             onClick={() => setEditing(true)}
             title={scope.product_name ?? undefined}
           >
-            {scope.product_name ?? <span className="text-zinc-400 italic">— click to set —</span>}
+            {scope.product_name ?? <em style={{ color: '#3a4f6a' }}>— click to set —</em>}
           </span>
         )}
       </td>
 
       {/* SF */}
-      <td className="px-3 py-2 text-right font-mono text-xs">
+      <td className="px-3 py-2 text-right" style={{ fontFamily: 'var(--font-jetbrains-mono), monospace', fontSize: '12px' }}>
         {editing ? (
-          <Input
+          <InlineInput
             value={edits.area_sf}
-            onChange={(e) => setEdits((p) => ({ ...p, area_sf: e.target.value }))}
-            className="h-6 text-xs px-1.5 py-0 text-right w-24"
+            onChange={(v) => setEdits((p) => ({ ...p, area_sf: v }))}
+            className="text-right w-24"
           />
         ) : (
           <span
-            className="cursor-pointer hover:text-blue-600"
+            className="cursor-pointer transition-colors"
+            style={{ color: '#d8e4f5' }}
             onClick={() => setEditing(true)}
           >
-            {scope.area_sf != null
-              ? new Intl.NumberFormat('en-US').format(scope.area_sf)
-              : '—'}
+            {scope.area_sf != null ? new Intl.NumberFormat('en-US').format(scope.area_sf) : '—'}
           </span>
         )}
       </td>
 
       {/* Mat $/SF */}
-      <td className="px-3 py-2 text-right font-mono text-xs">
+      <td className="px-3 py-2 text-right" style={{ fontFamily: 'var(--font-jetbrains-mono), monospace', fontSize: '12px' }}>
         {editing ? (
-          <Input
+          <InlineInput
             value={edits.material_cost_per_sf}
-            onChange={(e) => setEdits((p) => ({ ...p, material_cost_per_sf: e.target.value }))}
-            className="h-6 text-xs px-1.5 py-0 text-right w-20"
+            onChange={(v) => setEdits((p) => ({ ...p, material_cost_per_sf: v }))}
+            className="text-right w-20"
           />
         ) : (
           <span
-            className="cursor-pointer hover:text-blue-600"
+            className="cursor-pointer transition-colors"
+            style={{ color: '#d8e4f5' }}
             onClick={() => setEditing(true)}
           >
-            {scope.material_cost_per_sf != null
-              ? `$${scope.material_cost_per_sf.toFixed(2)}`
-              : '—'}
+            {scope.material_cost_per_sf != null ? `$${scope.material_cost_per_sf.toFixed(2)}` : '—'}
           </span>
         )}
       </td>
 
       {/* Markup % */}
-      <td className="px-3 py-2 text-right font-mono text-xs">
+      <td className="px-3 py-2 text-right" style={{ fontFamily: 'var(--font-jetbrains-mono), monospace', fontSize: '12px' }}>
         {editing ? (
-          <Input
+          <InlineInput
             value={edits.markup_pct}
-            onChange={(e) => setEdits((p) => ({ ...p, markup_pct: e.target.value }))}
-            className="h-6 text-xs px-1.5 py-0 text-right w-16"
+            onChange={(v) => setEdits((p) => ({ ...p, markup_pct: v }))}
+            className="text-right w-16"
           />
         ) : (
           <span
-            className="cursor-pointer hover:text-blue-600"
+            className="cursor-pointer transition-colors"
+            style={{ color: '#d8e4f5' }}
             onClick={() => setEditing(true)}
           >
             {formatPct(scope.markup_pct)}
@@ -132,16 +175,17 @@ function ScopeRow({ scope, onAccept, onSave }: RowProps) {
       </td>
 
       {/* Labor Days */}
-      <td className="px-3 py-2 text-right font-mono text-xs">
+      <td className="px-3 py-2 text-right" style={{ fontFamily: 'var(--font-jetbrains-mono), monospace', fontSize: '12px' }}>
         {editing ? (
-          <Input
+          <InlineInput
             value={edits.labor_days}
-            onChange={(e) => setEdits((p) => ({ ...p, labor_days: e.target.value }))}
-            className="h-6 text-xs px-1.5 py-0 text-right w-16"
+            onChange={(v) => setEdits((p) => ({ ...p, labor_days: v }))}
+            className="text-right w-16"
           />
         ) : (
           <span
-            className="cursor-pointer hover:text-blue-600"
+            className="cursor-pointer transition-colors"
+            style={{ color: '#d8e4f5' }}
             onClick={() => setEditing(true)}
           >
             {scope.labor_days != null ? scope.labor_days.toFixed(1) : '—'}
@@ -150,7 +194,14 @@ function ScopeRow({ scope, onAccept, onSave }: RowProps) {
       </td>
 
       {/* Total */}
-      <td className="px-3 py-2 text-right font-mono text-xs font-semibold text-zinc-900">
+      <td
+        className="px-3 py-2 text-right font-semibold tabular-nums"
+        style={{
+          fontFamily: 'var(--font-jetbrains-mono), monospace',
+          fontSize: '12px',
+          color: '#d8e4f5',
+        }}
+      >
         {formatCurrency(scope.total_cost)}
       </td>
 
@@ -166,13 +217,22 @@ function ScopeRow({ scope, onAccept, onSave }: RowProps) {
             <>
               <button
                 onClick={handleSave}
-                className="text-[11px] px-2 py-0.5 bg-blue-600 text-white rounded hover:bg-blue-700 font-medium"
+                className="text-[11px] px-2 py-0.5 rounded-[4px] font-semibold transition-all"
+                style={{
+                  background: 'linear-gradient(135deg, #5a8a1e 0%, #a1d67c 100%)',
+                  color: '#080b10',
+                }}
               >
                 Save
               </button>
               <button
                 onClick={() => setEditing(false)}
-                className="text-[11px] px-2 py-0.5 bg-zinc-100 text-zinc-700 rounded hover:bg-zinc-200 font-medium"
+                className="text-[11px] px-2 py-0.5 rounded-[4px] font-medium transition-all"
+                style={{
+                  background: 'rgba(255,255,255,0.07)',
+                  color: '#6b82a0',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                }}
               >
                 Cancel
               </button>
@@ -181,18 +241,31 @@ function ScopeRow({ scope, onAccept, onSave }: RowProps) {
             <>
               <button
                 onClick={() => setEditing(true)}
-                className="text-[11px] px-2 py-0.5 bg-zinc-100 text-zinc-700 rounded hover:bg-zinc-200 font-medium"
+                className="text-[11px] px-2 py-0.5 rounded-[4px] font-medium transition-all"
+                style={{
+                  background: 'rgba(255,255,255,0.07)',
+                  color: '#6b82a0',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                }}
               >
                 Edit
               </button>
               <button
                 onClick={() => onAccept(scope.id, !scope.is_accepted)}
-                className={cn(
-                  'text-[11px] px-2 py-0.5 rounded font-medium',
+                className="text-[11px] px-2 py-0.5 rounded-[4px] font-medium transition-all"
+                style={
                   scope.is_accepted
-                    ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
-                    : 'bg-green-100 text-green-700 hover:bg-green-200'
-                )}
+                    ? {
+                        background: 'rgba(245,158,11,0.12)',
+                        color: '#f59e0b',
+                        border: '1px solid rgba(245,158,11,0.22)',
+                      }
+                    : {
+                        background: 'rgba(161,214,124,0.12)',
+                        color: '#a1d67c',
+                        border: '1px solid rgba(161,214,124,0.22)',
+                      }
+                }
               >
                 {scope.is_accepted ? 'Unaccept' : 'Accept'}
               </button>
@@ -215,9 +288,7 @@ export function EstimateTable({ scopes, onScopesChange }: EstimateTableProps) {
   const [localScopes, setLocalScopes] = useState<ScopeResponse[]>(scopes)
 
   const handleAccept = (id: string, accepted: boolean) => {
-    const updated = localScopes.map((s) =>
-      s.id === id ? { ...s, is_accepted: accepted } : s
-    )
+    const updated = localScopes.map((s) => (s.id === id ? { ...s, is_accepted: accepted } : s))
     setLocalScopes(updated)
     onScopesChange?.(updated)
   }
@@ -229,9 +300,7 @@ export function EstimateTable({ scopes, onScopesChange }: EstimateTableProps) {
         ...s,
         product_name: edits.product_name || null,
         area_sf: edits.area_sf ? parseFloat(edits.area_sf) : null,
-        material_cost_per_sf: edits.material_cost_per_sf
-          ? parseFloat(edits.material_cost_per_sf)
-          : null,
+        material_cost_per_sf: edits.material_cost_per_sf ? parseFloat(edits.material_cost_per_sf) : null,
         markup_pct: edits.markup_pct ? parseFloat(edits.markup_pct) / 100 : null,
         labor_days: edits.labor_days ? parseFloat(edits.labor_days) : null,
       }
@@ -263,90 +332,123 @@ export function EstimateTable({ scopes, onScopesChange }: EstimateTableProps) {
   const totalDays = localScopes.reduce((sum, s) => sum + (s.labor_days ?? 0), 0)
   const acceptedCount = localScopes.filter((s) => s.is_accepted).length
 
+  const thStyle: React.CSSProperties = {
+    color: '#3a4f6a',
+    fontSize: '10px',
+    fontWeight: 600,
+    textTransform: 'uppercase',
+    letterSpacing: '0.09em',
+    padding: '10px 12px',
+  }
+
   return (
-    <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
-      {/* Table header */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-200 bg-zinc-50">
+    <div
+      className="rounded-[8px] overflow-hidden"
+      style={{
+        background: '#131822',
+        border: '1px solid rgba(255,255,255,0.08)',
+      }}
+    >
+      {/* Header */}
+      <div
+        className="flex items-center justify-between px-4 py-3"
+        style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}
+      >
         <div className="flex items-center gap-3">
-          <h2 className="text-sm font-semibold text-zinc-800">Scope Line Items</h2>
-          <span className="text-xs text-zinc-500">
-            {localScopes.length} scopes — {acceptedCount} accepted
+          <h2 className="text-[13px] font-semibold" style={{ color: '#d8e4f5' }}>
+            Scope Line Items
+          </h2>
+          <span className="text-[11px]" style={{ color: '#3a4f6a' }}>
+            {localScopes.length} scopes · {acceptedCount} accepted
           </span>
         </div>
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full">
           <thead>
-            <tr className="border-b border-zinc-200 bg-zinc-50/50">
-              <th className="px-3 py-2 text-left text-xs font-semibold text-zinc-500 uppercase tracking-wide">
-                Scope
-              </th>
-              <th className="px-3 py-2 text-left text-xs font-semibold text-zinc-500 uppercase tracking-wide">
-                Product / Description
-              </th>
-              <th className="px-3 py-2 text-right text-xs font-semibold text-zinc-500 uppercase tracking-wide">
-                SF
-              </th>
-              <th className="px-3 py-2 text-right text-xs font-semibold text-zinc-500 uppercase tracking-wide">
-                Mat $/SF
-              </th>
-              <th className="px-3 py-2 text-right text-xs font-semibold text-zinc-500 uppercase tracking-wide">
-                Markup
-              </th>
-              <th className="px-3 py-2 text-right text-xs font-semibold text-zinc-500 uppercase tracking-wide">
-                Labor Days
-              </th>
-              <th className="px-3 py-2 text-right text-xs font-semibold text-zinc-500 uppercase tracking-wide">
-                Total
-              </th>
-              <th className="px-3 py-2 text-left text-xs font-semibold text-zinc-500 uppercase tracking-wide">
-                Confidence
-              </th>
-              <th className="px-3 py-2 text-left text-xs font-semibold text-zinc-500 uppercase tracking-wide">
-                Actions
-              </th>
+            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              <th style={{ ...thStyle, textAlign: 'left' }}>Scope</th>
+              <th style={{ ...thStyle, textAlign: 'left' }}>Product / Description</th>
+              <th style={{ ...thStyle, textAlign: 'right' }}>SF</th>
+              <th style={{ ...thStyle, textAlign: 'right' }}>Mat $/SF</th>
+              <th style={{ ...thStyle, textAlign: 'right' }}>Markup</th>
+              <th style={{ ...thStyle, textAlign: 'right' }}>Labor Days</th>
+              <th style={{ ...thStyle, textAlign: 'right' }}>Total</th>
+              <th style={{ ...thStyle, textAlign: 'left' }}>Confidence</th>
+              <th style={{ ...thStyle, textAlign: 'left' }}>Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-100">
+          <tbody>
             {localScopes.map((scope) => (
-              <ScopeRow
-                key={scope.id}
-                scope={scope}
-                onAccept={handleAccept}
-                onSave={handleSave}
-              />
+              <ScopeRow key={scope.id} scope={scope} onAccept={handleAccept} onSave={handleSave} />
             ))}
           </tbody>
 
           {/* Totals row */}
           <tfoot>
-            <tr className="border-t-2 border-zinc-300 bg-zinc-50 font-semibold">
-              <td className="px-3 py-2 text-xs text-zinc-600 font-semibold" colSpan={2}>
+            <tr
+              style={{
+                borderTop: '2px solid rgba(255,255,255,0.1)',
+                background: 'rgba(255,255,255,0.02)',
+              }}
+            >
+              <td
+                colSpan={2}
+                className="px-3 py-2.5 text-[12px] font-semibold"
+                style={{ color: '#6b82a0' }}
+              >
                 Totals
               </td>
-              <td className="px-3 py-2 text-right font-mono text-xs text-zinc-700">
+              <td
+                className="px-3 py-2.5 text-right tabular-nums"
+                style={{
+                  fontFamily: 'var(--font-jetbrains-mono), monospace',
+                  fontSize: '12px',
+                  color: '#6b82a0',
+                }}
+              >
                 {totalSF > 0 ? new Intl.NumberFormat('en-US').format(totalSF) : '—'}
               </td>
-              <td className="px-3 py-2" />
-              <td className="px-3 py-2" />
-              <td className="px-3 py-2 text-right font-mono text-xs text-zinc-700">
+              <td className="px-3 py-2.5" />
+              <td className="px-3 py-2.5" />
+              <td
+                className="px-3 py-2.5 text-right tabular-nums"
+                style={{
+                  fontFamily: 'var(--font-jetbrains-mono), monospace',
+                  fontSize: '12px',
+                  color: '#6b82a0',
+                }}
+              >
                 {totalDays > 0 ? totalDays.toFixed(1) : '—'}
               </td>
-              <td className="px-3 py-2 text-right font-mono text-xs text-zinc-900 font-bold">
+              <td
+                className="px-3 py-2.5 text-right tabular-nums font-bold"
+                style={{
+                  fontFamily: 'var(--font-jetbrains-mono), monospace',
+                  fontSize: '13px',
+                  color: '#a1d67c',
+                }}
+              >
                 {formatCurrency(totalCost)}
               </td>
-              <td className="px-3 py-2" colSpan={2} />
+              <td colSpan={2} className="px-3 py-2.5" />
             </tr>
           </tfoot>
         </table>
       </div>
 
       {/* Add scope */}
-      <div className="px-4 py-3 border-t border-zinc-200">
+      <div
+        className="px-4 py-3"
+        style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
+      >
         <button
           onClick={handleAddScope}
-          className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 font-medium transition-colors"
+          className="flex items-center gap-1.5 text-[12px] font-medium transition-colors"
+          style={{ color: '#3a4f6a' }}
+          onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = '#a1d67c')}
+          onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = '#3a4f6a')}
         >
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path d="M12 5v14M5 12h14" strokeWidth="2.5" strokeLinecap="round" />

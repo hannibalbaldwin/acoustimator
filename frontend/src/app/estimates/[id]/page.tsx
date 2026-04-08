@@ -19,25 +19,38 @@ export default function EstimateDetailPage() {
 
   return (
     <div className="pb-24">
-      {/* Content */}
       <div className="px-8 py-8">
         {/* Breadcrumb */}
-        <div className="flex items-center gap-1.5 text-xs text-zinc-400 mb-5 font-mono">
-          <a href="/dashboard" className="hover:text-zinc-700">Dashboard</a>
-          <span>/</span>
-          <span className="text-zinc-600">Estimates</span>
-          <span>/</span>
-          <span className="text-zinc-800 font-medium">{estimate.id}</span>
+        <div
+          className="flex items-center gap-1.5 text-[11px] mb-5"
+          style={{
+            color: '#3a4f6a',
+            fontFamily: 'var(--font-jetbrains-mono), monospace',
+          }}
+        >
+          <a
+            href="/dashboard"
+            className="transition-colors"
+            style={{ color: '#3a4f6a' }}
+            onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = '#6b82a0')}
+            onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = '#3a4f6a')}
+          >
+            Dashboard
+          </a>
+          <span style={{ color: 'rgba(255,255,255,0.12)' }}>/</span>
+          <span style={{ color: '#3a4f6a' }}>Estimates</span>
+          <span style={{ color: 'rgba(255,255,255,0.12)' }}>/</span>
+          <span style={{ color: '#6b82a0' }}>{estimate.id}</span>
         </div>
 
         {/* Summary */}
-        <div className="mb-6">
+        <div className="mb-5">
           <EstimateSummary estimate={estimate} />
         </div>
 
         {/* Main grid */}
         <div className="flex gap-5">
-          {/* Table — main content */}
+          {/* Table */}
           <div className="flex-1 min-w-0">
             <EstimateTable scopes={estimate.scopes} />
           </div>
@@ -47,26 +60,51 @@ export default function EstimateDetailPage() {
             <ComparableProjects projects={estimate.comparable_projects} />
 
             {/* Notes card */}
-            <div className="bg-white border border-zinc-200 rounded-lg p-4">
-              <h3 className="text-xs font-semibold text-zinc-600 uppercase tracking-wide mb-2">
+            <div
+              className="rounded-[8px] p-4"
+              style={{
+                background: '#131822',
+                border: '1px solid rgba(255,255,255,0.08)',
+              }}
+            >
+              <h3
+                className="text-[10px] font-semibold uppercase tracking-[0.09em] mb-2.5"
+                style={{ color: '#3a4f6a' }}
+              >
                 Estimate Notes
               </h3>
               <textarea
                 placeholder="Add notes for this estimate..."
-                className="w-full text-xs text-zinc-700 border border-zinc-200 rounded p-2 resize-none focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder:text-zinc-400"
                 rows={4}
+                className="w-full text-[12px] resize-none rounded-[6px] p-2.5 transition-all focus:outline-none"
+                style={{
+                  background: '#0e1219',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  color: '#d8e4f5',
+                }}
               />
             </div>
 
             {/* AI hint card */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div
+              className="rounded-[8px] p-4"
+              style={{
+                background: 'rgba(129,140,248,0.05)',
+                border: '1px solid rgba(129,140,248,0.18)',
+              }}
+            >
               <div className="flex items-center gap-1.5 mb-2">
-                <span className="text-[10px] font-semibold bg-blue-600 text-white px-1.5 py-0.5 rounded uppercase tracking-wide">
+                <span
+                  className="text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wide"
+                  style={{ background: 'rgba(129,140,248,0.15)', color: '#818cf8', border: '1px solid rgba(129,140,248,0.25)' }}
+                >
                   AI
                 </span>
-                <h3 className="text-xs font-semibold text-blue-800">Model Notes</h3>
+                <h3 className="text-[11px] font-semibold" style={{ color: '#818cf8' }}>
+                  Model Notes
+                </h3>
               </div>
-              <p className="text-[11px] text-blue-700 leading-relaxed">
+              <p className="text-[11px] leading-relaxed" style={{ color: '#6b82a0' }}>
                 AWP scope pricing is within 4% of the HCA Brandon comparable (2023). ACT pricing
                 appears slightly high vs. market — consider verifying the T-bar grid inclusion.
               </p>
@@ -76,19 +114,47 @@ export default function EstimateDetailPage() {
       </div>
 
       {/* Sticky export bar */}
-      <div className="fixed bottom-0 left-56 right-0 bg-white border-t border-zinc-200 px-8 py-3 flex items-center justify-between shadow-lg">
-        <div className="flex items-center gap-4">
+      <div
+        className="fixed bottom-0 left-56 right-0 px-8 py-3 flex items-center justify-between"
+        style={{
+          background: '#0e1219',
+          borderTop: '1px solid rgba(255,255,255,0.08)',
+          boxShadow: '0 -8px 32px rgba(0,0,0,0.4)',
+        }}
+      >
+        <div className="flex items-center gap-5">
           <div>
-            <p className="text-xs text-zinc-500">Estimated total</p>
-            <p className="text-lg font-mono font-bold text-zinc-900 tabular-nums">
+            <p className="text-[10px] uppercase tracking-[0.09em] font-semibold" style={{ color: '#3a4f6a' }}>
+              Estimated total
+            </p>
+            <p
+              className="text-[20px] font-bold tabular-nums leading-tight"
+              style={{
+                fontFamily: 'var(--font-jetbrains-mono), monospace',
+                color: '#a1d67c',
+                letterSpacing: '-0.03em',
+              }}
+            >
               {formatCurrency(estimate.total_cost)}
             </p>
           </div>
-          <div className="h-8 w-px bg-zinc-200" />
+          <div
+            className="h-8 w-px"
+            style={{ background: 'rgba(255,255,255,0.08)' }}
+          />
           <div>
-            <p className="text-xs text-zinc-500">Accepted scopes</p>
-            <p className="text-sm font-mono font-semibold text-zinc-800">
-              {estimate.scopes.filter((s) => s.is_accepted).length} / {estimate.scopes.length}
+            <p className="text-[10px] uppercase tracking-[0.09em] font-semibold" style={{ color: '#3a4f6a' }}>
+              Accepted scopes
+            </p>
+            <p
+              className="text-[14px] font-semibold tabular-nums"
+              style={{
+                fontFamily: 'var(--font-jetbrains-mono), monospace',
+                color: '#d8e4f5',
+              }}
+            >
+              {estimate.scopes.filter((s) => s.is_accepted).length}
+              <span style={{ color: '#3a4f6a' }}> / {estimate.scopes.length}</span>
             </p>
           </div>
         </div>
@@ -96,19 +162,45 @@ export default function EstimateDetailPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={handleExport}
-            className="flex items-center gap-2 px-4 py-2 border border-zinc-300 text-zinc-700 text-sm font-medium rounded-lg hover:bg-zinc-50 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 text-[13px] font-medium rounded-[6px] transition-all"
+            style={{
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              color: '#6b82a0',
+            }}
+            onMouseEnter={(e) => {
+              const el = e.currentTarget as HTMLButtonElement
+              el.style.background = 'rgba(255,255,255,0.08)'
+              el.style.color = '#d8e4f5'
+            }}
+            onMouseLeave={(e) => {
+              const el = e.currentTarget as HTMLButtonElement
+              el.style.background = 'rgba(255,255,255,0.05)'
+              el.style.color = '#6b82a0'
+            }}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 0 1 2-2h6l2 2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" strokeWidth="2" />
+              <path
+                d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 0 1 2-2h6l2 2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"
+                strokeWidth="2"
+              />
             </svg>
-            Export Excel (.xlsx)
+            Export Excel
           </button>
           <button
             onClick={handleGenerateQuote}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 text-[13px] font-semibold rounded-[6px] transition-all duration-100"
+            style={{
+              background: 'linear-gradient(135deg, #5a8a1e 0%, #a1d67c 100%)',
+              color: '#080b10',
+              boxShadow: '0 0 20px rgba(161,214,124,0.2)',
+            }}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z" strokeWidth="2" />
+              <path
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z"
+                strokeWidth="2"
+              />
             </svg>
             Generate Quote
           </button>

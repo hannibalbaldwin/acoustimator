@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -11,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.routes import estimates as estimates_router
 from src.api.routes import projects as projects_router
+from src.api.routes import stats as stats_router
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +38,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=os.getenv("CORS_ORIGINS", "http://localhost:3000").split(","),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -48,6 +50,7 @@ app.add_middleware(
 
 app.include_router(estimates_router.router)
 app.include_router(projects_router.router)
+app.include_router(stats_router.router)
 
 
 # ---------------------------------------------------------------------------
