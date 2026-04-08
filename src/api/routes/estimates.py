@@ -96,7 +96,9 @@ async def _build_response(estimate: Estimate, db: AsyncSession) -> EstimateRespo
     if comparable_ids:
         try:
             uuid_list = [UUID(cid) for cid in comparable_ids]
-            proj_result = await db.execute(select(Project).options(selectinload(Project.scopes)).where(Project.id.in_(uuid_list)))
+            proj_result = await db.execute(
+                select(Project).options(selectinload(Project.scopes)).where(Project.id.in_(uuid_list))
+            )
             projects = proj_result.scalars().all()
             proj_map = {str(p.id): p for p in projects}
             for cid in comparable_ids:
@@ -172,8 +174,8 @@ async def list_estimates(
     if status is not None:
         try:
             status_enum = EstimateStatus(status)
-        except ValueError:
-            raise HTTPException(status_code=422, detail=f"Invalid status: {status}")
+        except ValueError as err:
+            raise HTTPException(status_code=422, detail=f"Invalid status: {status}") from err
         base_query = base_query.where(Estimate.status == status_enum)
 
     # Count total
