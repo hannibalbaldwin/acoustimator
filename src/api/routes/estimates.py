@@ -729,14 +729,10 @@ def _build_quote_pdf(estimate: Estimate, quote_number: str, template: str) -> by
     grand_total = subtotal + total_tax
     totals_data = [
         ["", "Subtotal:", f"${subtotal:,.2f}"],
-        ["", f"Sales Tax:", f"${total_tax:,.2f}"],
+        ["", "Sales Tax:", f"${total_tax:,.2f}"],
         ["", "Grand Total:", f"${grand_total:,.2f}"],
     ]
     totals_table = Table(totals_data, colWidths=[4.0 * inch, 1.5 * inch, 1.0 * inch])
-
-    total_label_style = ParagraphStyle(
-        "total_label", parent=normal, fontSize=9, fontName="Helvetica-Bold"
-    )
 
     totals_table.setStyle(TableStyle([
         ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
