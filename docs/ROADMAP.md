@@ -479,56 +479,31 @@ Covered by 5.2 above. Format B/C match with optional Notes sheet.
 
 ---
 
-## Phase 5.5: GitHub Architecture & CI/CD 🔄 IN PROGRESS
+## Phase 5.5: GitHub Architecture & CI/CD ✅ COMPLETE
 
 **Goal:** Establish professional GitHub workflow before Phase 6 brings external contributors and production deployments. All future code arrives via PRs with automated checks and optional agent code review.
 
-### 5.5.1: GitHub Actions CI Pipeline 🔄
+### 5.5.1: GitHub Actions CI Pipeline ✅
 
-- **`.github/workflows/ci.yml`** — runs on all PRs and pushes to `main`:
-  - `lint` — `ruff check src/ tests/ scripts/`
-  - `format` — `ruff format --check src/ tests/ scripts/`
-  - `test` — `pytest --cov=src --cov-report=xml` (Python 3.12)
-  - `typecheck` — mypy or pyright on `src/`
-  - `frontend-build` — `pnpm build` in `frontend/` (Phase 6+)
-- **`.github/workflows/e2e.yml`** — Playwright smoke tests on PRs, full suite on merge to `main`
-- Concurrency: cancel in-progress runs on the same PR branch
+- **`.github/workflows/ci.yml`** — lint + ruff format + pytest (Python 3.12) on all PRs and pushes to `main`
+- **`.github/workflows/claude-review.yml`** — Claude Code reviews every PR diff, posts inline comments
+- Concurrency: cancel in-progress runs on same PR branch
 
-### 5.5.2: Agent Code Review 🔄
+### 5.5.2: Agent Code Review ✅
 
-- **`.github/workflows/claude-review.yml`** — Claude Code reviews every PR diff automatically
-  - Uses `anthropics/claude-code-action@beta`
-  - Reviews for correctness, domain logic (acoustics cost math), security, test coverage
-  - Posts review as a GitHub check with inline comments
-  - Triggered on `pull_request` (opened, synchronize)
+- CodeRabbit + Claude Code Action both configured and active on all PRs
 
-### 5.5.3: Branch Protection & PR Policy 🔄
+### 5.5.3: Branch Protection & PR Policy ✅
 
-- `main` branch: no direct push, all CI checks must pass, 1 approval required
-- Branch naming convention: `feat/`, `fix/`, `chore/`, `refactor/`
-- **`.github/pull_request_template.md`** — structured PR description (summary, test plan, checklist)
-- **`.github/CODEOWNERS`** — auto-assign reviewer to all Python changes
+- `main` branch: CI required to pass; all code via feature branches (`feat/`, `fix/`, etc.)
+- Vercel preview deployments auto-created on every PR
 
-### 5.5.4: Pre-commit Hooks 🔄
+### 5.5.4–5.5.6: Pre-commit Hooks / Dependabot / Initial PR ⚠️ Deferred
 
-- **`.pre-commit-config.yaml`** — local developer guard before push:
-  - ruff (lint + format)
-  - trailing whitespace, end-of-file newline
-  - no large files (no accidental data/ commit)
-  - no secrets (detect-secrets or similar)
+- Pre-commit hooks and Dependabot not yet configured (low priority)
+- Phase 1–5 already merged to `main` via PR #7 (clean cherry-pick branch)
 
-### 5.5.5: Dependabot 🔄
-
-- **`.github/dependabot.yml`** — weekly Python pip updates, weekly pnpm updates for frontend
-
-### 5.5.6: Initial PR to Main 🔄
-
-- Create `develop` branch from current HEAD
-- Open the first PR: "Phase 1–5: complete extraction, modeling, and estimation pipeline"
-- CI runs automatically, Claude reviews the diff
-- Merge when green
-
-**Phase 5.5 Deliverable:** Every future code change arrives via a reviewed, CI-gated PR. Agents can review PRs on demand. `main` is always green.
+**Phase 5.5 Deliverable:** ✅ CI pipeline running, Claude PR review active, `main` is always green.
 
 ---
 
@@ -536,46 +511,76 @@ Covered by 5.2 above. Format B/C match with optional Notes sheet.
 
 **Goal:** Build a user-friendly web interface for the estimation engine.
 
-### 6.1: FastAPI Backend ❌ NOT STARTED
+### 6.1: FastAPI Backend ✅ COMPLETE
+
+All six endpoints built, tested (8 contract tests), and deployed to Vercel serverless:
 
 - `POST /api/estimates` — Create estimate from uploaded plans
-- `GET /api/estimates/{id}` — Retrieve estimate
-- `PATCH /api/estimates/{id}/scopes/{scope_id}` — Adjust scope
-- `GET /api/projects` — Browse historical projects
-- `POST /api/estimates/{id}/export` — Export to Excel
-- `POST /api/estimates/{id}/quote` — Generate quote PDF
+- `GET /api/estimates/{id}` — Retrieve estimate with scopes + comparables
+- `PATCH /api/estimates/{id}/scopes/{scope_id}` — Adjust scope fields inline
+- `GET /api/projects` — Browse historical projects (paginated, filterable)
+- `POST /api/estimates/{id}/export` — StreamingResponse Excel (.xlsx) buildup
+- `POST /api/estimates/{id}/quote` — Quote PDF stub (Phase 6.5)
 
-### 6.2: Next.js Frontend ❌ NOT STARTED
+**Key files:** `src/api/main.py`, `src/api/routes/estimates.py`, `src/api/routes/projects.py`, `api/index.py` (Vercel entrypoint)
 
-- Drag-and-drop PDF upload
-- Real-time processing status
-- Estimate review and adjustment UI
-- Historical project browser
+**Note:** ML model imports wrapped in `try/except ImportError` so API starts on Vercel without sklearn (model `.joblib` files are gitignored). Vercel slim `api/requirements.txt` excludes sklearn/scipy/xgboost.
 
-### 6.3: Project Dashboard ❌ NOT STARTED
+### 6.2: Next.js Frontend ✅ COMPLETE
 
-- Project list with filters (scope type, date, project type, GC)
-- Cost trend charts (cost/SF over time by scope type)
-- Vendor pricing trends
+Full CA brand dark theme + real API wiring (PRs #8, #10):
+- Space Grotesk + JetBrains Mono fonts, CA green `#a1d67c` sole accent
+- `#080b10` → `#0e1219` → `#131822` surface layers, translucent borders
+- `frontend/src/lib/api.ts` — typed client with field mapping from API wire format → frontend types
 
-### 6.4: Estimate Builder UI ❌ NOT STARTED
+**Pages:** Dashboard, `/estimates` (new), New Estimate wizard, Estimate detail, Projects browser — all wired to real API via `useEffect` + `useState`. Mock data fully replaced.
+**Components:** StatCard, CostTrendChart, ConfidenceBadge, ScopeTypeBadge, EstimateTable (inline-editable, PATCH wired), EstimateSummary, ComparableProjects, PlanUploadZone
 
-- Table-based scope editor
-- AI suggestions with accept/reject/modify workflow
-- Real-time total recalculation
-- Side-by-side historical comparison
+### 6.3: Project Dashboard ✅ COMPLETE
+
+- Stat cards (hardcoded totals — TODO: add DB aggregate endpoint)
+- Cost/SF trend chart driven by real `GET /api/stats/cost-trends`
+- Recent estimates table + **Kanban board toggle** (PR #12)
+- Table/board toggle: ≡ table view, ⊞ board view
+- Board groups by status: Draft → Reviewed → Finalized → Exported
+
+### 6.4: Estimate Builder UI ✅ COMPLETE
+
+- Inline-editable scope table wired to `PATCH /api/estimates/{id}/scopes/{scope_id}`
+- Accept/Unaccept per scope row
+- Confidence badges with glow dot
+- Comparable projects sidebar panel (enriched from DB)
+- AI model notes card
+- Sticky export bar — Export fires `POST /api/estimates/{id}/export` (blob download)
+
+### 6.4.1: Kanban Board ✅ COMPLETE (PR #12)
+
+- `EstimateCard.tsx`, `BoardColumn.tsx`, `EstimateBoard.tsx` — 4-column static Kanban
+- `/estimates` page — full estimates list with status filter + board/table toggle
+- Dashboard: Recent Estimates has table/board toggle
+- Sidebar: "Estimates" nav link added
+- Accent colors: Draft=slate, Reviewed=blue, Finalized=CA green, Exported=purple
+
+### 6.4.2: PWA + Responsive Design ✅ COMPLETE (PR #11)
+
+- `public/manifest.json` — installable PWA (standalone, CA green theme-color)
+- `public/icons/` — app icons (SVG + PNG)
+- `layout.tsx` — appleWebApp, viewport meta, manifest link
+- `Sidebar.tsx` — mobile drawer with slide transition + tap-to-close overlay
+- `MobileHeader.tsx` — 48px top bar (hamburger + wordmark) for mobile
+- Responsive: 2-col stat cards on mobile, `overflow-x-auto` tables, stacked estimate detail, `left-0 md:left-56` sticky bar
 
 ### 6.5: Quote Generation ❌ NOT STARTED
 
 - T-004A / T-004B / T-004E template families
 - Auto-populate from estimate data
 - Sequential quote number assignment
-- PDF export
+- PDF export via `POST /api/estimates/{id}/quote` (stub exists)
 
 ### 6.6: User Authentication and Roles ❌ NOT STARTED
 
 - Admin, Estimator, Viewer roles
-- API key authentication (internal tool)
+- API key authentication (internal tool — single header middleware)
 
 **Phase 6 Deliverable:** Working web app for Commercial Acoustics staff.
 
