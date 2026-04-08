@@ -149,16 +149,24 @@ class Project(Base):
     )
     source_path: Mapped[str | None] = mapped_column(Text)
     notes: Mapped[str | None] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default=text("CURRENT_TIMESTAMP"))
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMPTZ, server_default=text("CURRENT_TIMESTAMP")
+    )
     updated_at: Mapped[datetime] = mapped_column(
         TIMESTAMPTZ, server_default=text("CURRENT_TIMESTAMP"), onupdate=text("CURRENT_TIMESTAMP")
     )
 
     # Relationships
     scopes: Mapped[list["Scope"]] = relationship(back_populates="project", cascade="all, delete")
-    vendor_quotes: Mapped[list["VendorQuote"]] = relationship(back_populates="project", cascade="all, delete")
-    additional_costs: Mapped[list["AdditionalCost"]] = relationship(back_populates="project", cascade="all, delete")
-    extraction_runs: Mapped[list["ExtractionRun"]] = relationship(back_populates="project", cascade="all, delete")
+    vendor_quotes: Mapped[list["VendorQuote"]] = relationship(
+        back_populates="project", cascade="all, delete"
+    )
+    additional_costs: Mapped[list["AdditionalCost"]] = relationship(
+        back_populates="project", cascade="all, delete"
+    )
+    extraction_runs: Mapped[list["ExtractionRun"]] = relationship(
+        back_populates="project", cascade="all, delete"
+    )
 
 
 class Scope(Base):
@@ -188,10 +196,14 @@ class Scope(Base):
     daily_labor_rate: Mapped[Decimal | None] = mapped_column(Numeric(8, 2))
     labor_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
     labor_base_rate: Mapped[Decimal | None] = mapped_column(Numeric(6, 2))
-    labor_hours_per_day: Mapped[Decimal | None] = mapped_column(Numeric(4, 1), server_default=text("8"))
+    labor_hours_per_day: Mapped[Decimal | None] = mapped_column(
+        Numeric(4, 1), server_default=text("8")
+    )
     labor_multiplier: Mapped[Decimal | None] = mapped_column(Numeric(4, 2))
     scrap_rate: Mapped[Decimal | None] = mapped_column(Numeric(5, 4))
-    sales_tax_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 4), server_default=text("0.06"))
+    sales_tax_pct: Mapped[Decimal | None] = mapped_column(
+        Numeric(5, 4), server_default=text("0.06")
+    )
     county_surtax_rate: Mapped[Decimal | None] = mapped_column(Numeric(5, 4))
     county_surtax_cap: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
     sales_tax: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
@@ -201,7 +213,9 @@ class Scope(Base):
     extraction_confidence: Mapped[Decimal | None] = mapped_column(Numeric(3, 2))
     source_file: Mapped[str | None] = mapped_column(Text)
     source_sheet: Mapped[str | None] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default=text("CURRENT_TIMESTAMP"))
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMPTZ, server_default=text("CURRENT_TIMESTAMP")
+    )
 
     # Relationships
     project: Mapped["Project"] = relationship(back_populates="scopes")
@@ -228,7 +242,9 @@ class Product(Base):
     fire_rating: Mapped[str | None] = mapped_column(Text)
     aliases: Mapped[list[str] | None] = mapped_column(ARRAY(Text))
     notes: Mapped[str | None] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default=text("CURRENT_TIMESTAMP"))
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMPTZ, server_default=text("CURRENT_TIMESTAMP")
+    )
     updated_at: Mapped[datetime] = mapped_column(
         TIMESTAMPTZ, server_default=text("CURRENT_TIMESTAMP"), onupdate=text("CURRENT_TIMESTAMP")
     )
@@ -250,7 +266,9 @@ class Vendor(Base):
     address: Mapped[str | None] = mapped_column(Text)
     product_categories: Mapped[list[str] | None] = mapped_column(ARRAY(Text))
     notes: Mapped[str | None] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default=text("CURRENT_TIMESTAMP"))
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMPTZ, server_default=text("CURRENT_TIMESTAMP")
+    )
 
     # Relationships
     vendor_quotes: Mapped[list["VendorQuote"]] = relationship(back_populates="vendor")
@@ -263,7 +281,9 @@ class VendorQuote(Base):
     project_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), nullable=True
     )
-    vendor_id: Mapped[UUID | None] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("vendors.id", ondelete="SET NULL"))
+    vendor_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("vendors.id", ondelete="SET NULL")
+    )
     quote_number: Mapped[str | None] = mapped_column(Text)
     quote_date: Mapped[date | None] = mapped_column(Date)
     items: Mapped[dict | None] = mapped_column(JSONB)
@@ -273,7 +293,9 @@ class VendorQuote(Base):
     lead_time: Mapped[str | None] = mapped_column(Text)
     source_file: Mapped[str | None] = mapped_column(Text)
     notes: Mapped[str | None] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default=text("CURRENT_TIMESTAMP"))
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMPTZ, server_default=text("CURRENT_TIMESTAMP")
+    )
 
     # Relationships
     project: Mapped[Optional["Project"]] = relationship(back_populates="vendor_quotes")
@@ -298,7 +320,9 @@ class AdditionalCost(Base):
     amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
     notes: Mapped[str | None] = mapped_column(Text)
     source_file: Mapped[str | None] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default=text("CURRENT_TIMESTAMP"))
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMPTZ, server_default=text("CURRENT_TIMESTAMP")
+    )
 
     # Relationships
     project: Mapped["Project"] = relationship(back_populates="additional_costs")
@@ -330,13 +354,17 @@ class Estimate(Base):
     reviewed_by: Mapped[str | None] = mapped_column(Text)
     reviewed_at: Mapped[datetime | None] = mapped_column(TIMESTAMPTZ)
     notes: Mapped[str | None] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default=text("CURRENT_TIMESTAMP"))
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMPTZ, server_default=text("CURRENT_TIMESTAMP")
+    )
     updated_at: Mapped[datetime] = mapped_column(
         TIMESTAMPTZ, server_default=text("CURRENT_TIMESTAMP"), onupdate=text("CURRENT_TIMESTAMP")
     )
 
     # Relationships
-    estimate_scopes: Mapped[list["EstimateScope"]] = relationship(back_populates="estimate", cascade="all, delete")
+    estimate_scopes: Mapped[list["EstimateScope"]] = relationship(
+        back_populates="estimate", cascade="all, delete"
+    )
 
 
 class EstimateScope(Base):
@@ -367,23 +395,35 @@ class EstimateScope(Base):
     daily_labor_rate: Mapped[Decimal | None] = mapped_column(Numeric(8, 2))
     labor_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
     labor_base_rate: Mapped[Decimal | None] = mapped_column(Numeric(6, 2))
-    labor_hours_per_day: Mapped[Decimal | None] = mapped_column(Numeric(4, 1), server_default=text("8"))
+    labor_hours_per_day: Mapped[Decimal | None] = mapped_column(
+        Numeric(4, 1), server_default=text("8")
+    )
     labor_multiplier: Mapped[Decimal | None] = mapped_column(Numeric(4, 2))
     scrap_rate: Mapped[Decimal | None] = mapped_column(Numeric(5, 4))
-    sales_tax_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 4), server_default=text("0.06"))
-    county_surtax_rate: Mapped[Decimal | None] = mapped_column(Numeric(5, 4), server_default=text("0"))
-    county_surtax_cap: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), server_default=text("5000"))
+    sales_tax_pct: Mapped[Decimal | None] = mapped_column(
+        Numeric(5, 4), server_default=text("0.06")
+    )
+    county_surtax_rate: Mapped[Decimal | None] = mapped_column(
+        Numeric(5, 4), server_default=text("0")
+    )
+    county_surtax_cap: Mapped[Decimal | None] = mapped_column(
+        Numeric(10, 2), server_default=text("5000")
+    )
     sales_tax: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
     total: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
     confidence_score: Mapped[Decimal | None] = mapped_column(Numeric(3, 2))
-    comparable_project_ids: Mapped[list[UUID] | None] = mapped_column(ARRAY(PG_UUID(as_uuid=True)))
+    comparable_project_ids: Mapped[list[UUID] | None] = mapped_column(
+        ARRAY(PG_UUID(as_uuid=True))
+    )
     ai_notes: Mapped[str | None] = mapped_column(Text)
     room_name: Mapped[str | None] = mapped_column(Text)
     floor: Mapped[str | None] = mapped_column(Text)
     building: Mapped[str | None] = mapped_column(Text)
     drawing_reference: Mapped[str | None] = mapped_column(Text)
     manually_adjusted: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default=text("CURRENT_TIMESTAMP"))
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMPTZ, server_default=text("CURRENT_TIMESTAMP")
+    )
     updated_at: Mapped[datetime] = mapped_column(
         TIMESTAMPTZ, server_default=text("CURRENT_TIMESTAMP"), onupdate=text("CURRENT_TIMESTAMP")
     )
@@ -414,7 +454,9 @@ class ExtractionRun(Base):
     project_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE")
     )
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default=text("CURRENT_TIMESTAMP"))
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMPTZ, server_default=text("CURRENT_TIMESTAMP")
+    )
 
     # Relationships
     project: Mapped[Optional["Project"]] = relationship(back_populates="extraction_runs")
