@@ -1,8 +1,8 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Space_Grotesk, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
-import { Sidebar } from '@/components/layout/Sidebar'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { SidebarController } from '@/components/layout/SidebarController'
 
 // Space Grotesk — geometric, modern tech feel
 const spaceGrotesk = Space_Grotesk({
@@ -21,8 +21,25 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Acoustimator — Commercial Acoustics',
-  description: 'AI-powered cost estimation for commercial acoustics projects',
+  title: 'Acoustimator',
+  description: 'AI-powered acoustic cost estimation',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Acoustimator',
+  },
+  icons: {
+    apple: [{ url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' }],
+  },
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: '#a1d67c',
 }
 
 export default function RootLayout({
@@ -35,10 +52,11 @@ export default function RootLayout({
       lang="en"
       className={`${spaceGrotesk.variable} ${jetbrainsMono.variable} h-full`}
     >
-      <body className="h-full flex antialiased bg-[#080b10] text-[#d8e4f5]">
+      <body className="h-full antialiased bg-[#080b10] text-[#d8e4f5]">
         <TooltipProvider>
-          <Sidebar />
-          <main className="flex-1 overflow-y-auto min-h-screen">{children}</main>
+          <SidebarController>
+            {children}
+          </SidebarController>
         </TooltipProvider>
       </body>
     </html>

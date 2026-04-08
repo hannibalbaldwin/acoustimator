@@ -7,6 +7,7 @@ import { StatCard } from '@/components/dashboard/StatCard'
 import { CostTrendChart } from '@/components/dashboard/CostTrendChart'
 import { ConfidenceBadge } from '@/components/estimates/ConfidenceBadge'
 import { ScopeTypeBadge } from '@/components/estimates/ScopeTypeBadge'
+import { EstimateBoard } from '@/components/estimates/EstimateBoard'
 import { listEstimates, getCostTrends, type EstimateListItem } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
 import type { ScopeType, TrendDataPoint } from '@/lib/types'
@@ -23,11 +24,12 @@ export default function DashboardPage() {
   const [trendData, setTrendData] = useState<TrendDataPoint[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [view, setView] = useState<'table' | 'board'>('table')
 
   useEffect(() => {
     let cancelled = false
     Promise.all([
-      listEstimates({ limit: 7 }),
+      listEstimates({ limit: 20 }),
       getCostTrends(),
     ])
       .then(([estimatesRes, trends]) => {
@@ -45,7 +47,7 @@ export default function DashboardPage() {
   }, [])
 
   return (
-    <div className="px-8 py-8 max-w-7xl">
+    <div className="px-4 py-6 md:px-8 md:py-8 max-w-7xl">
 
       {/* ── Header ── */}
       <div className="flex items-start justify-between mb-7">
@@ -57,7 +59,7 @@ export default function DashboardPage() {
             Dashboard
           </h1>
           <p className="text-[13px] mt-1" style={{ color: '#3a4f6a' }}>
-            {format(new Date('2026-04-08'), 'MMMM d, yyyy')} · Commercial Acoustics, Tampa FL
+            {format(new Date(), 'MMMM d, yyyy')} · Commercial Acoustics, Tampa FL
           </p>
         </div>
 
@@ -79,7 +81,7 @@ export default function DashboardPage() {
 
       {/* ── Stat cards ── */}
       {/* TODO: These need separate DB aggregate queries */}
-      <div className="grid grid-cols-4 gap-3.5 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 mb-6">
         <StatCard
           label="Total Projects"
           value="124"
@@ -116,7 +118,7 @@ export default function DashboardPage() {
           border: '1px solid rgba(255,255,255,0.08)',
         }}
       >
-        {/* Table header */}
+        {/* Section header with view toggle */}
         <div
           className="flex items-center justify-between px-5 py-3.5"
           style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}
@@ -124,13 +126,51 @@ export default function DashboardPage() {
           <h2 className="text-[13px] font-semibold" style={{ color: '#d8e4f5' }}>
             Recent Estimates
           </h2>
-          <Link
-            href="/projects"
-            className="text-[12px] font-medium transition-colors"
-            style={{ color: '#a1d67c' }}
-          >
-            View all projects →
-          </Link>
+          <div className="flex items-center gap-2">
+            {/* View toggle */}
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setView('table')}
+                className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-[4px] transition-all"
+                style={
+                  view === 'table'
+                    ? { background: 'rgba(161,214,124,0.12)', border: '1px solid rgba(161,214,124,0.22)', color: '#a1d67c' }
+                    : { background: 'transparent', border: '1px solid rgba(255,255,255,0.08)', color: '#3a4f6a' }
+                }
+              >
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                  <line x1="1" y1="3" x2="11" y2="3" />
+                  <line x1="1" y1="6" x2="11" y2="6" />
+                  <line x1="1" y1="9" x2="11" y2="9" />
+                </svg>
+                Table
+              </button>
+              <button
+                onClick={() => setView('board')}
+                className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-[4px] transition-all"
+                style={
+                  view === 'board'
+                    ? { background: 'rgba(161,214,124,0.12)', border: '1px solid rgba(161,214,124,0.22)', color: '#a1d67c' }
+                    : { background: 'transparent', border: '1px solid rgba(255,255,255,0.08)', color: '#3a4f6a' }
+                }
+              >
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="1" y="1" width="4" height="4" rx="0.75" />
+                  <rect x="7" y="1" width="4" height="4" rx="0.75" />
+                  <rect x="1" y="7" width="4" height="4" rx="0.75" />
+                  <rect x="7" y="7" width="4" height="4" rx="0.75" />
+                </svg>
+                Board
+              </button>
+            </div>
+            <Link
+              href="/projects"
+              className="text-[12px] font-medium transition-colors"
+              style={{ color: '#a1d67c' }}
+            >
+              View all projects →
+            </Link>
+          </div>
         </div>
 
         {error && (
@@ -139,99 +179,105 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <div className={loading ? 'opacity-50 pointer-events-none' : undefined}>
-          <table className="w-full text-[13px]">
-            <thead>
-              <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                {['Project', 'Scopes', 'Total', 'Confidence', 'Status', 'Date', ''].map(
-                  (col, i) => (
-                    <th
-                      key={i}
-                      className={`px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.09em] ${
-                        col === 'Total' ? 'text-right' : 'text-left'
-                      }`}
-                      style={{ color: '#3a4f6a' }}
+        {view === 'table' ? (
+          <div className={`overflow-x-auto${loading ? ' opacity-50 pointer-events-none' : ''}`}>
+            <table className="w-full text-[13px]">
+              <thead>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                  {['Project', 'Scopes', 'Total', 'Confidence', 'Status', 'Date', ''].map(
+                    (col, i) => (
+                      <th
+                        key={i}
+                        className={`px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.09em] ${
+                          col === 'Total' ? 'text-right' : 'text-left'
+                        }`}
+                        style={{ color: '#3a4f6a' }}
+                      >
+                        {col}
+                      </th>
+                    )
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {estimates.map((est) => {
+                  const st = STATUS_STYLES[est.status] ?? STATUS_STYLES.draft
+                  return (
+                    <tr
+                      key={est.id}
+                      className="group transition-colors"
+                      style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+                      onMouseEnter={(e) =>
+                        ((e.currentTarget as HTMLTableRowElement).style.background =
+                          'rgba(255,255,255,0.025)')
+                      }
+                      onMouseLeave={(e) =>
+                        ((e.currentTarget as HTMLTableRowElement).style.background = 'transparent')
+                      }
                     >
-                      {col}
-                    </th>
+                      <td className="px-4 py-2.5">
+                        <p className="font-medium" style={{ color: '#d8e4f5' }}>
+                          {est.project_name}
+                        </p>
+                        <p className="text-[11px] mt-0.5" style={{ color: '#3a4f6a' }}>
+                          {est.gc_name}
+                        </p>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <div className="flex flex-wrap gap-1">
+                          {est.scope_types.map((s) => (
+                            <ScopeTypeBadge key={s} type={s as ScopeType} />
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-4 py-2.5 text-right tabular-nums font-semibold"
+                        style={{
+                          fontFamily: 'var(--font-jetbrains-mono), monospace',
+                          color: '#d8e4f5',
+                        }}
+                      >
+                        {formatCurrency(est.total_cost)}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <ConfidenceBadge level={(est.confidence_level ?? 'low') as 'high' | 'medium' | 'low'} />
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <span
+                          className="text-[11px] px-2 py-0.5 rounded-[4px] font-medium"
+                          style={{ color: st.color, background: st.bg, border: `1px solid ${st.border}` }}
+                        >
+                          {est.status.charAt(0).toUpperCase() + est.status.slice(1)}
+                        </span>
+                      </td>
+                      <td
+                        className="px-4 py-2.5 text-[11px] tabular-nums"
+                        style={{
+                          color: '#3a4f6a',
+                          fontFamily: 'var(--font-jetbrains-mono), monospace',
+                        }}
+                      >
+                        {est.created_at.slice(0, 10)}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <Link
+                          href={`/estimates/${est.id}`}
+                          className="text-[12px] font-medium opacity-0 group-hover:opacity-100 transition-opacity"
+                          style={{ color: '#a1d67c' }}
+                        >
+                          Review →
+                        </Link>
+                      </td>
+                    </tr>
                   )
-                )}
-              </tr>
-            </thead>
-            <tbody>
-              {estimates.map((est) => {
-                const st = STATUS_STYLES[est.status] ?? STATUS_STYLES.draft
-                return (
-                  <tr
-                    key={est.id}
-                    className="group transition-colors"
-                    style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
-                    onMouseEnter={(e) =>
-                      ((e.currentTarget as HTMLTableRowElement).style.background =
-                        'rgba(255,255,255,0.025)')
-                    }
-                    onMouseLeave={(e) =>
-                      ((e.currentTarget as HTMLTableRowElement).style.background = 'transparent')
-                    }
-                  >
-                    <td className="px-4 py-2.5">
-                      <p className="font-medium" style={{ color: '#d8e4f5' }}>
-                        {est.project_name}
-                      </p>
-                      <p className="text-[11px] mt-0.5" style={{ color: '#3a4f6a' }}>
-                        {est.gc_name}
-                      </p>
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <div className="flex flex-wrap gap-1">
-                        {est.scope_types.map((s) => (
-                          <ScopeTypeBadge key={s} type={s as ScopeType} />
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-4 py-2.5 text-right tabular-nums font-semibold"
-                      style={{
-                        fontFamily: 'var(--font-jetbrains-mono), monospace',
-                        color: '#d8e4f5',
-                      }}
-                    >
-                      {formatCurrency(est.total_cost)}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <ConfidenceBadge level={(est.confidence_level ?? 'low') as 'high' | 'medium' | 'low'} />
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <span
-                        className="text-[11px] px-2 py-0.5 rounded-[4px] font-medium"
-                        style={{ color: st.color, background: st.bg, border: `1px solid ${st.border}` }}
-                      >
-                        {est.status.charAt(0).toUpperCase() + est.status.slice(1)}
-                      </span>
-                    </td>
-                    <td
-                      className="px-4 py-2.5 text-[11px] tabular-nums"
-                      style={{
-                        color: '#3a4f6a',
-                        fontFamily: 'var(--font-jetbrains-mono), monospace',
-                      }}
-                    >
-                      {est.created_at.slice(0, 10)}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <Link
-                        href={`/estimates/${est.id}`}
-                        className="text-[12px] font-medium opacity-0 group-hover:opacity-100 transition-opacity"
-                        style={{ color: '#a1d67c' }}
-                      >
-                        Review →
-                      </Link>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className={`px-5 py-4${loading ? ' opacity-50 pointer-events-none' : ''}`}>
+            <EstimateBoard estimates={estimates} />
+          </div>
+        )}
       </div>
     </div>
   )

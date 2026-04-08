@@ -97,7 +97,7 @@ export default function ProjectsPage() {
   }
 
   return (
-    <div className="px-8 py-8 max-w-7xl">
+    <div className="px-4 py-6 md:px-8 md:py-8 max-w-7xl">
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
@@ -128,7 +128,7 @@ export default function ProjectsPage() {
       </div>
 
       {/* Filter bar */}
-      <div className="flex items-center gap-3 mb-5">
+      <div className="flex flex-wrap items-center gap-3 mb-5">
         {/* Search */}
         <div className="relative flex-1 max-w-xs">
           <svg
@@ -270,7 +270,7 @@ export default function ProjectsPage() {
 
       {/* Table */}
       <div
-        className={`rounded-[8px] overflow-hidden ${loading ? 'opacity-50 pointer-events-none' : ''}`}
+        className={`rounded-[8px] overflow-x-auto ${loading ? 'opacity-50 pointer-events-none' : ''}`}
         style={{
           background: '#131822',
           border: '1px solid rgba(255,255,255,0.08)',
