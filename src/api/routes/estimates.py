@@ -95,10 +95,8 @@ async def _build_response(estimate: Estimate, db: AsyncSession) -> EstimateRespo
     comparable_projects: list[ComparableProjectResponse] = []
     if comparable_ids:
         try:
-            from uuid import UUID as _UUID
-
-            uuid_list = [_UUID(cid) for cid in comparable_ids]
-            proj_result = await db.execute(select(Project).where(Project.id.in_(uuid_list)))
+            uuid_list = [UUID(cid) for cid in comparable_ids]
+            proj_result = await db.execute(select(Project).options(selectinload(Project.scopes)).where(Project.id.in_(uuid_list)))
             projects = proj_result.scalars().all()
             proj_map = {str(p.id): p for p in projects}
             for cid in comparable_ids:
@@ -172,7 +170,11 @@ async def list_estimates(
     base_query = select(Estimate).options(selectinload(Estimate.estimate_scopes))
 
     if status is not None:
-        base_query = base_query.where(Estimate.status.cast(str) == status)
+        try:
+            status_enum = EstimateStatus(status)
+        except ValueError:
+            raise HTTPException(status_code=422, detail=f"Invalid status: {status}")
+        base_query = base_query.where(Estimate.status == status_enum)
 
     # Count total
     count_result = await db.execute(select(func.count()).select_from(base_query.subquery()))
@@ -241,7 +243,7 @@ async def create_estimate(
         # Run plan reading + estimation in executor to avoid blocking the event loop
         from src.estimation.estimator import estimate_from_pdf
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         project_estimates = []
         for pdf_path in saved_paths:
             try:
@@ -447,7 +449,7 @@ async def export_estimate(
 
     from src.estimation.excel_writer import write_estimate_to_excel
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     await loop.run_in_executor(
         None,
         lambda: write_estimate_to_excel(
