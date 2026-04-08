@@ -59,7 +59,7 @@ export default function DashboardPage() {
             Dashboard
           </h1>
           <p className="text-[13px] mt-1" style={{ color: '#3a4f6a' }}>
-            {format(new Date('2026-04-08'), 'MMMM d, yyyy')} · Commercial Acoustics, Tampa FL
+            {format(new Date(), 'MMMM d, yyyy')} · Commercial Acoustics, Tampa FL
           </p>
         </div>
 

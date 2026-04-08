@@ -127,7 +127,7 @@ export function EstimateCard({
                 color: '#d8e4f5',
                 fontFamily: 'var(--font-jetbrains-mono), monospace',
                 margin: 0,
-                tabularNums: 'tabular-nums',
+                fontVariantNumeric: 'tabular-nums',
               } as React.CSSProperties}
             >
               {formatCurrency(total_cost)}
