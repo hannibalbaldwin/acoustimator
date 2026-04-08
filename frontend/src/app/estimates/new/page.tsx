@@ -218,7 +218,7 @@ export default function NewEstimatePage() {
   }
 
   return (
-    <div className="px-8 py-8 max-w-3xl">
+    <div className="px-4 py-6 md:px-8 md:py-8 max-w-3xl">
       {/* Header */}
       <div className="mb-7">
         <h1 className="text-[22px] font-semibold tracking-tight" style={{ color: '#d8e4f5' }}>
@@ -298,7 +298,7 @@ export default function NewEstimatePage() {
             </div>
 
             {/* GC + SF row */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label
                   className="block text-[10px] font-semibold uppercase tracking-[0.09em] mb-1.5"

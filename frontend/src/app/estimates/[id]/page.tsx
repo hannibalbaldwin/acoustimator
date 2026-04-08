@@ -79,7 +79,7 @@ export default function EstimateDetailPage() {
 
   if (loading) {
     return (
-      <div className="px-8 py-8 animate-pulse">
+      <div className="px-4 py-6 md:px-8 md:py-8 animate-pulse">
         <div className="h-4 w-48 rounded mb-5" style={{ background: 'rgba(255,255,255,0.07)' }} />
         <div className="h-28 rounded-[8px] mb-5" style={{ background: 'rgba(255,255,255,0.05)' }} />
         <div className="flex gap-5">
@@ -92,7 +92,7 @@ export default function EstimateDetailPage() {
 
   if (error || !estimate) {
     return (
-      <div className="px-8 py-8">
+      <div className="px-4 py-6 md:px-8 md:py-8">
         <p className="text-[13px]" style={{ color: '#f05252' }}>
           {error ?? 'Estimate not found'}
         </p>
@@ -102,7 +102,7 @@ export default function EstimateDetailPage() {
 
   return (
     <div className="pb-24">
-      <div className="px-8 py-8">
+      <div className="px-4 py-6 md:px-8 md:py-8">
         {/* Breadcrumb */}
         <div
           className="flex items-center gap-1.5 text-[11px] mb-5"
@@ -132,7 +132,7 @@ export default function EstimateDetailPage() {
         </div>
 
         {/* Main grid */}
-        <div className="flex gap-5">
+        <div className="flex flex-col md:flex-row gap-5">
           {/* Table */}
           <div className="flex-1 min-w-0">
             <EstimateTable
@@ -143,7 +143,7 @@ export default function EstimateDetailPage() {
           </div>
 
           {/* Sidebar */}
-          <div className="w-72 flex-shrink-0 space-y-4">
+          <div className="w-full md:w-72 flex-shrink-0 space-y-4">
             <ComparableProjects projects={estimate.comparable_projects} />
 
             {/* Notes card */}
@@ -202,7 +202,7 @@ export default function EstimateDetailPage() {
 
       {/* Sticky export bar */}
       <div
-        className="fixed bottom-0 left-56 right-0 px-8 py-3 flex items-center justify-between"
+        className="fixed bottom-0 left-0 md:left-56 right-0 px-4 md:px-8 py-3 flex items-center justify-between"
         style={{
           background: '#0e1219',
           borderTop: '1px solid rgba(255,255,255,0.08)',
