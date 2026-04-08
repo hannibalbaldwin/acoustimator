@@ -6,26 +6,67 @@ interface StatCardProps {
   delta?: {
     value: string
     positive?: boolean
+    neutral?: boolean
   }
+  accent?: boolean
   className?: string
 }
 
-export function StatCard({ label, value, delta, className }: StatCardProps) {
+export function StatCard({ label, value, delta, accent, className }: StatCardProps) {
   return (
-    <div className={cn('bg-white border border-zinc-200 rounded-lg px-5 py-4', className)}>
-      <p className="text-xs font-medium text-zinc-500 uppercase tracking-wide">{label}</p>
-      <div className="flex items-end gap-2 mt-1">
-        <p className="text-2xl font-mono font-semibold text-zinc-900 tabular-nums">{value}</p>
+    <div
+      className={cn('relative px-5 py-4 rounded-[8px] overflow-hidden', className)}
+      style={{
+        background: accent
+          ? 'linear-gradient(135deg, rgba(90,138,30,0.25) 0%, rgba(161,214,124,0.12) 100%)'
+          : '#131822',
+        border: accent
+          ? '1px solid rgba(161,214,124,0.25)'
+          : '1px solid rgba(255,255,255,0.08)',
+      }}
+    >
+      {/* Subtle gradient overlay */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            'linear-gradient(145deg, rgba(255,255,255,0.025) 0%, rgba(255,255,255,0) 60%)',
+        }}
+      />
+
+      <p
+        className="text-[11px] font-semibold uppercase tracking-[0.09em] mb-2"
+        style={{ color: '#3a4f6a' }}
+      >
+        {label}
+      </p>
+
+      <div className="flex items-end gap-2">
+        <p
+          className="text-[28px] leading-none font-[--font-jetbrains-mono] tabular-nums"
+          style={{
+            fontFamily: 'var(--font-jetbrains-mono), monospace',
+            fontWeight: 600,
+            color: accent ? '#a1d67c' : '#d8e4f5',
+            letterSpacing: '-0.03em',
+          }}
+        >
+          {value}
+        </p>
+
         {delta && (
           <span
-            className={cn(
-              'text-xs font-medium font-mono mb-0.5 px-1.5 py-0.5 rounded',
-              delta.positive
-                ? 'text-green-700 bg-green-100'
-                : 'text-red-700 bg-red-100'
-            )}
+            className="text-[11px] font-medium rounded-[4px] px-1.5 py-0.5 mb-0.5 font-mono"
+            style={
+              delta.neutral
+                ? { color: '#6b82a0', background: 'rgba(107,130,160,0.12)' }
+                : delta.positive
+                  ? { color: '#a1d67c', background: 'rgba(161,214,124,0.12)' }
+                  : { color: '#f59e0b', background: 'rgba(245,158,11,0.12)' }
+            }
           >
-            {delta.positive ? '+' : ''}{delta.value}
+            {delta.positive && '+'}
+            {delta.value}
           </span>
         )}
       </div>

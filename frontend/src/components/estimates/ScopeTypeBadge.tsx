@@ -6,26 +6,32 @@ interface ScopeTypeBadgeProps {
   className?: string
 }
 
-const scopeColors: Record<ScopeType, string> = {
-  ACT: 'bg-blue-100 text-blue-700 border-blue-200',
-  AWP: 'bg-green-100 text-green-700 border-green-200',
-  AP: 'bg-green-100 text-green-700 border-green-200',
-  FW: 'bg-teal-100 text-teal-700 border-teal-200',
-  SM: 'bg-purple-100 text-purple-700 border-purple-200',
-  WW: 'bg-orange-100 text-orange-700 border-orange-200',
-  Baffles: 'bg-pink-100 text-pink-700 border-pink-200',
-  RPG: 'bg-violet-100 text-violet-700 border-violet-200',
-  Other: 'bg-zinc-100 text-zinc-600 border-zinc-200',
+// Dark-mode optimized — translucent tinted backgrounds against dark surface
+const scopeConfig: Record<ScopeType, { color: string; bg: string; border: string }> = {
+  ACT:     { color: '#60a5fa', bg: 'rgba(96,165,250,0.10)',   border: 'rgba(96,165,250,0.20)'   },
+  AWP:     { color: '#a1d67c', bg: 'rgba(161,214,124,0.10)', border: 'rgba(161,214,124,0.20)'   },
+  AP:      { color: '#a1d67c', bg: 'rgba(161,214,124,0.10)', border: 'rgba(161,214,124,0.20)'   },
+  FW:      { color: '#2dd4bf', bg: 'rgba(45,212,191,0.10)',   border: 'rgba(45,212,191,0.20)'   },
+  SM:      { color: '#c084fc', bg: 'rgba(192,132,252,0.10)', border: 'rgba(192,132,252,0.20)'   },
+  WW:      { color: '#fb923c', bg: 'rgba(251,146,60,0.10)',   border: 'rgba(251,146,60,0.20)'   },
+  Baffles: { color: '#f472b6', bg: 'rgba(244,114,182,0.10)', border: 'rgba(244,114,182,0.20)'   },
+  RPG:     { color: '#818cf8', bg: 'rgba(129,140,248,0.10)', border: 'rgba(129,140,248,0.20)'   },
+  Other:   { color: '#6b7280', bg: 'rgba(107,114,128,0.10)', border: 'rgba(107,114,128,0.20)'   },
 }
 
 export function ScopeTypeBadge({ type, className }: ScopeTypeBadgeProps) {
+  const c = scopeConfig[type] ?? scopeConfig.Other
   return (
     <span
       className={cn(
-        'inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold border font-mono tracking-wide',
-        scopeColors[type] ?? scopeColors.Other,
+        'inline-flex items-center px-2 py-0.5 rounded-[4px] text-[11px] font-semibold font-mono tracking-wide',
         className
       )}
+      style={{
+        color: c.color,
+        background: c.bg,
+        border: `1px solid ${c.border}`,
+      }}
     >
       {type}
     </span>

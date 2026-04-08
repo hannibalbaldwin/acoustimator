@@ -4,127 +4,330 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   ACOUSTIMATOR DESIGN SYSTEM — Commercial Acoustics brand theme
+   Primary accent: #a1d67c (CA brand green)
+   Foundation: deep dark navy surfaces, translucent borders
+   Typography: Space Grotesk + JetBrains Mono
+   ───────────────────────────────────────────────────────────────────────────── */
+
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
+  /* ── Fonts ── */
+  --font-sans: var(--font-space-grotesk), "Space Grotesk", system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+
+  /* ── CA Brand Greens ── */
+  --color-ca-50:  #f2fbe8;
+  --color-ca-100: #ddf4be;
+  --color-ca-200: #c3ea93;
+  --color-ca-300: #a1d67c;   /* ← CA website primary */
+  --color-ca-400: #82c44f;
+  --color-ca-500: #6c992a;   /* ← CA dark accent */
+  --color-ca-600: #527a1e;
+  --color-ca-700: #3d5c16;
+  --color-ca-800: #283d0f;
+  --color-ca-900: #141f07;
+
+  /* ── Dark Surfaces ── */
+  --color-surface-app:   #080b10;   /* root — near-black navy */
+  --color-surface-panel: #0e1219;   /* sidebar, overlays */
+  --color-surface-card:  #131822;   /* cards, table */
+  --color-surface-input: #181f2e;   /* inputs, row hovers */
+  --color-surface-raised: #1e2638; /* modals, dropdowns */
+
+  /* ── Text ── */
+  --color-text-primary:   #d8e4f5;  /* cool near-white */
+  --color-text-secondary: #6b82a0;  /* muted labels */
+  --color-text-muted:     #3a4f6a;  /* placeholders, disabled */
+  --color-text-inverse:   #080b10;  /* text on green bg */
+
+  /* ── Borders ── */
+  --color-border-hairline: rgba(255, 255, 255, 0.04);
+  --color-border-subtle:   rgba(255, 255, 255, 0.07);
+  --color-border-default:  rgba(255, 255, 255, 0.11);
+  --color-border-strong:   rgba(255, 255, 255, 0.18);
+  --color-border-green:    rgba(161, 214, 124, 0.25);
+
+  /* ── Semantic ── */
+  --color-success:  #a1d67c;   /* CA green */
+  --color-warning:  #f59e0b;
+  --color-danger:   #f05252;
+  --color-info:     #60a5fa;
+
+  /* ── Scope type colors (dark-mode optimized) ── */
+  --color-scope-act:     #60a5fa;  /* blue-400 */
+  --color-scope-awp:     #a1d67c;  /* CA green */
+  --color-scope-fw:      #2dd4bf;  /* teal-400 */
+  --color-scope-sm:      #c084fc;  /* purple-400 */
+  --color-scope-ww:      #fb923c;  /* orange-400 */
+  --color-scope-baffles: #f472b6;  /* pink-400 */
+  --color-scope-rpg:     #818cf8;  /* indigo-400 */
+  --color-scope-other:   #6b7280;  /* gray-500 */
+
+  /* ── Chart palette ── */
+  --color-chart-1: #a1d67c;
+  --color-chart-2: #60a5fa;
+  --color-chart-3: #f59e0b;
+  --color-chart-4: #f472b6;
+  --color-chart-5: #c084fc;
+
+  /* ── Radius system ── */
+  --radius-xs:  3px;
+  --radius-sm:  5px;
+  --radius-md:  8px;
+  --radius-lg:  12px;
+  --radius-xl:  16px;
+  --radius-2xl: 24px;
+  --radius-pill: 9999px;
+
+  /* ── Shadows ── */
+  --shadow-card:  0 1px 3px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06);
+  --shadow-modal: 0 8px 40px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.08);
+  --shadow-green: 0 0 0 2px rgba(161,214,124,0.35);
+  --shadow-glow:  0 0 24px rgba(161,214,124,0.15);
+
+  /* ── Gradient shortcuts ── */
+  --gradient-ca: linear-gradient(135deg, #5a8a1e 0%, #a1d67c 100%);
+  --gradient-surface: linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0) 100%);
+
+  /* ── shadcn semantic token wiring ── */
+  --color-background:         var(--background);
+  --color-foreground:         var(--foreground);
+  --color-card:               var(--card);
+  --color-card-foreground:    var(--card-foreground);
+  --color-popover:            var(--popover);
   --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --color-primary:            var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary:          var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted:              var(--muted);
+  --color-muted-foreground:   var(--muted-foreground);
+  --color-accent:             var(--accent);
+  --color-accent-foreground:  var(--accent-foreground);
+  --color-destructive:        var(--destructive);
+  --color-border:             var(--border);
+  --color-input:              var(--input);
+  --color-ring:               var(--ring);
+  --color-sidebar:            var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary:    var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent:     var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border:     var(--sidebar-border);
+  --color-sidebar-ring:       var(--sidebar-ring);
+  --radius-sm:  calc(var(--radius) * 0.6);
+  --radius-md:  calc(var(--radius) * 0.8);
+  --radius-lg:  var(--radius);
+  --radius-xl:  calc(var(--radius) * 1.4);
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   DARK THEME — applied to :root (app is always dark)
+   ───────────────────────────────────────────────────────────────────────────── */
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --radius: 0.5rem;
+
+  /* shadcn semantic tokens — dark by default */
+  --background:             #080b10;
+  --foreground:             #d8e4f5;
+  --card:                   #131822;
+  --card-foreground:        #d8e4f5;
+  --popover:                #1e2638;
+  --popover-foreground:     #d8e4f5;
+  --primary:                #a1d67c;   /* CA green */
+  --primary-foreground:     #080b10;
+  --secondary:              #181f2e;
+  --secondary-foreground:   #d8e4f5;
+  --muted:                  #181f2e;
+  --muted-foreground:       #6b82a0;
+  --accent:                 rgba(161, 214, 124, 0.12);
+  --accent-foreground:      #a1d67c;
+  --destructive:            #f05252;
+  --border:                 rgba(255, 255, 255, 0.09);
+  --input:                  rgba(255, 255, 255, 0.08);
+  --ring:                   rgba(161, 214, 124, 0.5);
+
+  /* charts */
+  --chart-1: #a1d67c;
+  --chart-2: #60a5fa;
+  --chart-3: #f59e0b;
+  --chart-4: #f472b6;
+  --chart-5: #c084fc;
+
+  /* sidebar */
+  --sidebar:                  #0e1219;
+  --sidebar-foreground:       #d8e4f5;
+  --sidebar-primary:          #a1d67c;
+  --sidebar-primary-foreground: #080b10;
+  --sidebar-accent:           rgba(161, 214, 124, 0.10);
+  --sidebar-accent-foreground: #a1d67c;
+  --sidebar-border:           rgba(255, 255, 255, 0.07);
+  --sidebar-ring:             rgba(161, 214, 124, 0.5);
 }
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
-}
+/* ─────────────────────────────────────────────────────────────────────────────
+   BASE LAYER
+   ───────────────────────────────────────────────────────────────────────────── */
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    box-sizing: border-box;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
+
   html {
-    @apply font-sans;
+    @apply h-full;
+    color-scheme: dark;
+    font-feature-settings: "ss01" on, "cv05" on, "cv11" on;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply h-full bg-[#080b10] text-[#d8e4f5] font-sans;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* Typography hierarchy */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-sans font-semibold tracking-tight text-[#d8e4f5];
+    font-feature-settings: "ss01" on, "cv05" on;
+  }
+
+  h1 { @apply text-3xl; }
+  h2 { @apply text-2xl; }
+  h3 { @apply text-xl; }
+  h4 { @apply text-base; }
+
+  /* All monetary / numeric values get mono */
+  [data-numeric], .tabular-nums {
+    font-family: var(--font-jetbrains-mono), monospace;
+    font-feature-settings: "tnum" on;
+  }
+
+  /* Scrollbar — dark, minimal */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.12);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.20); }
+
+  /* Selection */
+  ::selection {
+    background: rgba(161, 214, 124, 0.25);
+    color: #d8e4f5;
+  }
+
+  /* Focus ring — CA green */
+  :focus-visible {
+    outline: 2px solid rgba(161, 214, 124, 0.6);
+    outline-offset: 2px;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   COMPONENT UTILITIES
+   ───────────────────────────────────────────────────────────────────────────── */
+
+@layer components {
+  /* Card — dark surface with subtle border */
+  .card-dark {
+    background: #131822;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 8px;
+  }
+
+  /* Panel — slightly deeper */
+  .panel-dark {
+    background: #0e1219;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 8px;
+  }
+
+  /* CA green button */
+  .btn-primary {
+    background: #a1d67c;
+    color: #080b10;
+    font-weight: 600;
+    border-radius: 6px;
+    transition: background 150ms, box-shadow 150ms, transform 80ms;
+  }
+  .btn-primary:hover {
+    background: #8dc63f;
+    box-shadow: 0 0 16px rgba(161, 214, 124, 0.3);
+  }
+  .btn-primary:active { transform: translateY(1px); }
+
+  /* Ghost button */
+  .btn-ghost {
+    color: #6b82a0;
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 6px;
+    transition: color 150ms, border-color 150ms, background 150ms;
+  }
+  .btn-ghost:hover {
+    color: #d8e4f5;
+    border-color: rgba(255,255,255,0.18);
+    background: rgba(255,255,255,0.04);
+  }
+
+  /* Table — dark rows */
+  .table-dark thead tr {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  }
+  .table-dark thead th {
+    color: #3a4f6a;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 8px 12px;
+  }
+  .table-dark tbody tr {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    transition: background 100ms;
+  }
+  .table-dark tbody tr:hover { background: rgba(255,255,255,0.025); }
+  .table-dark tbody td { padding: 9px 12px; }
+
+  /* CA green badge / pill */
+  .badge-green {
+    background: rgba(161, 214, 124, 0.12);
+    color: #a1d67c;
+    border: 1px solid rgba(161, 214, 124, 0.2);
+    border-radius: 9999px;
+  }
+
+  /* Stat value — always mono */
+  .stat-value {
+    font-family: var(--font-jetbrains-mono), monospace;
+    font-feature-settings: "tnum" on;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  /* Logo gradient text */
+  .brand-gradient {
+    background: linear-gradient(135deg, #6c992a 0%, #a1d67c 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Green glow effect for active/primary elements */
+  .glow-green {
+    box-shadow: 0 0 0 1px rgba(161,214,124,0.3), 0 0 20px rgba(161,214,124,0.12);
+  }
+
+  /* Section divider */
+  .divider-dark {
+    border-color: rgba(255,255,255,0.07);
   }
 }

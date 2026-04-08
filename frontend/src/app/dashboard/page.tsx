@@ -1,3 +1,5 @@
+'use client'
+
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { StatCard } from '@/components/dashboard/StatCard'
@@ -8,37 +10,49 @@ import { mockDashboardEstimates, mockTrendData } from '@/lib/mock-data'
 import { formatCurrency } from '@/lib/utils'
 import type { ScopeType } from '@/lib/types'
 
-const STATUS_STYLES: Record<string, string> = {
-  draft: 'text-zinc-500 bg-zinc-100',
-  reviewed: 'text-blue-700 bg-blue-100',
-  finalized: 'text-green-700 bg-green-100',
-  exported: 'text-purple-700 bg-purple-100',
+const STATUS_STYLES: Record<string, { color: string; bg: string; border: string }> = {
+  draft:     { color: '#6b82a0', bg: 'rgba(107,130,160,0.10)', border: 'rgba(107,130,160,0.18)' },
+  reviewed:  { color: '#60a5fa', bg: 'rgba(96,165,250,0.10)',  border: 'rgba(96,165,250,0.18)'  },
+  finalized: { color: '#a1d67c', bg: 'rgba(161,214,124,0.10)',border: 'rgba(161,214,124,0.18)' },
+  exported:  { color: '#c084fc', bg: 'rgba(192,132,252,0.10)',border: 'rgba(192,132,252,0.18)' },
 }
 
 export default function DashboardPage() {
   return (
     <div className="px-8 py-8 max-w-7xl">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+
+      {/* ── Header ── */}
+      <div className="flex items-start justify-between mb-7">
         <div>
-          <h1 className="text-2xl font-semibold text-zinc-900">Dashboard</h1>
-          <p className="text-sm text-zinc-500 mt-0.5">
-            {format(new Date('2026-04-07'), 'MMMM d, yyyy')} — Commercial Acoustics, Tampa FL
+          <h1
+            className="text-[22px] font-semibold tracking-tight leading-tight"
+            style={{ color: '#d8e4f5' }}
+          >
+            Dashboard
+          </h1>
+          <p className="text-[13px] mt-1" style={{ color: '#3a4f6a' }}>
+            {format(new Date('2026-04-08'), 'MMMM d, yyyy')} · Commercial Acoustics, Tampa FL
           </p>
         </div>
+
         <Link
           href="/estimates/new"
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 text-[13px] font-semibold rounded-[6px] transition-all duration-100 hover:scale-[1.01]"
+          style={{
+            background: 'linear-gradient(135deg, #5a8a1e 0%, #a1d67c 100%)',
+            color: '#080b10',
+            boxShadow: '0 0 20px rgba(161,214,124,0.2)',
+          }}
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path d="M12 5v14M5 12h14" strokeWidth="2.5" strokeLinecap="round" />
           </svg>
           New Estimate
         </Link>
       </div>
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      {/* ── Stat cards ── */}
+      <div className="grid grid-cols-4 gap-3.5 mb-6">
         <StatCard
           label="Total Projects"
           value="124"
@@ -47,101 +61,140 @@ export default function DashboardPage() {
         <StatCard
           label="Active Estimates"
           value="7"
-          delta={{ value: '3 awaiting review' }}
+          delta={{ value: '3 pending review', neutral: true }}
         />
         <StatCard
           label="Avg ACT Cost / SF"
           value="$4.05"
           delta={{ value: '+0.23 YoY', positive: true }}
+          accent
         />
         <StatCard
           label="Total SF Estimated"
           value="5.4M"
-          delta={{ value: '2026 YTD' }}
+          delta={{ value: '2026 YTD', neutral: true }}
         />
       </div>
 
-      {/* Trend chart */}
+      {/* ── Trend chart ── */}
       <div className="mb-6">
         <CostTrendChart data={mockTrendData} />
       </div>
 
-      {/* Recent estimates table */}
-      <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-zinc-200 bg-zinc-50">
-          <h2 className="text-sm font-semibold text-zinc-800">Recent Estimates</h2>
+      {/* ── Recent estimates table ── */}
+      <div
+        className="rounded-[8px] overflow-hidden"
+        style={{
+          background: '#131822',
+          border: '1px solid rgba(255,255,255,0.08)',
+        }}
+      >
+        {/* Table header */}
+        <div
+          className="flex items-center justify-between px-5 py-3.5"
+          style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}
+        >
+          <h2 className="text-[13px] font-semibold" style={{ color: '#d8e4f5' }}>
+            Recent Estimates
+          </h2>
           <Link
             href="/projects"
-            className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+            className="text-[12px] font-medium transition-colors"
+            style={{ color: '#a1d67c' }}
           >
             View all projects →
           </Link>
         </div>
 
-        <table className="w-full text-sm">
+        <table className="w-full text-[13px]">
           <thead>
-            <tr className="border-b border-zinc-200">
-              <th className="px-4 py-2.5 text-left text-xs font-semibold text-zinc-500 uppercase tracking-wide">
-                Project
-              </th>
-              <th className="px-4 py-2.5 text-left text-xs font-semibold text-zinc-500 uppercase tracking-wide">
-                Scopes
-              </th>
-              <th className="px-4 py-2.5 text-right text-xs font-semibold text-zinc-500 uppercase tracking-wide">
-                Total
-              </th>
-              <th className="px-4 py-2.5 text-left text-xs font-semibold text-zinc-500 uppercase tracking-wide">
-                Confidence
-              </th>
-              <th className="px-4 py-2.5 text-left text-xs font-semibold text-zinc-500 uppercase tracking-wide">
-                Status
-              </th>
-              <th className="px-4 py-2.5 text-left text-xs font-semibold text-zinc-500 uppercase tracking-wide">
-                Date
-              </th>
-              <th className="px-4 py-2.5" />
+            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              {['Project', 'Scopes', 'Total', 'Confidence', 'Status', 'Date', ''].map(
+                (col, i) => (
+                  <th
+                    key={i}
+                    className={`px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.09em] ${
+                      col === 'Total' ? 'text-right' : 'text-left'
+                    }`}
+                    style={{ color: '#3a4f6a' }}
+                  >
+                    {col}
+                  </th>
+                )
+              )}
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-100">
-            {mockDashboardEstimates.map((est) => (
-              <tr key={est.id} className="hover:bg-zinc-50 transition-colors group">
-                <td className="px-4 py-2.5">
-                  <div>
-                    <p className="text-sm font-medium text-zinc-800">{est.project_name}</p>
-                    <p className="text-xs text-zinc-400">{est.gc_name}</p>
-                  </div>
-                </td>
-                <td className="px-4 py-2.5">
-                  <div className="flex flex-wrap gap-1">
-                    {est.scopes.map((s) => (
-                      <ScopeTypeBadge key={s} type={s as ScopeType} />
-                    ))}
-                  </div>
-                </td>
-                <td className="px-4 py-2.5 text-right font-mono text-sm font-semibold text-zinc-900 tabular-nums">
-                  {formatCurrency(est.total_cost)}
-                </td>
-                <td className="px-4 py-2.5">
-                  <ConfidenceBadge level={est.confidence_level} />
-                </td>
-                <td className="px-4 py-2.5">
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded font-medium ${STATUS_STYLES[est.status] ?? ''}`}
+          <tbody>
+            {mockDashboardEstimates.map((est) => {
+              const st = STATUS_STYLES[est.status] ?? STATUS_STYLES.draft
+              return (
+                <tr
+                  key={est.id}
+                  className="group transition-colors"
+                  style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+                  onMouseEnter={(e) =>
+                    ((e.currentTarget as HTMLTableRowElement).style.background =
+                      'rgba(255,255,255,0.025)')
+                  }
+                  onMouseLeave={(e) =>
+                    ((e.currentTarget as HTMLTableRowElement).style.background = 'transparent')
+                  }
+                >
+                  <td className="px-4 py-2.5">
+                    <p className="font-medium" style={{ color: '#d8e4f5' }}>
+                      {est.project_name}
+                    </p>
+                    <p className="text-[11px] mt-0.5" style={{ color: '#3a4f6a' }}>
+                      {est.gc_name}
+                    </p>
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <div className="flex flex-wrap gap-1">
+                      {est.scopes.map((s) => (
+                        <ScopeTypeBadge key={s} type={s as ScopeType} />
+                      ))}
+                    </div>
+                  </td>
+                  <td className="px-4 py-2.5 text-right tabular-nums font-semibold"
+                    style={{
+                      fontFamily: 'var(--font-jetbrains-mono), monospace',
+                      color: '#d8e4f5',
+                    }}
                   >
-                    {est.status.charAt(0).toUpperCase() + est.status.slice(1)}
-                  </span>
-                </td>
-                <td className="px-4 py-2.5 text-xs text-zinc-400 font-mono">{est.created_at}</td>
-                <td className="px-4 py-2.5">
-                  <Link
-                    href={`/estimates/${est.id}`}
-                    className="text-xs text-blue-600 hover:text-blue-800 font-medium opacity-0 group-hover:opacity-100 transition-opacity"
+                    {formatCurrency(est.total_cost)}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <ConfidenceBadge level={est.confidence_level} />
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <span
+                      className="text-[11px] px-2 py-0.5 rounded-[4px] font-medium"
+                      style={{ color: st.color, background: st.bg, border: `1px solid ${st.border}` }}
+                    >
+                      {est.status.charAt(0).toUpperCase() + est.status.slice(1)}
+                    </span>
+                  </td>
+                  <td
+                    className="px-4 py-2.5 text-[11px] tabular-nums"
+                    style={{
+                      color: '#3a4f6a',
+                      fontFamily: 'var(--font-jetbrains-mono), monospace',
+                    }}
                   >
-                    Review →
-                  </Link>
-                </td>
-              </tr>
-            ))}
+                    {est.created_at}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <Link
+                      href={`/estimates/${est.id}`}
+                      className="text-[12px] font-medium opacity-0 group-hover:opacity-100 transition-opacity"
+                      style={{ color: '#a1d67c' }}
+                    >
+                      Review →
+                    </Link>
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
