@@ -167,7 +167,7 @@ export default function NewEstimatePage() {
     formData.append('project_name', projectName)
     if (gcName.trim()) formData.append('gc_name', gcName)
     if (address.trim()) formData.append('address', address)
-    scopeHints.forEach((h) => formData.append('scope_type_hints[]', h))
+    scopeHints.forEach((h) => formData.append('scope_type_hints', h))
 
     createEstimate(formData)
       .then((estimate) => {
