@@ -73,6 +73,7 @@ export interface ProjectResponse {
   gc_name: string | null
   address: string | null
   status: string | null
+  project_type?: string | null
   quote_date: string | null
   created_at: string
   scopes: ProjectScopeSummary[]

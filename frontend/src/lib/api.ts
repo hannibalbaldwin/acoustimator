@@ -231,6 +231,14 @@ export async function exportEstimate(id: string): Promise<void> {
   URL.revokeObjectURL(url)
 }
 
+export async function getProject(id: string): Promise<ProjectResponse> {
+  return apiFetch<ProjectResponse>(`/api/projects/${id}`)
+}
+
+export async function getProjectGcNames(): Promise<string[]> {
+  return apiFetch<string[]>('/api/projects/gc-names')
+}
+
 export async function listProjects(params?: {
   scope_type?: string
   gc_name?: string

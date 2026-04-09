@@ -1,17 +1,17 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import Link from 'next/link'
 import { formatCurrency, formatCurrencyFull, formatSF } from '@/lib/utils'
 import { ScopeTypeBadge } from '@/components/estimates/ScopeTypeBadge'
 import { FilterSelect } from '@/components/ui/FilterSelect'
-import { listProjects } from '@/lib/api'
+import { listProjects, getProjectGcNames } from '@/lib/api'
 import type { ProjectResponse, ScopeType } from '@/lib/types'
 import { useTheme } from '@/components/ThemeProvider'
 
-const ALL_GCS = ['All GCs', 'Skanska USA', 'Turner Construction', 'DPR Construction', 'Balfour Beatty', 'Hensel Phelps']
 const ALL_SCOPES = ['All Scopes', 'ACT', 'AWP', 'FW', 'SM', 'WW', 'Baffles', 'RPG']
-const ALL_YEARS = ['All Years', '2021', '2022', '2023', '2024']
+const ALL_YEARS = ['All Years', '2026', '2025', '2024', '2023', '2022', '2021']
+const PAGE_SIZE = 50
 
 export default function ProjectsPage() {
   const { theme } = useTheme()
@@ -21,11 +21,17 @@ export default function ProjectsPage() {
   const [scopeFilter, setScopeFilter] = useState('All Scopes')
   const [yearFilter, setYearFilter] = useState('All Years')
   const [search, setSearch] = useState('')
+  const [gcOptions, setGcOptions] = useState<string[]>(['All GCs'])
 
   const [projects, setProjects] = useState<ProjectResponse[]>([])
   const [totalCount, setTotalCount] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [offset, setOffset] = useState(0)
+  const hasMore = projects.length < totalCount
+
+  const sentinelRef = useRef<HTMLDivElement>(null)
 
   // Theme-aware colors
   const textPrimary = isLight ? '#0f1923' : '#d8e4f5'
@@ -35,12 +41,10 @@ export default function ProjectsPage() {
   const tableBg = isLight ? '#ffffff' : '#131822'
   const inputBg = isLight ? '#f7f9fc' : '#0e1219'
   const borderDefault = isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.12)'
-  const borderSubtle = isLight ? 'rgba(0,0,0,0.07)' : 'rgba(255,255,255,0.07)'
-  const borderFaint = isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)'
   const borderHairline = isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.04)'
-  const rowHoverBg = isLight ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.025)'
+  const borderFaint = isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)'
   const tableBorderOuter = isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)'
-  const tableBorderInner = isLight ? 'rgba(0,0,0,0.09)' : 'rgba(255,255,255,0.09)'
+  const rowHoverBg = isLight ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.025)'
   const clearFilterColor = isLight ? '#4a5e7a' : '#6b82a0'
 
   const inputStyle: React.CSSProperties = {
@@ -53,12 +57,21 @@ export default function ProjectsPage() {
     outline: 'none',
   }
 
+  // Load GC names once on mount
+  useEffect(() => {
+    getProjectGcNames()
+      .then((names) => setGcOptions(['All GCs', ...names]))
+      .catch(() => {}) // non-fatal
+  }, [])
+
+  // Reset + reload when filters change
   useEffect(() => {
     let cancelled = false
     setLoading(true)
     setError(null)
+    setOffset(0)
 
-    const params: Parameters<typeof listProjects>[0] = { limit: 50 }
+    const params: Parameters<typeof listProjects>[0] = { limit: PAGE_SIZE, offset: 0 }
     if (scopeFilter !== 'All Scopes') params.scope_type = scopeFilter
     if (gcFilter !== 'All GCs') params.gc_name = gcFilter
     if (yearFilter !== 'All Years') params.year = yearFilter
@@ -68,6 +81,7 @@ export default function ProjectsPage() {
         if (cancelled) return
         setProjects(res.items)
         setTotalCount(res.total)
+        setOffset(res.items.length)
         setLoading(false)
       })
       .catch((err: unknown) => {
@@ -79,11 +93,46 @@ export default function ProjectsPage() {
     return () => { cancelled = true }
   }, [gcFilter, scopeFilter, yearFilter])
 
-  // Client-side search filter
+  // Load more — called by infinite scroll sentinel
+  const loadMore = useCallback(() => {
+    if (loadingMore || !hasMore) return
+    setLoadingMore(true)
+
+    const params: Parameters<typeof listProjects>[0] = { limit: PAGE_SIZE, offset }
+    if (scopeFilter !== 'All Scopes') params.scope_type = scopeFilter
+    if (gcFilter !== 'All GCs') params.gc_name = gcFilter
+    if (yearFilter !== 'All Years') params.year = yearFilter
+
+    listProjects(params)
+      .then((res) => {
+        setProjects((prev) => [...prev, ...res.items])
+        setTotalCount(res.total)
+        setOffset((prev) => prev + res.items.length)
+        setLoadingMore(false)
+      })
+      .catch(() => setLoadingMore(false))
+  }, [loadingMore, hasMore, offset, scopeFilter, gcFilter, yearFilter])
+
+  // Infinite scroll via IntersectionObserver
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!sentinel) return
+    const observer = new IntersectionObserver(
+      (entries) => { if (entries[0].isIntersecting) loadMore() },
+      { rootMargin: '200px' }
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [loadMore])
+
+  // Client-side search filter (applied on top of server-side results)
   const filtered = useMemo(() => {
     if (!search.trim()) return projects
-    return projects.filter((p) =>
-      p.name.toLowerCase().includes(search.toLowerCase())
+    const q = search.toLowerCase()
+    return projects.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        (p.gc_name ?? '').toLowerCase().includes(q)
     )
   }, [projects, search])
 
@@ -165,33 +214,19 @@ export default function ProjectsPage() {
         </div>
 
         {/* Scope filter */}
-        <FilterSelect
-          value={scopeFilter}
-          onChange={setScopeFilter}
-          options={ALL_SCOPES}
-        />
+        <FilterSelect value={scopeFilter} onChange={setScopeFilter} options={ALL_SCOPES} />
 
-        {/* GC filter */}
-        <FilterSelect
-          value={gcFilter}
-          onChange={setGcFilter}
-          options={ALL_GCS}
-        />
+        {/* GC filter — dynamic from DB */}
+        <FilterSelect value={gcFilter} onChange={setGcFilter} options={gcOptions} />
 
         {/* Year filter */}
-        <FilterSelect
-          value={yearFilter}
-          onChange={setYearFilter}
-          options={ALL_YEARS}
-        />
+        <FilterSelect value={yearFilter} onChange={setYearFilter} options={ALL_YEARS} />
 
         {hasActiveFilter && (
           <button
             onClick={clearFilters}
             className="text-[12px] font-medium transition-colors"
             style={{ color: clearFilterColor }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = isLight ? '#4a8a10' : '#a1d67c')}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = clearFilterColor)}
           >
             Clear filters ×
           </button>
@@ -203,25 +238,18 @@ export default function ProjectsPage() {
         <span className="text-[12px]" style={{ color: textMuted }}>
           Showing{' '}
           <span className="font-semibold" style={{ color: textSecondary }}>
-            {filtered.length}
-          </span>{' '}
+            {search ? filtered.length : projects.length}
+          </span>
+          {search ? ` of ${projects.length}` : ''}{' '}
           of {totalCount} projects
         </span>
         {avgCostPerSF != null && (
-          <span
-            className="text-[12px] tabular-nums"
-            style={{ color: textMuted, fontFamily: 'var(--font-jetbrains-mono), monospace' }}
-          >
+          <span className="text-[12px] tabular-nums" style={{ color: textMuted, fontFamily: 'var(--font-jetbrains-mono), monospace' }}>
             Avg $/SF:{' '}
-            <span style={{ color: textSecondary, fontWeight: 600 }}>
-              {formatCurrencyFull(avgCostPerSF)}
-            </span>
+            <span style={{ color: textSecondary, fontWeight: 600 }}>{formatCurrencyFull(avgCostPerSF)}</span>
           </span>
         )}
-        <span
-          className="text-[12px] tabular-nums"
-          style={{ color: textMuted, fontFamily: 'var(--font-jetbrains-mono), monospace' }}
-        >
+        <span className="text-[12px] tabular-nums" style={{ color: textMuted, fontFamily: 'var(--font-jetbrains-mono), monospace' }}>
           Total:{' '}
           <span style={{ color: textSecondary, fontWeight: 600 }}>{formatCurrency(totalValue)}</span>
         </span>
@@ -234,10 +262,7 @@ export default function ProjectsPage() {
       {/* Table */}
       <div
         className={`rounded-[8px] overflow-x-auto ${loading ? 'opacity-50 pointer-events-none' : ''}`}
-        style={{
-          background: tableBg,
-          border: `1px solid ${tableBorderOuter}`,
-        }}
+        style={{ background: tableBg, border: `1px solid ${tableBorderOuter}` }}
       >
         <table className="w-full text-[13px]">
           <thead>
@@ -245,6 +270,7 @@ export default function ProjectsPage() {
               {[
                 { label: 'Project / Folder', align: 'left' },
                 { label: 'GC', align: 'left' },
+                { label: 'Type', align: 'left' },
                 { label: 'Scopes', align: 'left' },
                 { label: 'Total SF', align: 'right' },
                 { label: 'Total Cost', align: 'right' },
@@ -254,9 +280,7 @@ export default function ProjectsPage() {
               ].map((col, i) => (
                 <th
                   key={i}
-                  className={`px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.09em] ${
-                    col.align === 'right' ? 'text-right' : 'text-left'
-                  }`}
+                  className={`px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.09em] ${col.align === 'right' ? 'text-right' : 'text-left'}`}
                   style={{ color: textMuted }}
                 >
                   {col.label}
@@ -278,25 +302,29 @@ export default function ProjectsPage() {
                   key={project.id}
                   className="group transition-colors"
                   style={{ borderBottom: `1px solid ${borderHairline}` }}
-                  onMouseEnter={(e) =>
-                    ((e.currentTarget as HTMLTableRowElement).style.background = rowHoverBg)
-                  }
-                  onMouseLeave={(e) =>
-                    ((e.currentTarget as HTMLTableRowElement).style.background = 'transparent')
-                  }
+                  onMouseEnter={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = rowHoverBg)}
+                  onMouseLeave={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = 'transparent')}
                 >
                   <td className="px-4 py-2.5">
-                    <p className="font-medium" style={{ color: textPrimary }}>
-                      {project.name}
-                    </p>
+                    <p className="font-medium" style={{ color: textPrimary }}>{project.name}</p>
                     {project.address && (
-                      <p className="text-[11px] mt-0.5" style={{ color: textMuted }}>
-                        {project.address}
-                      </p>
+                      <p className="text-[11px] mt-0.5" style={{ color: textMuted }}>{project.address}</p>
                     )}
                   </td>
-                  <td className="px-4 py-2.5" style={{ color: textSecondary }}>
+                  <td className="px-4 py-2.5" style={{ color: (project.gc_name ? textSecondary : textMuted), fontSize: '12px' }}>
                     {project.gc_name ?? '—'}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    {project.project_type ? (
+                      <span
+                        className="text-[10px] px-2 py-0.5 rounded-[4px] font-medium uppercase tracking-wide"
+                        style={{ color: textSecondary, background: isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.06)', border: `1px solid ${isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)'}` }}
+                      >
+                        {project.project_type.replace('_', ' ')}
+                      </span>
+                    ) : (
+                      <span style={{ color: textMuted, fontSize: '12px' }}>—</span>
+                    )}
                   </td>
                   <td className="px-4 py-2.5">
                     <div className="flex flex-wrap gap-1">
@@ -305,43 +333,16 @@ export default function ProjectsPage() {
                       ))}
                     </div>
                   </td>
-                  <td
-                    className="px-4 py-2.5 text-right tabular-nums"
-                    style={{
-                      fontFamily: 'var(--font-jetbrains-mono), monospace',
-                      fontSize: '12px',
-                      color: textSecondary,
-                    }}
-                  >
+                  <td className="px-4 py-2.5 text-right tabular-nums" style={{ fontFamily: 'var(--font-jetbrains-mono), monospace', fontSize: '12px', color: textSecondary }}>
                     {totalSF > 0 ? formatSF(totalSF) : '—'}
                   </td>
-                  <td
-                    className="px-4 py-2.5 text-right tabular-nums font-semibold"
-                    style={{
-                      fontFamily: 'var(--font-jetbrains-mono), monospace',
-                      color: textPrimary,
-                    }}
-                  >
+                  <td className="px-4 py-2.5 text-right tabular-nums font-semibold" style={{ fontFamily: 'var(--font-jetbrains-mono), monospace', color: textPrimary }}>
                     {formatCurrency(project.total_cost)}
                   </td>
-                  <td
-                    className="px-4 py-2.5 text-right tabular-nums"
-                    style={{
-                      fontFamily: 'var(--font-jetbrains-mono), monospace',
-                      fontSize: '12px',
-                      color: textSecondary,
-                    }}
-                  >
+                  <td className="px-4 py-2.5 text-right tabular-nums" style={{ fontFamily: 'var(--font-jetbrains-mono), monospace', fontSize: '12px', color: textSecondary }}>
                     {avgCPS != null ? formatCurrencyFull(avgCPS) : '—'}
                   </td>
-                  <td
-                    className="px-4 py-2.5 tabular-nums"
-                    style={{
-                      fontFamily: 'var(--font-jetbrains-mono), monospace',
-                      fontSize: '11px',
-                      color: textMuted,
-                    }}
-                  >
+                  <td className="px-4 py-2.5 tabular-nums" style={{ fontFamily: 'var(--font-jetbrains-mono), monospace', fontSize: '11px', color: textMuted }}>
                     {project.quote_date ?? '—'}
                   </td>
                   <td className="px-4 py-2.5">
@@ -365,19 +366,29 @@ export default function ProjectsPage() {
               No projects match the current filters
             </p>
             {hasActiveFilter && (
-              <button
-                onClick={clearFilters}
-                className="mt-2 text-[12px] font-medium transition-colors"
-                style={{ color: clearFilterColor }}
-                onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = isLight ? '#4a8a10' : '#a1d67c')}
-                onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = clearFilterColor)}
-              >
+              <button onClick={clearFilters} className="mt-2 text-[12px] font-medium" style={{ color: clearFilterColor }}>
                 Clear all filters
               </button>
             )}
           </div>
         )}
       </div>
+
+      {/* Infinite scroll sentinel + loading indicator */}
+      <div ref={sentinelRef} className="h-1" />
+      {loadingMore && (
+        <div className="flex justify-center py-6">
+          <div
+            className="w-5 h-5 rounded-full border-2 animate-spin"
+            style={{ borderColor: isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)', borderTopColor: '#a1d67c' }}
+          />
+        </div>
+      )}
+      {!loading && !loadingMore && hasMore && !search && (
+        <p className="text-center text-[11px] mt-3" style={{ color: textMuted }}>
+          Scroll to load more · {projects.length} of {totalCount} shown
+        </p>
+      )}
     </div>
   )
 }

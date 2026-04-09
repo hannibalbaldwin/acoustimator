@@ -69,6 +69,20 @@ async def list_projects(
 
 
 # ---------------------------------------------------------------------------
+# GET /api/projects/gc-names  — distinct non-null GC names for filter dropdown
+# ---------------------------------------------------------------------------
+
+
+@router.get("/gc-names", response_model=list[str])
+async def list_gc_names(db: AsyncSession = Depends(get_db)) -> list[str]:
+    """Return sorted list of distinct non-null GC names for the filter dropdown."""
+    result = await db.execute(
+        select(Project.gc_name).where(Project.gc_name.isnot(None)).distinct().order_by(Project.gc_name)
+    )
+    return [row[0] for row in result.fetchall()]
+
+
+# ---------------------------------------------------------------------------
 # GET /api/projects/{id}
 # ---------------------------------------------------------------------------
 
