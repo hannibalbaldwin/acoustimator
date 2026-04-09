@@ -58,10 +58,7 @@ async def list_projects(
 
     # Fetch page
     page_query = (
-        base_query.order_by(Project.created_at.desc())
-        .offset(offset)
-        .limit(limit)
-        .options(selectinload(Project.scopes))
+        base_query.order_by(Project.created_at.desc()).offset(offset).limit(limit).options(selectinload(Project.scopes))
     )
     result = await db.execute(page_query)
     projects = result.scalars().all()

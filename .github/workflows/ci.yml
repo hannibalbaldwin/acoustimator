@@ -58,7 +58,7 @@ jobs:
         with:
           version: 10
       - name: Install frontend deps
-        run: pnpm install --prefix frontend
+        run: cd frontend && pnpm install
       - name: TypeScript type check
         run: cd frontend && pnpm exec tsc --noEmit
 
@@ -75,9 +75,9 @@ jobs:
         with:
           version: 10
       - name: Install frontend deps
-        run: pnpm install --prefix frontend
+        run: cd frontend && pnpm install
       - name: Build Next.js
         env:
           NEXT_PUBLIC_API_URL: http://localhost:8000
           NEXT_PUBLIC_API_KEY: ""
-        run: pnpm build --prefix frontend
+        run: cd frontend && pnpm build

@@ -120,11 +120,7 @@ async def backfill() -> None:
             chosen = min(dates)
 
             if project.quote_date is None or project.quote_date != chosen:
-                await session.execute(
-                    update(Project)
-                    .where(Project.id == project.id)
-                    .values(quote_date=chosen)
-                )
+                await session.execute(update(Project).where(Project.id == project.id).values(quote_date=chosen))
                 updated += 1
 
         await session.commit()
