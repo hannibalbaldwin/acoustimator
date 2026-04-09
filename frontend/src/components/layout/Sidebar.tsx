@@ -120,12 +120,14 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
               className="w-7 h-7 rounded-[6px] flex items-center justify-center flex-shrink-0"
               style={{ background: 'linear-gradient(135deg, #5a8a1e 0%, #a1d67c 100%)' }}
             >
-              <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
+              <svg className="w-4 h-4" viewBox="0 0 20 20" fill="none">
                 <path
-                  d="M1 8h1.5M13.5 8H15M4 5v6M12 5v6M6.5 3v10M9.5 3v10"
+                  d="M2 10 Q4 4 6 10 Q8 16 10 10 Q12 4 14 10 Q16 16 18 10"
                   stroke="white"
-                  strokeWidth="1.6"
+                  strokeWidth="2"
                   strokeLinecap="round"
+                  strokeLinejoin="round"
+                  fill="none"
                 />
               </svg>
             </div>

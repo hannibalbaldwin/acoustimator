@@ -2,6 +2,7 @@
 
 import { cn } from '@/lib/utils'
 import { useTheme } from '@/components/ThemeProvider'
+import { WaveformLoader } from '@/components/ui/WaveformLoader'
 
 interface StatCardProps {
   label: string
@@ -12,10 +13,11 @@ interface StatCardProps {
     neutral?: boolean
   }
   accent?: boolean
+  loading?: boolean
   className?: string
 }
 
-export function StatCard({ label, value, delta, accent, className }: StatCardProps) {
+export function StatCard({ label, value, delta, accent, loading, className }: StatCardProps) {
   const { theme } = useTheme()
   const isLight = theme === 'light'
 
@@ -49,19 +51,23 @@ export function StatCard({ label, value, delta, accent, className }: StatCardPro
       </p>
 
       <div className="flex items-end gap-2">
-        <p
-          className="text-[28px] leading-none font-[--font-jetbrains-mono] tabular-nums"
-          style={{
-            fontFamily: 'var(--font-jetbrains-mono), monospace',
-            fontWeight: 600,
-            color: accent ? '#a1d67c' : isLight ? '#1a2335' : '#d8e4f5',
-            letterSpacing: '-0.03em',
-          }}
-        >
-          {value}
-        </p>
+        {loading ? (
+          <WaveformLoader variant="inline" className="mt-1" />
+        ) : (
+          <p
+            className="text-[28px] leading-none font-[--font-jetbrains-mono] tabular-nums"
+            style={{
+              fontFamily: 'var(--font-jetbrains-mono), monospace',
+              fontWeight: 600,
+              color: accent ? '#a1d67c' : isLight ? '#1a2335' : '#d8e4f5',
+              letterSpacing: '-0.03em',
+            }}
+          >
+            {value}
+          </p>
+        )}
 
-        {delta && (
+        {!loading && delta && (
           <span
             className="text-[11px] font-medium rounded-[4px] px-1.5 py-0.5 mb-0.5 font-mono"
             style={

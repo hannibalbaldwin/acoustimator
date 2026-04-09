@@ -370,3 +370,15 @@ html.light body {
     border-color: rgba(255,255,255,0.07);
   }
 }
+
+/* ── Waveform loader animations ── */
+@keyframes waveTravel {
+  0%   { stroke-dashoffset: 80; }
+  100% { stroke-dashoffset: -300; }
+}
+@keyframes waveTravelSm {
+  0%   { stroke-dashoffset: 25; }
+  100% { stroke-dashoffset: -80; }
+}
+.wave-anim    { animation: waveTravel    2s linear infinite; }
+.wave-anim-sm { animation: waveTravelSm 1.6s linear infinite; }
