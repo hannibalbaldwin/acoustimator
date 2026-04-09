@@ -1,18 +1,28 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import { usePathname } from 'next/navigation'
 import { Sidebar } from './Sidebar'
 import { MobileHeader } from './MobileHeader'
+
+// Routes that render without the sidebar shell (e.g. auth pages)
+const NO_SIDEBAR_PATHS = ['/login']
 
 interface SidebarControllerProps {
   children: React.ReactNode
 }
 
 export function SidebarController({ children }: SidebarControllerProps) {
+  const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const handleToggle = useCallback(() => setSidebarOpen((v) => !v), [])
   const handleClose = useCallback(() => setSidebarOpen(false), [])
+
+  // Auth / standalone pages: render children directly without sidebar
+  if (NO_SIDEBAR_PATHS.includes(pathname)) {
+    return <>{children}</>
+  }
 
   return (
     <div className="flex h-full">

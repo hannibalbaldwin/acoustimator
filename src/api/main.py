@@ -10,6 +10,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.middleware import ApiKeyMiddleware
+from src.api.routes import admin as admin_router
+from src.api.routes import auth_verify as auth_verify_router
 from src.api.routes import estimates as estimates_router
 from src.api.routes import products as products_router
 from src.api.routes import projects as projects_router
@@ -53,6 +55,8 @@ app.add_middleware(ApiKeyMiddleware)
 # Routers
 # ---------------------------------------------------------------------------
 
+app.include_router(admin_router.router)
+app.include_router(auth_verify_router.router)
 app.include_router(estimates_router.router)
 app.include_router(products_router.router)
 app.include_router(projects_router.router)

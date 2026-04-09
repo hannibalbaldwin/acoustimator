@@ -26,6 +26,8 @@ dependencies = [
     "reportlab>=4.0.0",
     "python-multipart>=0.0.9",
     "httpx>=0.27.0",
+    "fastapi-nextauth-jwt>=0.1.0",
+    "bcrypt>=4.0.0",
 ]
 
 [project.optional-dependencies]
@@ -45,7 +47,7 @@ line-length = 120
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 # E501 suppressed in scripts that contain long SQL/format strings where wrapping hurts readability
-per-file-ignores = {"scripts/*.py" = ["E501"], "src/extraction/excel_parser.py" = ["E501"], "src/api/routes/*.py" = ["B008"]}
+per-file-ignores = {"scripts/*.py" = ["E501"], "src/extraction/excel_parser.py" = ["E501"], "src/api/routes/*.py" = ["B008"], "src/api/auth.py" = ["B008"]}
 
 [tool.ruff.lint.isort]
 known-first-party = ["src"]
