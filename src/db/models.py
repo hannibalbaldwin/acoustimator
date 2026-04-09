@@ -335,6 +335,10 @@ class Estimate(Base):
         TIMESTAMPTZ, server_default=text("CURRENT_TIMESTAMP"), onupdate=text("CURRENT_TIMESTAMP")
     )
 
+    actual_total_cost: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    actual_cost_date: Mapped[date | None] = mapped_column(Date)
+    accuracy_note: Mapped[str | None] = mapped_column(Text)
+
     # Relationships
     estimate_scopes: Mapped[list["EstimateScope"]] = relationship(back_populates="estimate", cascade="all, delete")
     quotes: Mapped[list["Quote"]] = relationship(back_populates="estimate", cascade="all, delete")

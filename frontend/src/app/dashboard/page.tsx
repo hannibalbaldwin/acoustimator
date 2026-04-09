@@ -8,10 +8,86 @@ import { CostTrendChart } from '@/components/dashboard/CostTrendChart'
 import { ConfidenceBadge } from '@/components/estimates/ConfidenceBadge'
 import { ScopeTypeBadge } from '@/components/estimates/ScopeTypeBadge'
 import { EstimateBoard } from '@/components/estimates/EstimateBoard'
-import { listEstimates, getDashboardStats, type EstimateListItem, type DashboardStats } from '@/lib/api'
+import { listEstimates, getDashboardStats, getAccuracyStats, getVendorPriceSummary, getModelStatus, type EstimateListItem, type DashboardStats, type AccuracyStats, type ModelStatus } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
-import type { ScopeType } from '@/lib/types'
+import type { ScopeType, VendorPriceSummary } from '@/lib/types'
 import { useTheme } from '@/components/ThemeProvider'
+
+// ---------------------------------------------------------------------------
+// ModelStatusRow — shown inside Model Accuracy card
+// ---------------------------------------------------------------------------
+
+function formatRetrainDate(iso: string | null): string {
+  if (!iso) return 'Never'
+  try {
+    return format(new Date(iso), 'MMM d, yyyy')
+  } catch {
+    return iso
+  }
+}
+
+function ModelStatusRow({
+  modelStatus,
+  isLight,
+}: {
+  modelStatus: ModelStatus | null
+  isLight: boolean
+}) {
+  if (!modelStatus) return null
+
+  // Pick the main cost-model MAPEs to surface (ACT + AWP are most relevant)
+  const costModels = modelStatus.models.filter(
+    (m) => m.model_family === 'cost' && m.mape != null && ['ACT', 'AWP'].includes(m.scope_type)
+  )
+
+  const lastTrained = formatRetrainDate(modelStatus.last_retrain)
+
+  return (
+    <div
+      className="mt-4 pt-4 flex flex-wrap items-center gap-x-4 gap-y-2"
+      style={{ borderTop: `1px solid ${isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)'}` }}
+    >
+      <span className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}>
+        Model Status
+      </span>
+
+      <span className="text-[12px]" style={{ color: isLight ? '#5a7a9a' : '#4a6888' }}>
+        Last trained:&nbsp;
+        <span style={{ color: isLight ? '#1a2335' : '#d8e4f5', fontWeight: 600 }}>{lastTrained}</span>
+      </span>
+
+      {costModels.map((m) => (
+        <span
+          key={m.scope_type}
+          className="text-[12px]"
+          style={{ color: isLight ? '#5a7a9a' : '#4a6888', fontFamily: 'var(--font-jetbrains-mono), monospace' }}
+        >
+          <span style={{ color: isLight ? '#3d7010' : '#a1d67c', fontWeight: 600 }}>{m.scope_type}</span>
+          {' '}{m.mape?.toFixed(1)}% MAPE
+        </span>
+      ))}
+
+      {modelStatus.needs_retrain && (
+        <span
+          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[4px] text-[11px] font-semibold"
+          style={{
+            background: 'rgba(245,158,11,0.12)',
+            border: '1px solid rgba(245,158,11,0.30)',
+            color: '#f59e0b',
+          }}
+        >
+          <span
+            className="inline-block w-1.5 h-1.5 rounded-full"
+            style={{ background: '#f59e0b' }}
+          />
+          Retrain recommended
+        </span>
+      )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 
 const STATUS_STYLES: Record<string, { color: string; bg: string; border: string }> = {
   draft:     { color: '#6b82a0', bg: 'rgba(107,130,160,0.10)', border: 'rgba(107,130,160,0.18)' },
@@ -25,6 +101,9 @@ export default function DashboardPage() {
   const isLight = theme === 'light'
   const [estimates, setEstimates] = useState<EstimateListItem[]>([])
   const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [accuracy, setAccuracy] = useState<AccuracyStats | null>(null)
+  const [vendorPrices, setVendorPrices] = useState<VendorPriceSummary[] | null>(null)
+  const [modelStatus, setModelStatus] = useState<ModelStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [view, setView] = useState<'table' | 'board'>('table')
@@ -34,11 +113,17 @@ export default function DashboardPage() {
     Promise.all([
       listEstimates({ limit: 20 }),
       getDashboardStats(),
+      getAccuracyStats(),
+      getVendorPriceSummary().catch(() => null),
+      getModelStatus().catch(() => null),
     ])
-      .then(([estimatesRes, dashStats]) => {
+      .then(([estimatesRes, dashStats, accuracyStats, vendorData, modelStatusData]) => {
         if (cancelled) return
         setEstimates(estimatesRes.items)
         setStats(dashStats)
+        setAccuracy(accuracyStats)
+        setVendorPrices(vendorData)
+        setModelStatus(modelStatusData)
         setLoading(false)
       })
       .catch((err: unknown) => {
@@ -108,6 +193,262 @@ export default function DashboardPage() {
       <div className="mb-6">
         <CostTrendChart />
       </div>
+
+      {/* ── Model Accuracy card ── */}
+      <div
+        className="rounded-[8px] mb-6"
+        style={{
+          background: isLight ? '#ffffff' : '#131822',
+          border: `1px solid ${isLight ? 'rgba(0,0,0,0.09)' : 'rgba(255,255,255,0.08)'}`,
+        }}
+      >
+        <div
+          className="flex items-center justify-between px-5 py-3.5"
+          style={{ borderBottom: `1px solid ${isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.07)'}` }}
+        >
+          <h2 className="text-[13px] font-semibold" style={{ color: isLight ? '#1a2335' : '#d8e4f5' }}>
+            Model Accuracy
+          </h2>
+        </div>
+
+        {loading ? (
+          <div className="px-5 py-6 animate-pulse">
+            <div className="h-10 w-32 rounded mb-2" style={{ background: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.05)' }} />
+            <div className="h-3 w-48 rounded" style={{ background: isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.03)' }} />
+          </div>
+        ) : accuracy == null || accuracy.total_with_actuals === 0 ? (
+          <div className="px-5 py-5">
+            <p className="text-[13px] mb-4" style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}>
+              No actuals recorded yet — mark a Finalized estimate as complete to start tracking accuracy.
+            </p>
+            <ModelStatusRow modelStatus={modelStatus} isLight={isLight} />
+          </div>
+        ) : (
+          <div className="px-5 py-5">
+            <div className="flex flex-wrap items-end gap-8 mb-5">
+              <div>
+                <p
+                  className="text-[36px] font-bold tabular-nums leading-none"
+                  style={{
+                    fontFamily: 'var(--font-jetbrains-mono), monospace',
+                    color: isLight ? '#3d7010' : '#a1d67c',
+                    letterSpacing: '-0.03em',
+                  }}
+                >
+                  {accuracy.mean_absolute_pct_error?.toFixed(1)}%
+                </p>
+                <p className="text-[12px] mt-1 font-medium" style={{ color: isLight ? '#7890aa' : '#3a4f6a', fontFamily: 'Space Grotesk, sans-serif' }}>
+                  avg error (MAPE)
+                </p>
+              </div>
+              <div>
+                <p
+                  className="text-[20px] font-bold tabular-nums leading-none"
+                  style={{
+                    fontFamily: 'var(--font-jetbrains-mono), monospace',
+                    color: accuracy.mean_bias_pct != null && accuracy.mean_bias_pct < 0
+                      ? '#f59e0b'
+                      : isLight ? '#3d7010' : '#a1d67c',
+                  }}
+                >
+                  {accuracy.mean_bias_pct != null
+                    ? (accuracy.mean_bias_pct > 0 ? '+' : '') + accuracy.mean_bias_pct.toFixed(1) + '%'
+                    : '—'}
+                </p>
+                <p className="text-[12px] mt-1 font-medium" style={{ color: isLight ? '#7890aa' : '#3a4f6a', fontFamily: 'Space Grotesk, sans-serif' }}>
+                  mean bias
+                </p>
+              </div>
+              <p className="text-[12px] pb-1" style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}>
+                Based on{' '}
+                <span style={{ color: isLight ? '#1a2335' : '#d8e4f5', fontWeight: 600 }}>
+                  {accuracy.total_with_actuals}
+                </span>{' '}
+                completed {accuracy.total_with_actuals === 1 ? 'project' : 'projects'}
+              </p>
+            </div>
+
+            {Object.keys(accuracy.by_scope_type).length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(accuracy.by_scope_type).map(([scopeType, data]) => (
+                  <div
+                    key={scopeType}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-[6px]"
+                    style={{
+                      background: isLight ? '#f5f7fa' : 'rgba(255,255,255,0.04)',
+                      border: `1px solid ${isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.07)'}`,
+                    }}
+                  >
+                    <span
+                      className="text-[11px] font-semibold"
+                      style={{ fontFamily: 'var(--font-jetbrains-mono), monospace', color: isLight ? '#3d7010' : '#a1d67c' }}
+                    >
+                      {scopeType}
+                    </span>
+                    <span className="text-[11px]" style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}>
+                      {data.mape.toFixed(1)}% MAPE
+                    </span>
+                    <span className="text-[10px]" style={{ color: isLight ? '#b0c4d8' : '#2a3a4e' }}>
+                      n={data.n}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Model Status row */}
+            <ModelStatusRow modelStatus={modelStatus} isLight={isLight} />
+          </div>
+        )}
+      </div>
+
+      {/* ── Material Price Alerts card ── */}
+      {(() => {
+        const activeAlerts = (vendorPrices ?? []).filter((v) => v.alert)
+        const hasAlerts = activeAlerts.length > 0
+        const displayRows = (vendorPrices ?? []).slice(0, 5)
+
+        function pctColor(pct: number | null): string {
+          if (pct == null) return isLight ? '#7890aa' : '#3a4f6a'
+          if (pct <= -5) return isLight ? '#3d7010' : '#a1d67c'
+          if (Math.abs(pct) <= 15) return '#f59e0b'
+          return '#ef4444'
+        }
+
+        return (
+          <div
+            className="rounded-[8px] mb-6"
+            style={{
+              background: isLight ? '#ffffff' : '#131822',
+              border: `1px solid ${isLight ? 'rgba(0,0,0,0.09)' : 'rgba(255,255,255,0.08)'}`,
+            }}
+          >
+            {/* Card header */}
+            <div
+              className="flex items-center justify-between px-5 py-3.5"
+              style={{ borderBottom: `1px solid ${isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.07)'}` }}
+            >
+              <div className="flex items-center gap-2">
+                <h2 className="text-[13px] font-semibold" style={{ color: isLight ? '#1a2335' : '#d8e4f5' }}>
+                  Material Price Alerts
+                </h2>
+                {hasAlerts && (
+                  <span
+                    className="inline-block w-2 h-2 rounded-full"
+                    style={{ background: '#f59e0b', boxShadow: '0 0 6px rgba(245,158,11,0.6)' }}
+                  />
+                )}
+              </div>
+              <span
+                className="text-[11px] font-medium"
+                style={{ color: isLight ? '#7890aa' : '#3a4f6a', fontFamily: 'Space Grotesk, sans-serif' }}
+              >
+                Top vendors by quote volume
+              </span>
+            </div>
+
+            {loading ? (
+              <div className="px-5 py-6 animate-pulse">
+                <div className="h-3 w-64 rounded mb-2" style={{ background: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.05)' }} />
+                <div className="h-3 w-48 rounded" style={{ background: isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.03)' }} />
+              </div>
+            ) : vendorPrices === null || vendorPrices.length === 0 ? (
+              <div className="px-5 py-6">
+                <p className="text-[13px]" style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}>
+                  No vendor quote history available
+                </p>
+              </div>
+            ) : (
+              <div className="px-5 py-4">
+                {/* Alert callout box */}
+                {hasAlerts && (
+                  <div
+                    className="rounded-[6px] px-4 py-3 mb-4"
+                    style={{
+                      background: isLight ? 'rgba(245,158,11,0.08)' : 'rgba(245,158,11,0.12)',
+                      border: `1px solid ${isLight ? 'rgba(245,158,11,0.25)' : 'rgba(245,158,11,0.22)'}`,
+                    }}
+                  >
+                    {activeAlerts.map((v) => (
+                      <p
+                        key={v.canonical_name}
+                        className="text-[12px] font-medium leading-snug"
+                        style={{ color: '#f59e0b', fontFamily: 'Space Grotesk, sans-serif' }}
+                      >
+                        ⚠ {v.vendor_name}:{' '}
+                        {v.pct_change != null && v.pct_change > 0 ? '+' : ''}
+                        {v.pct_change?.toFixed(1)}% since mid-2025
+                        {v.alert_message ? ` — ${v.alert_message}` : ''}
+                      </p>
+                    ))}
+                  </div>
+                )}
+
+                {/* Vendor table */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-[12px]">
+                    <thead>
+                      <tr style={{ borderBottom: `1px solid ${isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)'}` }}>
+                        {['Vendor', 'Quotes', 'Avg Total', 'Change'].map((col, i) => (
+                          <th
+                            key={i}
+                            className={`pb-2 text-[10px] font-semibold uppercase tracking-[0.09em] ${
+                              col === 'Avg Total' || col === 'Change' ? 'text-right' : 'text-left'
+                            }`}
+                            style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}
+                          >
+                            {col}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {displayRows.map((v) => (
+                        <tr
+                          key={v.canonical_name}
+                          style={{ borderBottom: `1px solid ${isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.04)'}` }}
+                        >
+                          <td className="py-2 pr-4" style={{ color: isLight ? '#1a2335' : '#d8e4f5', fontWeight: 500 }}>
+                            {v.vendor_name}
+                          </td>
+                          <td
+                            className="py-2 pr-4 tabular-nums"
+                            style={{
+                              color: isLight ? '#7890aa' : '#3a4f6a',
+                              fontFamily: 'var(--font-jetbrains-mono), monospace',
+                            }}
+                          >
+                            {v.quote_count}
+                          </td>
+                          <td
+                            className="py-2 pr-4 text-right tabular-nums"
+                            style={{
+                              color: isLight ? '#1a2335' : '#d8e4f5',
+                              fontFamily: 'var(--font-jetbrains-mono), monospace',
+                            }}
+                          >
+                            {v.avg_total != null ? formatCurrency(v.avg_total) : '—'}
+                          </td>
+                          <td className="py-2 text-right tabular-nums font-semibold"
+                            style={{
+                              color: pctColor(v.pct_change),
+                              fontFamily: 'var(--font-jetbrains-mono), monospace',
+                            }}
+                          >
+                            {v.pct_change == null
+                              ? '—'
+                              : `${v.pct_change > 0 ? '+' : ''}${v.pct_change.toFixed(1)}%`}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {/* ── Recent estimates table ── */}
       <div

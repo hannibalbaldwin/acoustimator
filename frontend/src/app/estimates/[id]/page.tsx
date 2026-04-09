@@ -6,7 +6,7 @@ import { EstimateSummary } from '@/components/estimates/EstimateSummary'
 import { EstimateTable } from '@/components/estimates/EstimateTable'
 import { ComparableProjects } from '@/components/estimates/ComparableProjects'
 import { formatCurrency } from '@/lib/utils'
-import { getEstimate, updateScope, exportEstimate, generateQuote, deleteScope } from '@/lib/api'
+import { getEstimate, updateScope, exportEstimate, generateQuote, deleteScope, recordActual } from '@/lib/api'
 import type { EstimateResponse, ScopeResponse, UpdateScopeRequest } from '@/lib/types'
 import { useTheme } from '@/components/ThemeProvider'
 
@@ -23,6 +23,13 @@ export default function EstimateDetailPage() {
   const [quoteLoading, setQuoteLoading] = useState(false)
   const [quoteSuccess, setQuoteSuccess] = useState<string | null>(null)
   const [quoteTemplate, setQuoteTemplate] = useState<'T-004A' | 'T-004B' | 'T-004E'>('T-004B')
+  // Actuals panel state
+  const [actualsOpen, setActualsOpen] = useState(false)
+  const [actualCost, setActualCost] = useState('')
+  const [actualDate, setActualDate] = useState('')
+  const [actualNote, setActualNote] = useState('')
+  const [actualsLoading, setActualsLoading] = useState(false)
+  const [actualsError, setActualsError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!id) return
@@ -85,6 +92,25 @@ export default function EstimateDetailPage() {
       await exportEstimate(id)
     } catch (err: unknown) {
       setSaveError(err instanceof Error ? err.message : 'Export failed')
+    }
+  }
+
+  const handleRecordActual = async () => {
+    if (!id || !actualCost || !actualDate) return
+    setActualsLoading(true)
+    setActualsError(null)
+    try {
+      const updated = await recordActual(id, {
+        actual_total_cost: parseFloat(actualCost),
+        actual_cost_date: actualDate,
+        accuracy_note: actualNote || undefined,
+      })
+      setEstimate(updated)
+      setActualsOpen(false)
+    } catch (err: unknown) {
+      setActualsError(err instanceof Error ? err.message : 'Failed to save actuals')
+    } finally {
+      setActualsLoading(false)
     }
   }
 
@@ -228,6 +254,187 @@ export default function EstimateDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* ── Actuals panel ── */}
+      {(estimate.status === 'finalized' || estimate.status === 'exported' || estimate.actual_total_cost != null) && (
+        <div className="px-4 md:px-8 pb-4">
+          <div
+            className="rounded-[8px] overflow-hidden"
+            style={{
+              background: isLight ? '#ffffff' : '#131822',
+              border: `1px solid ${isLight ? 'rgba(0,0,0,0.09)' : 'rgba(255,255,255,0.08)'}`,
+            }}
+          >
+            {/* Panel header (always visible) */}
+            <button
+              className="w-full flex items-center justify-between px-5 py-3.5 transition-colors"
+              style={{ borderBottom: actualsOpen || estimate.actual_total_cost != null ? `1px solid ${isLight ? 'rgba(0,0,0,0.07)' : 'rgba(255,255,255,0.06)'}` : 'none' }}
+              onClick={() => setActualsOpen(!actualsOpen)}
+            >
+              <div className="flex items-center gap-2.5">
+                <span
+                  className="text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wide"
+                  style={{ background: isLight ? 'rgba(61,112,16,0.12)' : 'rgba(161,214,124,0.12)', color: isLight ? '#3d7010' : '#a1d67c', border: `1px solid ${isLight ? 'rgba(61,112,16,0.2)' : 'rgba(161,214,124,0.2)'}` }}
+                >
+                  Actuals
+                </span>
+                <span className="text-[13px] font-semibold" style={{ color: isLight ? '#1a2335' : '#d8e4f5' }}>
+                  {estimate.actual_total_cost != null ? 'Actual Cost Recorded' : 'Record Actual Cost'}
+                </span>
+              </div>
+              <svg
+                className="w-4 h-4 transition-transform"
+                style={{ transform: actualsOpen ? 'rotate(180deg)' : 'rotate(0deg)', color: isLight ? '#7890aa' : '#3a4f6a' }}
+                fill="none" stroke="currentColor" viewBox="0 0 24 24"
+              >
+                <path d="M19 9l-7 7-7-7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+
+            {/* Read-only card when actuals exist and panel is collapsed */}
+            {estimate.actual_total_cost != null && !actualsOpen && (() => {
+              const vp = estimate.variance_pct ?? 0
+              const varColor = Math.abs(vp) <= 10
+                ? (isLight ? '#3d7010' : '#a1d67c')
+                : Math.abs(vp) <= 25
+                  ? '#f59e0b'
+                  : '#f05252'
+              return (
+                <div className="px-5 py-4 flex flex-wrap items-center gap-6">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.09em] font-semibold mb-0.5" style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}>Estimated</p>
+                    <p className="text-[16px] font-bold tabular-nums" style={{ fontFamily: 'var(--font-jetbrains-mono), monospace', color: isLight ? '#1a2335' : '#d8e4f5' }}>
+                      {estimate.total_cost != null ? `$${estimate.total_cost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.09em] font-semibold mb-0.5" style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}>Actual</p>
+                    <p className="text-[16px] font-bold tabular-nums" style={{ fontFamily: 'var(--font-jetbrains-mono), monospace', color: isLight ? '#1a2335' : '#d8e4f5' }}>
+                      ${estimate.actual_total_cost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.09em] font-semibold mb-0.5" style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}>Variance</p>
+                    <p className="text-[16px] font-bold tabular-nums" style={{ fontFamily: 'var(--font-jetbrains-mono), monospace', color: varColor }}>
+                      {vp > 0 ? '+' : ''}{vp.toFixed(1)}%
+                    </p>
+                  </div>
+                  {estimate.actual_cost_date && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.09em] font-semibold mb-0.5" style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}>Completed</p>
+                      <p className="text-[13px] tabular-nums" style={{ fontFamily: 'var(--font-jetbrains-mono), monospace', color: isLight ? '#1a2335' : '#d8e4f5' }}>
+                        {estimate.actual_cost_date}
+                      </p>
+                    </div>
+                  )}
+                  {estimate.accuracy_note && (
+                    <div className="flex-1 min-w-[160px]">
+                      <p className="text-[10px] uppercase tracking-[0.09em] font-semibold mb-0.5" style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}>Notes</p>
+                      <p className="text-[12px] leading-relaxed" style={{ color: isLight ? '#3a4f6a' : '#6b82a0' }}>{estimate.accuracy_note}</p>
+                    </div>
+                  )}
+                  <button
+                    className="text-[12px] font-medium ml-auto"
+                    style={{ color: isLight ? '#4a8a10' : '#a1d67c' }}
+                    onClick={() => { setActualCost(String(estimate.actual_total_cost)); setActualDate(estimate.actual_cost_date ?? ''); setActualNote(estimate.accuracy_note ?? ''); setActualsOpen(true) }}
+                  >
+                    Edit
+                  </button>
+                </div>
+              )
+            })()}
+
+            {/* Form — visible when panel is open */}
+            {actualsOpen && (
+              <div className="px-5 py-4 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-[0.09em] font-semibold mb-1.5" style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}>
+                      Actual Total Cost ($)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="e.g. 48500.00"
+                      value={actualCost}
+                      onChange={(e) => setActualCost(e.target.value)}
+                      className="w-full text-[13px] rounded-[6px] px-3 py-2 focus:outline-none"
+                      style={{
+                        background: isLight ? '#f5f7fa' : '#0e1219',
+                        border: `1px solid ${isLight ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.1)'}`,
+                        color: isLight ? '#0f1923' : '#d8e4f5',
+                        fontFamily: 'var(--font-jetbrains-mono), monospace',
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-[0.09em] font-semibold mb-1.5" style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}>
+                      Date Completed
+                    </label>
+                    <input
+                      type="date"
+                      value={actualDate}
+                      onChange={(e) => setActualDate(e.target.value)}
+                      className="w-full text-[13px] rounded-[6px] px-3 py-2 focus:outline-none"
+                      style={{
+                        background: isLight ? '#f5f7fa' : '#0e1219',
+                        border: `1px solid ${isLight ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.1)'}`,
+                        color: isLight ? '#0f1923' : '#d8e4f5',
+                        fontFamily: 'var(--font-jetbrains-mono), monospace',
+                        colorScheme: isLight ? 'light' : 'dark',
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-[0.09em] font-semibold mb-1.5" style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}>
+                      Notes (optional)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Material overrun on ACT"
+                      value={actualNote}
+                      onChange={(e) => setActualNote(e.target.value)}
+                      className="w-full text-[13px] rounded-[6px] px-3 py-2 focus:outline-none"
+                      style={{
+                        background: isLight ? '#f5f7fa' : '#0e1219',
+                        border: `1px solid ${isLight ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.1)'}`,
+                        color: isLight ? '#0f1923' : '#d8e4f5',
+                      }}
+                    />
+                  </div>
+                </div>
+                {actualsError && (
+                  <p className="text-[12px]" style={{ color: '#f05252' }}>{actualsError}</p>
+                )}
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleRecordActual}
+                    disabled={actualsLoading || !actualCost || !actualDate}
+                    className="flex items-center gap-2 px-4 py-2 text-[13px] font-semibold rounded-[6px] transition-all duration-100"
+                    style={{
+                      background: actualsLoading || !actualCost || !actualDate
+                        ? 'rgba(161,214,124,0.3)'
+                        : 'linear-gradient(135deg, #5a8a1e 0%, #a1d67c 100%)',
+                      color: '#080b10',
+                      cursor: actualsLoading || !actualCost || !actualDate ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {actualsLoading ? 'Saving...' : 'Save Actuals'}
+                  </button>
+                  <button
+                    onClick={() => setActualsOpen(false)}
+                    className="text-[13px] font-medium"
+                    style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Sticky export bar */}
       <div
