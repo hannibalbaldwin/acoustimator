@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useTheme } from '@/components/ThemeProvider'
 import { listAdminUsers, createAdminUser, deleteAdminUser, type AdminUser } from '@/lib/api'
+import { FilterSelect } from '@/components/ui/FilterSelect'
 
 // ── Role badge ────────────────────────────────────────────────────────────────
 
@@ -268,23 +269,12 @@ export default function AdminUsersPage() {
               <label className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: textMuted }}>
                 Role *
               </label>
-              <select
-                value={formRole}
-                onChange={(e) => setFormRole(e.target.value as 'user' | 'admin')}
-                className="rounded-[6px] px-3 py-2 text-[13px] transition-all"
-                style={{
-                  background: inputBg,
-                  border: `1px solid ${inputBorder}`,
-                  color: textPrimary,
-                  outline: 'none',
-                  cursor: 'pointer',
-                }}
-                onFocus={(e) => (e.currentTarget.style.borderColor = isLight ? '#3d7010' : '#a1d67c')}
-                onBlur={(e) => (e.currentTarget.style.borderColor = inputBorder)}
-              >
-                <option value="user">User</option>
-                <option value="admin">Admin</option>
-              </select>
+              <FilterSelect
+                value={formRole === 'user' ? 'User' : 'Admin'}
+                onChange={(v) => setFormRole(v.toLowerCase() as 'user' | 'admin')}
+                options={['User', 'Admin']}
+                className="w-full"
+              />
             </div>
           </div>
 

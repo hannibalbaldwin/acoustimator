@@ -52,7 +52,7 @@ export function FilterSelect({ value, onChange, options, className }: FilterSele
           color: text,
           fontSize: 13,
           fontWeight: 500,
-          padding: '7px 10px 7px 12px',
+          padding: '8px 10px 8px 12px',
           cursor: 'pointer',
           whiteSpace: 'nowrap',
           transition: 'border-color 150ms',
