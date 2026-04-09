@@ -2,14 +2,33 @@
 """Phase 7.2 — Retrain cost/markup/labor models and compare performance.
 
 Usage:
-    uv run python scripts/retrain_models.py [--force] [--dry-run]
+    uv run python scripts/retrain_models.py [--force] [--dry-run] [--threshold N]
 
 Options:
-    --force     Skip the should_retrain check and retrain unconditionally.
-    --dry-run   Compute new MAPE but do NOT overwrite .joblib files.
+    --force         Skip the should_retrain check and retrain unconditionally.
+    --dry-run       Compute new MAPE but do NOT overwrite .joblib files.
+    --threshold N   Minimum new projects with actuals since last retrain (default: 10).
 
 Reads training data from data/models/training_data.csv (created by train_models.py).
+If the CSV is missing, it is rebuilt from the database automatically.
 Prints a comparison table and updates model_manifest.json.
+
+External cron
+-------------
+Vercel serverless cannot execute long-running Python processes, so this script
+is NOT invoked by Vercel itself.  Schedule it externally — e.g. a monthly
+GitHub Actions workflow — or call POST /api/admin/retrain which fires it as a
+background task.  Example GitHub Actions schedule:
+
+    on:
+      schedule:
+        - cron: '0 3 1 * *'   # 03:00 UTC on the 1st of every month
+    jobs:
+      retrain:
+        runs-on: ubuntu-latest
+        steps:
+          - uses: actions/checkout@v4
+          - run: uv run python scripts/retrain_models.py --threshold 10
 """
 
 from __future__ import annotations
@@ -32,6 +51,11 @@ logger = logging.getLogger("retrain_models")
 
 MODELS_DIR = ROOT / "data" / "models"
 TRAINING_CSV = MODELS_DIR / "training_data.csv"
+
+# Default minimum new actuals required to trigger a retrain (CLI default).
+# The retrainer module uses MIN_NEW_SINCE_LAST=3 internally; the script
+# defaults to 10 to avoid over-frequent retrains in production.
+_DEFAULT_THRESHOLD = 10
 
 # ANSI colours
 RESET = "\033[0m"
@@ -76,14 +100,47 @@ def print_table(results: dict) -> None:
     print(sep)
 
 
-async def check_should_retrain() -> tuple[bool, str]:
-    """Connect to DB and run should_retrain check."""
-    from src.db.session import async_session
-    from src.models.retrainer import ModelRetrainer
+async def check_should_retrain(threshold: int) -> tuple[bool, str]:
+    """Connect to DB and run should_retrain check.
 
-    retrainer = ModelRetrainer()
-    async with async_session() as session:
-        return await retrainer.should_retrain(session)
+    Patches the module-level MIN_NEW_SINCE_LAST constant so the retrainer
+    uses the caller-supplied threshold instead of its built-in default.
+    """
+    import src.models.retrainer as _retrainer_mod
+    from src.db.session import async_session
+
+    # Override the threshold for this run
+    original = _retrainer_mod.MIN_NEW_SINCE_LAST
+    _retrainer_mod.MIN_NEW_SINCE_LAST = threshold
+    try:
+        retrainer = _retrainer_mod.ModelRetrainer()
+        async with async_session() as session:
+            return await retrainer.should_retrain(session)
+    finally:
+        _retrainer_mod.MIN_NEW_SINCE_LAST = original
+
+
+def _ensure_training_csv() -> Path:
+    """Return the training CSV, rebuilding it from the DB if it does not exist."""
+    if TRAINING_CSV.exists():
+        return TRAINING_CSV
+
+    print("\n  Training CSV not found — rebuilding from database...")
+    try:
+        from src.models.features import FeatureEngineer
+
+        MODELS_DIR.mkdir(parents=True, exist_ok=True)
+        fe = FeatureEngineer()
+        fe.save_training_csv(str(TRAINING_CSV))
+        logger.info("Training CSV rebuilt: %s", TRAINING_CSV)
+    except Exception as exc:
+        print(
+            f"\n  {RED}ERROR:{RESET} Could not rebuild training CSV: {exc}\n"
+            "  Run 'uv run python scripts/train_models.py' manually to generate it.\n"
+        )
+        sys.exit(1)
+
+    return TRAINING_CSV
 
 
 def main() -> None:
@@ -98,6 +155,16 @@ def main() -> None:
         action="store_true",
         help="Compute new MAPE but do NOT overwrite .joblib files",
     )
+    parser.add_argument(
+        "--threshold",
+        type=int,
+        default=_DEFAULT_THRESHOLD,
+        metavar="N",
+        help=(
+            f"Minimum new projects with actuals since last retrain "
+            f"(default: {_DEFAULT_THRESHOLD})"
+        ),
+    )
     args = parser.parse_args()
 
     print(f"\n{BOLD}{'=' * 60}{RESET}")
@@ -109,9 +176,9 @@ def main() -> None:
 
     # ── Should we retrain? ────────────────────────────────────────────
     if not args.force:
-        print("\n  Checking retrain conditions...")
+        print(f"\n  Checking retrain conditions (threshold = {args.threshold})...")
         try:
-            should, reason = asyncio.run(check_should_retrain())
+            should, reason = asyncio.run(check_should_retrain(args.threshold))
         except Exception as exc:
             logger.warning("DB check failed (%s) — proceeding anyway", exc)
             should = True
@@ -127,15 +194,8 @@ def main() -> None:
         print(f"\n  {YELLOW}--force set — skipping retrain check{RESET}")
 
     # ── Training CSV ──────────────────────────────────────────────────
-    if not TRAINING_CSV.exists():
-        print(
-            f"\n  {RED}ERROR:{RESET} Training CSV not found at:\n"
-            f"  {TRAINING_CSV}\n"
-            "  Run 'uv run python scripts/train_models.py' first to generate it.\n"
-        )
-        sys.exit(1)
-
-    print(f"\n  Training data : {TRAINING_CSV}")
+    csv_path = _ensure_training_csv()
+    print(f"\n  Training data : {csv_path}")
 
     # ── Retrain ───────────────────────────────────────────────────────
     from src.models.retrainer import ModelRetrainer
@@ -144,7 +204,7 @@ def main() -> None:
 
     print("\n  Training new models (this may take a few minutes)...\n")
     try:
-        results = retrainer.retrain_all(TRAINING_CSV)
+        results = retrainer.retrain_all(csv_path)
     except Exception as exc:
         print(f"\n  {RED}ERROR during retraining:{RESET} {exc}\n")
         logger.exception("Retraining failed")

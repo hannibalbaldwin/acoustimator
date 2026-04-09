@@ -366,9 +366,29 @@ async def model_status(db: AsyncSession = Depends(get_db)) -> dict:
         needs_retrain = False
         retrain_reason = "Status check unavailable"
 
+    # ── Last retrain A/B results ─────────────────────────────────────
+    # After a retrain, keys like "ACT_retrain", "markup_retrain", "labor_retrain"
+    # are written by ModelRetrainer.update_manifest().  Surface them for the
+    # frontend "Model Accuracy" card detail panel.
+    last_retrain_results: list[dict] = []
+    for key, value in manifest.items():
+        if key.endswith("_retrain") and isinstance(value, dict):
+            model_name = key[: -len("_retrain")]
+            last_retrain_results.append(
+                {
+                    "model": model_name,
+                    "old_mape": value.get("old_mape"),
+                    "new_mape": value.get("new_mape"),
+                    "deployed": value.get("deployed", False),
+                    "reason": value.get("reason"),
+                    "retrained_at": value.get("retrained_at"),
+                }
+            )
+
     return {
         "last_retrain": last_retrain,
         "models": models,
         "needs_retrain": needs_retrain,
         "retrain_reason": retrain_reason,
+        "last_retrain_results": last_retrain_results,
     }

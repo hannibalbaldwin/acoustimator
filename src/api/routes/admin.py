@@ -1,24 +1,36 @@
-"""Admin routes for user management (Phase 6.6)."""
+"""Admin routes for user management (Phase 6.6) and model retraining (Phase 7.2)."""
 
 from __future__ import annotations
 
 import logging
+import subprocess
+import sys
+from pathlib import Path
 from uuid import UUID
 
 import bcrypt
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.auth import require_admin
 from src.api.dependencies import get_db
-from src.api.schemas.admin import CreateUserRequest, UpdateUserRequest, UserResponse
+from src.api.schemas.admin import (
+    CreateUserRequest,
+    RetrainRequest,
+    RetrainResponse,
+    UpdateUserRequest,
+    UserResponse,
+)
 from src.db.models import User
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
+
+_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+_RETRAIN_SCRIPT = _ROOT / "scripts" / "retrain_models.py"
 
 
 def _hash_password(password: str) -> str:
@@ -104,6 +116,8 @@ async def update_user(
         user.name = body.name
     if body.role is not None:
         user.role = body.role
+    if body.password is not None:
+        user.password_hash = _hash_password(body.password)
 
     await db.commit()
     await db.refresh(user)
@@ -128,3 +142,109 @@ async def delete_user(
 
     await db.delete(user)
     await db.commit()
+
+
+# ---------------------------------------------------------------------------
+# POST /api/admin/retrain  (Phase 7.2)
+# ---------------------------------------------------------------------------
+# NOTE: Vercel serverless cannot run long-lived Python subprocesses.  This
+# endpoint is designed to be called by an external scheduler (e.g. a monthly
+# GitHub Actions workflow).  It launches retrain_models.py in a non-blocking
+# background task so the HTTP response returns immediately.  Example cron:
+#
+#   on:
+#     schedule:
+#       - cron: '0 3 1 * *'   # 03:00 UTC on the 1st of every month
+#   jobs:
+#     retrain:
+#       runs-on: ubuntu-latest
+#       steps:
+#         - uses: actions/checkout@v4
+#         - run: |
+#             curl -X POST https://your-app.vercel.app/api/admin/retrain \
+#               -H "Authorization: Bearer $ADMIN_TOKEN" \
+#               -H "Content-Type: application/json" \
+#               -d '{"threshold": 10}'
+
+
+def _run_retrain_subprocess(force: bool, dry_run: bool, threshold: int) -> None:
+    """Run scripts/retrain_models.py in a subprocess (background task body).
+
+    Called from a FastAPI BackgroundTask — errors are logged, not raised.
+    """
+    cmd = [sys.executable, str(_RETRAIN_SCRIPT), f"--threshold={threshold}"]
+    if force:
+        cmd.append("--force")
+    if dry_run:
+        cmd.append("--dry-run")
+
+    logger.info("Starting retrain subprocess: %s", " ".join(cmd))
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=600,  # 10 min hard cap
+            cwd=str(_ROOT),
+        )
+        if result.returncode == 0:
+            logger.info("Retrain subprocess finished successfully")
+        else:
+            logger.warning(
+                "Retrain subprocess exited with code %d\nstdout:\n%s\nstderr:\n%s",
+                result.returncode,
+                result.stdout[-2000:],
+                result.stderr[-2000:],
+            )
+    except subprocess.TimeoutExpired:
+        logger.error("Retrain subprocess timed out after 600 s")
+    except Exception as exc:
+        logger.exception("Retrain subprocess raised an unexpected error: %s", exc)
+
+
+@router.post("/retrain", response_model=RetrainResponse, status_code=status.HTTP_202_ACCEPTED)
+async def trigger_retrain(
+    body: RetrainRequest,
+    background_tasks: BackgroundTasks,
+    _admin: dict = Depends(require_admin),
+) -> RetrainResponse:
+    """Trigger a model retrain in the background (admin only).
+
+    Launches ``scripts/retrain_models.py`` as a subprocess so the endpoint
+    returns immediately with HTTP 202.  The actual training runs asynchronously;
+    check ``GET /api/stats/model-status`` afterwards for updated MAPEs and
+    ``last_retrain`` timestamp.
+
+    Request body (all optional):
+
+    - **force** — skip the new-projects threshold check (default: false)
+    - **dry_run** — evaluate but do not save model files (default: false)
+    - **threshold** — min new projects with actuals required (default: 10)
+    """
+    logger.info(
+        "Admin '%s' triggered retrain: force=%s dry_run=%s threshold=%d",
+        _admin.get("email", _admin.get("sub", "?")),
+        body.force,
+        body.dry_run,
+        body.threshold,
+    )
+
+    background_tasks.add_task(
+        _run_retrain_subprocess,
+        force=body.force,
+        dry_run=body.dry_run,
+        threshold=body.threshold,
+    )
+
+    flags: list[str] = []
+    if body.force:
+        flags.append("--force")
+    if body.dry_run:
+        flags.append("--dry-run")
+    flags.append(f"--threshold={body.threshold}")
+
+    return RetrainResponse(
+        status="retraining_started",
+        message=f"Retraining started in background ({' '.join(flags)}). "
+        "Check GET /api/stats/model-status for results.",
+    )
