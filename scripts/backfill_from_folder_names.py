@@ -32,12 +32,10 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
 import re
 import sys
 from datetime import date, datetime
 from pathlib import Path
-from typing import Optional
 
 from sqlalchemy import select, update
 
@@ -50,9 +48,7 @@ from src.db.session import async_session  # noqa: E402
 # Constants
 # ---------------------------------------------------------------------------
 
-ITB_DIR = Path(
-    "/Users/hannibalbaldwin/Library/CloudStorage/Dropbox-SiteZeus/Hannibal Baldwin/+ITBs"
-)
+ITB_DIR = Path("/Users/hannibalbaldwin/Library/CloudStorage/Dropbox-SiteZeus/Hannibal Baldwin/+ITBs")
 EXTRACTED_DIR = Path(__file__).resolve().parent.parent / "data" / "extracted"
 QUOTES_DIR = EXTRACTED_DIR / "quotes"
 
@@ -175,7 +171,7 @@ def _build_quotes_date_map() -> dict[str, date]:
 # ---------------------------------------------------------------------------
 
 
-def _file_date_for_folder(folder_name: str) -> tuple[Optional[date], str]:
+def _file_date_for_folder(folder_name: str) -> tuple[date | None, str]:
     """Return (best_date, source_description) from files in the project folder.
 
     Priority within the folder:
@@ -295,13 +291,13 @@ async def enrich() -> None:
 
     # Stats
     stats = {
-        "already_real": 0,        # had a non-bogus date — skipped
-        "bogus_replaced": 0,      # had BOGUS_DATE → replaced
+        "already_real": 0,  # had a non-bogus date — skipped
+        "bogus_replaced": 0,  # had BOGUS_DATE → replaced
         "null_filled_quotes": 0,  # NULL → date from quotes JSON
-        "null_filled_files": 0,   # NULL → date from file system
-        "null_unfilled": 0,       # NULL → still NULL (no data found)
-        "gc_updated": 0,          # gc_name updated
-        "gc_skipped": 0,          # gc_name already set
+        "null_filled_files": 0,  # NULL → date from file system
+        "null_unfilled": 0,  # NULL → still NULL (no data found)
+        "gc_updated": 0,  # gc_name updated
+        "gc_skipped": 0,  # gc_name already set
     }
 
     async with async_session() as session:
@@ -345,14 +341,10 @@ async def enrich() -> None:
                 if new_date is not None:
                     if is_bogus:
                         stats["bogus_replaced"] += 1
-                        print(
-                            f"  [BOGUS→REAL] {folder}: {current_date} → {new_date}  ({date_source})"
-                        )
+                        print(f"  [BOGUS→REAL] {folder}: {current_date} → {new_date}  ({date_source})")
                     else:
                         stats["null_filled_quotes" if date_source == "quotes_json" else "null_filled_files"] += 1
-                        print(
-                            f"  [NULL→DATE ] {folder}: → {new_date}  ({date_source})"
-                        )
+                        print(f"  [NULL→DATE ] {folder}: → {new_date}  ({date_source})")
                 else:
                     if not is_bogus:
                         stats["null_unfilled"] += 1
@@ -385,9 +377,7 @@ async def enrich() -> None:
         print(f"\nApplying {len(updates)} DB updates …")
         for upd in updates:
             project_id = upd.pop("id")
-            await session.execute(
-                update(Project).where(Project.id == project_id).values(**upd)
-            )
+            await session.execute(update(Project).where(Project.id == project_id).values(**upd))
         await session.commit()
 
     # ------------------------------------------------------------------
@@ -396,7 +386,6 @@ async def enrich() -> None:
     print("\n" + "=" * 60)
     print("ENRICHMENT SUMMARY")
     print("=" * 60)
-    total = sum(stats.values())
     print(f"  Projects with real quote_date (unchanged):  {stats['already_real']}")
     print(f"  Bogus 2024-02-29 dates replaced:            {stats['bogus_replaced']}")
     print(f"  NULL dates filled (from quotes JSON):       {stats['null_filled_quotes']}")
