@@ -1,4 +1,5 @@
 """API key authentication middleware."""
+
 from __future__ import annotations
 
 import logging
@@ -12,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 # Routes that skip auth (health check, docs)
 _EXEMPT_PATHS = {"/", "/health", "/docs", "/redoc", "/openapi.json"}
+
 
 class ApiKeyMiddleware(BaseHTTPMiddleware):
     """Require X-API-Key header on all /api/* routes."""
