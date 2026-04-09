@@ -12,6 +12,7 @@ import { listEstimates, getDashboardStats, getAccuracyStats, getVendorPriceSumma
 import { formatCurrency } from '@/lib/utils'
 import type { ScopeType, VendorPriceSummary } from '@/lib/types'
 import { useTheme } from '@/components/ThemeProvider'
+import { WaveformLoader } from '@/components/ui/WaveformLoader'
 
 // ---------------------------------------------------------------------------
 // ModelStatusRow — shown inside Model Accuracy card
@@ -171,21 +172,25 @@ export default function DashboardPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 mb-6">
         <StatCard
           label="Total Projects"
-          value={loading ? '—' : (stats?.total_projects.toString() ?? '—')}
+          value={stats?.total_projects.toString() ?? '—'}
+          loading={loading}
         />
         <StatCard
           label="Active Estimates"
-          value={loading ? '—' : (stats?.active_estimates.toString() ?? '—')}
+          value={stats?.active_estimates.toString() ?? '—'}
+          loading={loading}
         />
         <StatCard
           label="Avg ACT Cost / SF"
-          value={loading ? '—' : (stats?.avg_act_cost_per_sf != null ? '$' + stats.avg_act_cost_per_sf.toFixed(2) : '—')}
+          value={stats?.avg_act_cost_per_sf != null ? '$' + stats.avg_act_cost_per_sf.toFixed(2) : '—'}
           accent
+          loading={loading}
         />
         <StatCard
           label="Total SF Estimated"
-          value={loading ? '—' : (stats?.total_historical_sf != null ? (stats.total_historical_sf / 1_000_000).toFixed(1) + 'M' : '—')}
+          value={stats?.total_historical_sf != null ? (stats.total_historical_sf / 1_000_000).toFixed(1) + 'M' : '—'}
           delta={{ value: 'historical', neutral: true }}
+          loading={loading}
         />
       </div>
 
@@ -212,10 +217,7 @@ export default function DashboardPage() {
         </div>
 
         {loading ? (
-          <div className="px-5 py-6 animate-pulse">
-            <div className="h-10 w-32 rounded mb-2" style={{ background: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.05)' }} />
-            <div className="h-3 w-48 rounded" style={{ background: isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.03)' }} />
-          </div>
+          <WaveformLoader variant="block" />
         ) : accuracy == null || accuracy.total_with_actuals === 0 ? (
           <div className="px-5 py-5">
             <p className="text-[13px] mb-4" style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}>
@@ -348,10 +350,7 @@ export default function DashboardPage() {
             </div>
 
             {loading ? (
-              <div className="px-5 py-6 animate-pulse">
-                <div className="h-3 w-64 rounded mb-2" style={{ background: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.05)' }} />
-                <div className="h-3 w-48 rounded" style={{ background: isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.03)' }} />
-              </div>
+              <WaveformLoader variant="block" />
             ) : vendorPrices === null || vendorPrices.length === 0 ? (
               <div className="px-5 py-6">
                 <p className="text-[13px]" style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}>
@@ -544,6 +543,13 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
+                {loading && estimates.length === 0 && (
+                  <tr>
+                    <td colSpan={7}>
+                      <WaveformLoader variant="block" />
+                    </td>
+                  </tr>
+                )}
                 {estimates.map((est) => {
                   const st = STATUS_STYLES[est.status] ?? STATUS_STYLES.draft
                   return (

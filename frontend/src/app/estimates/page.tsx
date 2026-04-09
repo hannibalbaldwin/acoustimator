@@ -9,6 +9,7 @@ import { listEstimates, type EstimateListItem } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
 import type { ScopeType } from '@/lib/types'
 import { useTheme } from '@/components/ThemeProvider'
+import { WaveformLoader } from '@/components/ui/WaveformLoader'
 
 const STATUS_STYLES: Record<string, { color: string; bg: string; border: string }> = {
   draft:     { color: '#6b82a0', bg: 'rgba(107,130,160,0.10)', border: 'rgba(107,130,160,0.18)' },
@@ -195,6 +196,13 @@ export default function EstimatesPage() {
                   </tr>
                 </thead>
                 <tbody>
+                  {loading && estimates.length === 0 && (
+                    <tr>
+                      <td colSpan={7}>
+                        <WaveformLoader variant="block" />
+                      </td>
+                    </tr>
+                  )}
                   {estimates.length === 0 && !loading && (
                     <tr>
                       <td colSpan={7} className="px-4 py-8 text-center text-[13px]" style={{ color: textMuted }}>

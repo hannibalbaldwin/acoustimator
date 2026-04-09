@@ -631,12 +631,41 @@ async def create_quote(
     count = count_result.scalar() or 0
     quote_number = f"CA-{current_year}-{count + 1:04d}"
 
+    # Snapshot ORM data into plain objects before handing off to sync executor thread.
+    # SQLAlchemy ORM instances are not thread-safe; reading already-loaded attributes is safe
+    # but we snapshot to be explicit and avoid any lazy-load surprises.
+    class _ScopeSnap:
+        __slots__ = ("scope_type", "product_name", "square_footage", "cost_per_unit", "total", "sales_tax")
+
+        def __init__(self, s: EstimateScope) -> None:
+            self.scope_type = s.scope_type
+            self.product_name = s.product_name
+            self.square_footage = s.square_footage
+            self.cost_per_unit = s.cost_per_unit
+            self.total = s.total
+            self.sales_tax = s.sales_tax
+
+    class _EstimateSnap:
+        __slots__ = ("name", "gc_name", "project_address", "estimate_scopes")
+
+        def __init__(self, e: Estimate) -> None:
+            self.name = e.name
+            self.gc_name = e.gc_name
+            self.project_address = e.project_address
+            self.estimate_scopes = [_ScopeSnap(s) for s in (e.estimate_scopes or [])]
+
+    estimate_snap = _EstimateSnap(estimate)
+
     # --- Build PDF in executor (reportlab is synchronous) ---
     loop = asyncio.get_running_loop()
-    pdf_bytes: bytes = await loop.run_in_executor(
-        None,
-        lambda: _build_quote_pdf(estimate, quote_number, body.template),
-    )
+    try:
+        pdf_bytes: bytes = await loop.run_in_executor(
+            None,
+            lambda: _build_quote_pdf(estimate_snap, quote_number, body.template),  # type: ignore[arg-type]
+        )
+    except Exception as exc:
+        logger.error("Quote PDF generation failed for estimate %s: %s", estimate_id, exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Quote generation failed: {exc}") from exc
 
     # --- Persist Quote record ---
     quote_record = Quote(

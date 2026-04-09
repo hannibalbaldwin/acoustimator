@@ -14,6 +14,7 @@ import {
 import type { TrendDataPoint } from '@/lib/types'
 import { useTheme } from '@/components/ThemeProvider'
 import { getCostTrends } from '@/lib/api'
+import { WaveformLoader } from '@/components/ui/WaveformLoader'
 
 // CA brand green for AWP, blue for ACT, teal for FW, amber for SM
 const SCOPE_COLORS = {
@@ -84,7 +85,7 @@ const TOGGLE_LABELS: { key: Granularity; label: string }[] = [
 export function CostTrendChart() {
   const { theme } = useTheme()
   const isLight = theme === 'light'
-  const [granularity, setGranularity] = useState<Granularity>('year')
+  const [granularity, setGranularity] = useState<Granularity>('quarter')
   const [data, setData] = useState<TrendDataPoint[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -145,7 +146,8 @@ export function CostTrendChart() {
         </div>
       </div>
 
-      <div className={loading ? 'opacity-50 pointer-events-none' : undefined}>
+      {loading && <WaveformLoader variant="block" className="py-16" />}
+      <div className={loading ? 'hidden' : undefined}>
         <ResponsiveContainer width="100%" height={260}>
           <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
             <CartesianGrid

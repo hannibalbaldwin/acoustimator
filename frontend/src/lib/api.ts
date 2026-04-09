@@ -361,13 +361,44 @@ export async function addProduct(data: AddProductRequest): Promise<CatalogProduc
   })
 }
 
+// ── Admin User Management ─────────────────────────────────────────────────────
+
+export interface AdminUser {
+  id: string
+  email: string
+  name: string | null
+  role: string
+  created_at: string
+}
+
+export async function listAdminUsers(): Promise<AdminUser[]> {
+  return apiFetch<AdminUser[]>('/api/admin/users')
+}
+
+export async function createAdminUser(data: {
+  email: string
+  name?: string
+  password: string
+  role: string
+}): Promise<AdminUser> {
+  return apiFetch<AdminUser>('/api/admin/users', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+}
+
+export async function deleteAdminUser(userId: string): Promise<void> {
+  return apiFetch<void>(`/api/admin/users/${userId}`, { method: 'DELETE' })
+}
+
 export async function generateQuote(
   estimateId: string,
   template: 'T-004A' | 'T-004B' | 'T-004E' = 'T-004B'
 ): Promise<void> {
   const res = await fetch(`${BASE}/api/estimates/${estimateId}/quote`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: apiHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ template }),
   })
   if (!res.ok) {

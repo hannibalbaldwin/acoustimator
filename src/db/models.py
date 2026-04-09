@@ -425,6 +425,18 @@ class ExtractionRun(Base):
     project: Mapped[Optional["Project"]] = relationship(back_populates="extraction_runs")
 
 
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[UUID] = pk_uuid()
+    email: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    password_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    name: Mapped[str | None] = mapped_column(Text)
+    role: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'user'"))
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default=text("now()"))
+    updated_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default=text("now()"), onupdate=text("now()"))
+
+
 class Quote(Base):
     __tablename__ = "quotes"
 

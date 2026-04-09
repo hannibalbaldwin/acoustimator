@@ -8,9 +8,10 @@ import { FilterSelect } from '@/components/ui/FilterSelect'
 import { listProjects, getProjectGcNames } from '@/lib/api'
 import type { ProjectResponse, ScopeType } from '@/lib/types'
 import { useTheme } from '@/components/ThemeProvider'
+import { WaveformLoader } from '@/components/ui/WaveformLoader'
 
-const ALL_SCOPES = ['All Scopes', 'ACT', 'AWP', 'FW', 'SM', 'WW', 'Baffles', 'RPG']
-const ALL_YEARS = ['All Years', '2026', '2025', '2024', '2023', '2022', '2021']
+const ALL_SCOPES = ['All Scopes', 'ACT', 'AP', 'AWP', 'FW', 'SM', 'WW', 'Baffles', 'RPG']
+const ALL_YEARS = ['All Years', '2026', '2025', '2024']
 const PAGE_SIZE = 50
 
 export default function ProjectsPage() {
@@ -289,6 +290,13 @@ export default function ProjectsPage() {
             </tr>
           </thead>
           <tbody>
+            {loading && projects.length === 0 && (
+              <tr>
+                <td colSpan={9}>
+                  <WaveformLoader variant="block" />
+                </td>
+              </tr>
+            )}
             {filtered.map((project) => {
               const totalSF = project.scopes.reduce((s, sc) => s + (sc.area_sf ?? 0), 0)
               const validScopes = project.scopes.filter((s) => s.cost_per_sf != null)
@@ -377,11 +385,8 @@ export default function ProjectsPage() {
       {/* Infinite scroll sentinel + loading indicator */}
       <div ref={sentinelRef} className="h-1" />
       {loadingMore && (
-        <div className="flex justify-center py-6">
-          <div
-            className="w-5 h-5 rounded-full border-2 animate-spin"
-            style={{ borderColor: isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)', borderTopColor: '#a1d67c' }}
-          />
+        <div className="flex justify-center">
+          <WaveformLoader variant="inline" />
         </div>
       )}
       {!loading && !loadingMore && hasMore && !search && (
