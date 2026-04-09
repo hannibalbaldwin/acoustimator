@@ -61,7 +61,19 @@ jobs:
         run: cd frontend && pnpm start &
 
       - name: Wait for services
-        run: npx wait-on http://localhost:3000 http://localhost:8000/health --timeout 60000
+        run: |
+          echo "Waiting for backend on :8000..."
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8000/health && echo " backend ready" && break
+            echo "  attempt $i/30..."
+            sleep 2
+          done
+          echo "Waiting for frontend on :3000..."
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:3000 && echo " frontend ready" && break
+            echo "  attempt $i/30..."
+            sleep 2
+          done
 
       - name: Run smoke tests
         env:
@@ -121,7 +133,19 @@ jobs:
         run: cd frontend && pnpm start &
 
       - name: Wait for services
-        run: npx wait-on http://localhost:3000 http://localhost:8000/health --timeout 60000
+        run: |
+          echo "Waiting for backend on :8000..."
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8000/health && echo " backend ready" && break
+            echo "  attempt $i/30..."
+            sleep 2
+          done
+          echo "Waiting for frontend on :3000..."
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:3000 && echo " frontend ready" && break
+            echo "  attempt $i/30..."
+            sleep 2
+          done
 
       - name: Run full E2E tests
         env:
