@@ -593,17 +593,23 @@ Full CA brand theme + real API wiring (PRs #8, #10):
 - CA brand styling: translucent panel, checkmark on selected, animated caret chevron
 - Closes on outside click via `useRef` + `mousedown` listener
 
-### 6.5: Quote Generation ⚠️ PARTIAL
+### 6.5: Quote Generation ✅ COMPLETE
 
-- Backend: `POST /api/estimates/{id}/quote` returns reportlab-generated PDF with `CA-YYYY-NNNN` sequential numbering
-- `quotes` table migrated to Neon dev branch
-- ❌ Frontend flow not yet implemented (button wiring, template selector, download trigger)
-- ❌ Full T-004A/B/E template content not yet populated (line items, terms, CA letterhead)
+- `POST /api/estimates/{id}/quote` — reportlab PDF with `CA-YYYY-NNNN` sequential numbering, T-004A/B/E template support
+- Generate Quote button + template selector + download all wired in estimate detail UI
+- `quotes` table in Neon DB
 
-### 6.6: User Authentication and Roles ⚠️ PARTIAL
+### 6.6: User Authentication and Roles ✅ COMPLETE
 
-- `ApiKeyMiddleware` in place as dev scaffold (passes all when `ACOUSTIMATOR_API_KEY` env var not set)
-- ❌ Real auth (login, roles, session) not implemented — deferred until multi-user need arises
+- Auth.js v5 Credentials provider + JWT sessions (`frontend/auth.ts`, `frontend/auth.config.ts`)
+- Login page (`/login`) with CA brand theme
+- Route protection middleware (`frontend/middleware.ts`) — all routes protected except /login
+- Admin panel (`/admin/users`) — full user CRUD with bcrypt passwords and role management
+- Sidebar account popup: avatar with initials, name, email, theme toggle, sign out, admin link
+- `POST /api/auth/verify` — bcrypt credential check on backend
+- `GET/POST/PATCH/DELETE /api/admin/users` — admin-only user management
+- Alembic migration 002: `users` table with UUID PK, email, password_hash, role
+- Vercel: `AUTH_SECRET`, `NEXTAUTH_URL`, `ACOUSTIMATOR_API_KEY` configured for all environments
 
 **Phase 6 Deliverable:** Working web app for Commercial Acoustics staff.
 
@@ -620,11 +626,12 @@ Full CA brand theme + real API wiring (PRs #8, #10):
 - Dashboard: Model Accuracy card with MAPE, bias, scope pills, placeholder when no actuals yet
 - Migration: `src/db/migrations/add_actual_cost.sql`
 
-### 7.2: Model Retraining Pipeline ❌ NOT STARTED
+### 7.2: Model Retraining Pipeline ✅ COMPLETE
 
-- Scheduled retraining (monthly or after N new projects)
-- A/B comparison of new vs. current model
-- Automated rollback on regression
+- `scripts/retrain_models.py` — production retraining with A/B comparison and rollback on regression (>5% MAPE increase keeps old model)
+- `POST /api/admin/retrain` — admin-only endpoint, triggers retraining as background task, returns 202 immediately
+- `GET /api/stats/model-status` — returns `last_retrain_results` per model with old_mape, new_mape, deployed, reason
+- External cron trigger pattern documented (GitHub Actions monthly workflow recommended)
 
 ### 7.3: Vendor Price Tracking ✅ COMPLETE (PR #16)
 
@@ -633,11 +640,12 @@ Full CA brand theme + real API wiring (PRs #8, #10):
 - Dashboard: Material Price Alerts card with amber callout for alerts, colored change column
 - Armstrong World Industries alert: +28.9% since mid-2025
 
-### 7.4: New Product and Scope Type Handling ❌ NOT STARTED
+### 7.4: New Product and Scope Type Handling ✅ PARTIAL
 
-- Detect unknown product names during extraction
-- Workflow to add new catalog entries
-- Model adaptation for new categories
+- `unknown_products: list[str]` in `EstimateResponse` — deduplicated list of unmatched product names (product_id is null)
+- Amber warning callout on estimate detail page when unknown products present
+- ❌ Catalog entry workflow (UI to add unknown product to catalog) not yet built
+- ❌ Model adaptation for new categories not yet built
 
 **Phase 7 Deliverable:** Self-improving estimation system.
 
@@ -671,28 +679,32 @@ Full CA brand theme + real API wiring (PRs #8, #10):
 | Phase 6.3 | ✅ | Dashboard live stat cards, Cost/SF Trends with Year/Quarter/Month granularity toggle |
 | Phase 6.4 | ✅ | Estimate builder, scope type selector, delete scope, comparable projects fix, full light-mode |
 | Phase 6.5 | ✅ | Quote PDF generated and downloadable; Generate Quote button + template selector wired in UI |
-| Phase 6.6 | ⚠️ | API key middleware scaffold only; real auth deferred |
+| Phase 6.6 | ✅ | Auth.js v5, login, route protection, admin panel, sidebar account popup |
 | Phase 7.1 | ✅ | Actual cost recording, MAPE/bias tracking, variance panel on estimate detail (PR #16) |
-| Phase 7.2 | ❌ | Model retraining pipeline not started |
+| Phase 7.2 | ✅ | Retraining pipeline with A/B comparison + rollback; POST /api/admin/retrain |
 | Phase 7.3 | ✅ | Vendor price tracking, Armstrong +28.9% alert, dashboard card (PR #16) |
-| Phase 7.4 | ❌ | New product/scope handling not started |
+| Phase 7.4 | ⚠️ | Unknown product flagging in API + UI; catalog entry workflow not yet built |
 
 ---
 
 ## Immediate Next Steps (Priority Order)
 
-1. **Run DB migration** — `src/db/migrations/add_actual_cost.sql` against Neon `dev` branch to activate Phase 7.1 actual cost tracking.
-2. **Populate `project_type`** — healthcare/education/church flags already engineered in `features.py`; persist them to `projects.project_type` to unlock the biggest missing ML signal for markup + cost models.
-3. **Phase 7.2: Model Retraining Pipeline** — Scheduled retraining once actuals accumulate; A/B model comparison; automated rollback on regression.
-4. **Phase 7.4: New product/scope handling** — Flag unknown product names during extraction; add catalog entry workflow.
-5. **Production deployment** — Configure Vercel env vars (`DATABASE_URL`, `ANTHROPIC_API_KEY`, `ACOUSTIMATOR_API_KEY`) and complete Neon↔Vercel integration for preview branches.
+1. **Catalog entry UI** — Allow users to promote an unknown product from the estimate detail warning into the products catalog (completes Phase 7.4)
+2. **Neon↔Vercel integration** — Enable preview branch auto-provisioning in Vercel dashboard → Storage → Connect → Neon (one-time UI step)
+3. **Retrain models** — Now that `project_type` is populated for all 124 projects, retrain cost/markup models to incorporate the new signal: `POST /api/admin/retrain` or `python scripts/retrain_models.py --force`
+4. **Test model improvement** — Compare new MAPE scores vs. current (Markup model baseline R²=0.36 should improve with project_type feature)
+5. **GitHub Actions cron** — Add `.github/workflows/monthly_retrain.yml` to call `POST /api/admin/retrain` on a monthly schedule
 
 *Previously completed:*
-- ~~Fix `quote_date` loader bug~~ → `scripts/backfill_from_folder_names.py`; 124/124 projects have `quote_date`
-- ~~Dashboard aggregate endpoint~~ → `GET /api/stats/summary` live
+- ~~Run DB migration~~ → alembic migration 002 applied
+- ~~Populate `project_type`~~ → 124/124 projects classified (healthcare:18, office:10, education:10, worship:10, gov:5, residential:4, other:67)
 - ~~Phase 6.5: Complete quote generation~~ → Generate Quote button + template selector + download all wired
+- ~~Phase 6.6: Auth~~ → Auth.js v5, login, admin panel, sidebar account popup
 - ~~Phase 7.1: Feedback loop~~ → PR #16
+- ~~Phase 7.2: Model retraining~~ → scripts/retrain_models.py + POST /api/admin/retrain
 - ~~Phase 7.3: Vendor price tracking~~ → PR #16
+- ~~Phase 7.4 (partial)~~ → Unknown product flagging in API + estimate detail UI
+- ~~Production env vars~~ → AUTH_SECRET, NEXTAUTH_URL, ACOUSTIMATOR_API_KEY all set on Vercel
 
 ---
 
