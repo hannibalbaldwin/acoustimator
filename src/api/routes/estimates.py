@@ -499,9 +499,7 @@ async def create_quote(
     # --- Generate sequential quote number: CA-YYYY-NNNN ---
     current_year = datetime.now().year
     count_result = await db.execute(
-        select(func.count(Quote.id)).where(
-            extract("year", Quote.generated_at) == current_year
-        )
+        select(func.count(Quote.id)).where(extract("year", Quote.generated_at) == current_year)
     )
     count = count_result.scalar() or 0
     quote_number = f"CA-{current_year}-{count + 1:04d}"
@@ -611,11 +609,13 @@ def _build_quote_pdf(estimate: Estimate, quote_number: str, template: str) -> by
             [[""]],
             colWidths=[6.5 * inch],
             rowHeights=[2],
-            style=TableStyle([
-                ("LINEBELOW", (0, 0), (-1, -1), 1.5, colors.HexColor("#222222")),
-                ("TOPPADDING", (0, 0), (-1, -1), 0),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-            ]),
+            style=TableStyle(
+                [
+                    ("LINEBELOW", (0, 0), (-1, -1), 1.5, colors.HexColor("#222222")),
+                    ("TOPPADDING", (0, 0), (-1, -1), 0),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+                ]
+            ),
         )
     )
     story.append(Spacer(1, 0.15 * inch))
@@ -623,19 +623,31 @@ def _build_quote_pdf(estimate: Estimate, quote_number: str, template: str) -> by
     # ---- Quote meta ----
     today_str = date.today().strftime("%B %d, %Y")
     meta_data = [
-        [Paragraph("Quote Number:", label_style), Paragraph(quote_number, value_style),
-         Paragraph("Template:", label_style), Paragraph(template, value_style)],
-        [Paragraph("Date:", label_style), Paragraph(today_str, value_style),
-         Paragraph("Valid For:", label_style), Paragraph("30 days", value_style)],
+        [
+            Paragraph("Quote Number:", label_style),
+            Paragraph(quote_number, value_style),
+            Paragraph("Template:", label_style),
+            Paragraph(template, value_style),
+        ],
+        [
+            Paragraph("Date:", label_style),
+            Paragraph(today_str, value_style),
+            Paragraph("Valid For:", label_style),
+            Paragraph("30 days", value_style),
+        ],
     ]
     meta_table = Table(meta_data, colWidths=[1.2 * inch, 2.0 * inch, 1.2 * inch, 2.1 * inch])
-    meta_table.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("TOPPADDING", (0, 0), (-1, -1), 3),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-        ("LEFTPADDING", (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-    ]))
+    meta_table.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("TOPPADDING", (0, 0), (-1, -1), 3),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+            ]
+        )
+    )
     story.append(meta_table)
     story.append(Spacer(1, 0.15 * inch))
 
@@ -650,13 +662,17 @@ def _build_quote_pdf(estimate: Estimate, quote_number: str, template: str) -> by
         [Paragraph("Project Address:", label_style), Paragraph(address, value_style)],
     ]
     proj_table = Table(proj_data, colWidths=[1.5 * inch, 5.0 * inch])
-    proj_table.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("TOPPADDING", (0, 0), (-1, -1), 3),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-        ("LEFTPADDING", (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-    ]))
+    proj_table.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("TOPPADDING", (0, 0), (-1, -1), 3),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+            ]
+        )
+    )
     story.append(proj_table)
     story.append(Spacer(1, 0.2 * inch))
 
@@ -676,13 +692,15 @@ def _build_quote_pdf(estimate: Estimate, quote_number: str, template: str) -> by
         textColor=colors.HexColor("#111111"),
     )
 
-    table_data = [[
-        Paragraph("Scope Type", col_header_style),
-        Paragraph("Description", col_header_style),
-        Paragraph("Area (SF)", col_header_style),
-        Paragraph("Unit Cost", col_header_style),
-        Paragraph("Total", col_header_style),
-    ]]
+    table_data = [
+        [
+            Paragraph("Scope Type", col_header_style),
+            Paragraph("Description", col_header_style),
+            Paragraph("Area (SF)", col_header_style),
+            Paragraph("Unit Cost", col_header_style),
+            Paragraph("Total", col_header_style),
+        ]
+    ]
 
     subtotal = D(0)
     total_tax = D(0)
@@ -698,30 +716,36 @@ def _build_quote_pdf(estimate: Estimate, quote_number: str, template: str) -> by
         subtotal += line_total
         total_tax += s.sales_tax or D(0)
 
-        table_data.append([
-            Paragraph(scope_type, cell_style),
-            Paragraph(description, cell_style),
-            Paragraph(area, cell_style),
-            Paragraph(unit_cost, cell_style),
-            Paragraph(total_str, cell_style),
-        ])
+        table_data.append(
+            [
+                Paragraph(scope_type, cell_style),
+                Paragraph(description, cell_style),
+                Paragraph(area, cell_style),
+                Paragraph(unit_cost, cell_style),
+                Paragraph(total_str, cell_style),
+            ]
+        )
 
     col_widths = [1.0 * inch, 2.3 * inch, 0.9 * inch, 1.0 * inch, 1.3 * inch]
     items_table = Table(table_data, colWidths=col_widths, repeatRows=1)
-    items_table.setStyle(TableStyle([
-        # Header row
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1a1a2e")),
-        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.HexColor("#f9f9f9"), colors.white]),
-        ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#cccccc")),
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("TOPPADDING", (0, 0), (-1, -1), 5),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-        ("LEFTPADDING", (0, 0), (-1, -1), 6),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-        # Align numeric columns right
-        ("ALIGN", (2, 1), (-1, -1), "RIGHT"),
-        ("ALIGN", (2, 0), (-1, 0), "CENTER"),
-    ]))
+    items_table.setStyle(
+        TableStyle(
+            [
+                # Header row
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1a1a2e")),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.HexColor("#f9f9f9"), colors.white]),
+                ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#cccccc")),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                # Align numeric columns right
+                ("ALIGN", (2, 1), (-1, -1), "RIGHT"),
+                ("ALIGN", (2, 0), (-1, 0), "CENTER"),
+            ]
+        )
+    )
     story.append(items_table)
     story.append(Spacer(1, 0.15 * inch))
 
@@ -734,14 +758,18 @@ def _build_quote_pdf(estimate: Estimate, quote_number: str, template: str) -> by
     ]
     totals_table = Table(totals_data, colWidths=[4.0 * inch, 1.5 * inch, 1.0 * inch])
 
-    totals_table.setStyle(TableStyle([
-        ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
-        ("TOPPADDING", (0, 0), (-1, -1), 3),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-        ("LINEABOVE", (1, 2), (-1, 2), 1, colors.HexColor("#222222")),
-        ("FONTNAME", (1, 2), (-1, 2), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, -1), 9),
-    ]))
+    totals_table.setStyle(
+        TableStyle(
+            [
+                ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
+                ("TOPPADDING", (0, 0), (-1, -1), 3),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                ("LINEABOVE", (1, 2), (-1, 2), 1, colors.HexColor("#222222")),
+                ("FONTNAME", (1, 2), (-1, 2), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 9),
+            ]
+        )
+    )
     story.append(totals_table)
     story.append(Spacer(1, 0.3 * inch))
 
@@ -751,24 +779,31 @@ def _build_quote_pdf(estimate: Estimate, quote_number: str, template: str) -> by
             [[""]],
             colWidths=[6.5 * inch],
             rowHeights=[1],
-            style=TableStyle([
-                ("LINEBELOW", (0, 0), (-1, -1), 0.5, colors.HexColor("#aaaaaa")),
-                ("TOPPADDING", (0, 0), (-1, -1), 0),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-            ]),
+            style=TableStyle(
+                [
+                    ("LINEBELOW", (0, 0), (-1, -1), 0.5, colors.HexColor("#aaaaaa")),
+                    ("TOPPADDING", (0, 0), (-1, -1), 0),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+                ]
+            ),
         )
     )
     story.append(Spacer(1, 0.1 * inch))
     story.append(Paragraph("This quote is valid for 30 days from the date above.", footer_style))
-    story.append(Paragraph(
-        "Pricing is subject to change based on final material quantities and field conditions.",
-        footer_style,
-    ))
+    story.append(
+        Paragraph(
+            "Pricing is subject to change based on final material quantities and field conditions.",
+            footer_style,
+        )
+    )
     story.append(Spacer(1, 0.3 * inch))
 
     # ---- Signature block ----
     sig_label = ParagraphStyle(
-        "sig_label", parent=normal, fontSize=8, fontName="Helvetica",
+        "sig_label",
+        parent=normal,
+        fontSize=8,
+        fontName="Helvetica",
         textColor=colors.HexColor("#555555"),
     )
     sig_data = [
@@ -777,12 +812,16 @@ def _build_quote_pdf(estimate: Estimate, quote_number: str, template: str) -> by
         [Paragraph("Commercial Acoustics Representative", sig_label), ""],
     ]
     sig_table = Table(sig_data, colWidths=[4.5 * inch, 2.0 * inch])
-    sig_table.setStyle(TableStyle([
-        ("TOPPADDING", (0, 0), (-1, -1), 4),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
-        ("LEFTPADDING", (0, 0), (-1, -1), 0),
-        ("FONTSIZE", (0, 0), (-1, -1), 9),
-    ]))
+    sig_table.setStyle(
+        TableStyle(
+            [
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("FONTSIZE", (0, 0), (-1, -1), 9),
+            ]
+        )
+    )
     story.append(sig_table)
 
     doc.build(story)
