@@ -192,6 +192,15 @@ async def _build_response(estimate: Estimate, db: AsyncSession) -> EstimateRespo
     if actual_total_cost is not None and actual_total_cost != 0 and total_cost is not None:
         variance_pct = round((actual_total_cost - total_cost) / actual_total_cost * 100, 2)
 
+    # Collect deduplicated unknown product names (product_name set but product_id is null)
+    unknown_products: list[str] = list(
+        dict.fromkeys(
+            s.product_name
+            for s in scopes
+            if s.product_name is not None and s.product_id is None
+        )
+    )
+
     return EstimateResponse(
         id=estimate.id,
         project_name=estimate.name,
@@ -211,6 +220,7 @@ async def _build_response(estimate: Estimate, db: AsyncSession) -> EstimateRespo
         actual_cost_date=estimate.actual_cost_date,
         accuracy_note=estimate.accuracy_note,
         variance_pct=variance_pct,
+        unknown_products=unknown_products,
     )
 
 
@@ -393,6 +403,22 @@ async def get_estimate(
     """Fetch a single estimate by ID."""
     estimate = await _fetch_estimate_or_404(estimate_id, db)
     return await _build_response(estimate, db)
+
+
+# ---------------------------------------------------------------------------
+# DELETE /api/estimates/{id}
+# ---------------------------------------------------------------------------
+
+
+@router.delete("/{estimate_id}", status_code=204)
+async def delete_estimate(
+    estimate_id: UUID,
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """Delete an estimate and all its scopes (cascade handled by DB)."""
+    estimate = await _fetch_estimate_or_404(estimate_id, db)
+    await db.delete(estimate)
+    await db.commit()
 
 
 # ---------------------------------------------------------------------------

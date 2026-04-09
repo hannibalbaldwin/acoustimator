@@ -58,6 +58,8 @@ interface ApiEstimateResponse {
   actual_cost_date?: string | null
   accuracy_note?: string | null
   variance_pct?: number | null
+  // Phase 7.4
+  unknown_products?: string[]
 }
 
 export interface EstimateListItem {
@@ -136,6 +138,7 @@ function mapEstimate(raw: ApiEstimateResponse): EstimateResponse {
     actual_cost_date: raw.actual_cost_date ?? null,
     accuracy_note: raw.accuracy_note ?? null,
     variance_pct: raw.variance_pct ?? null,
+    unknown_products: raw.unknown_products ?? [],
   }
 }
 
@@ -286,6 +289,17 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   return apiFetch<DashboardStats>('/api/stats/summary')
 }
 
+export async function deleteEstimate(id: string): Promise<void> {
+  const res = await fetch(`${BASE}/api/estimates/${id}`, {
+    method: 'DELETE',
+    headers: apiHeaders(),
+  })
+  if (!res.ok && res.status !== 204) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`API ${res.status}: ${text}`)
+  }
+}
+
 export async function deleteScope(estimateId: string, scopeId: string): Promise<void> {
   try {
     await apiFetch<void>(`/api/estimates/${estimateId}/scopes/${scopeId}`, {
@@ -383,6 +397,17 @@ export async function createAdminUser(data: {
 }): Promise<AdminUser> {
   return apiFetch<AdminUser>('/api/admin/users', {
     method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+}
+
+export async function updateAdminUser(
+  userId: string,
+  data: { name?: string; role?: string; password?: string }
+): Promise<AdminUser> {
+  return apiFetch<AdminUser>(`/api/admin/users/${userId}`, {
+    method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   })
