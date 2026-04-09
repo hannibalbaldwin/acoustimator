@@ -2,17 +2,22 @@
 
 import type { ReactNode } from 'react'
 import { useTheme } from '@/components/ThemeProvider'
+import { useDroppable } from '@dnd-kit/core'
 
 interface BoardColumnProps {
+  columnKey: string
   name: string
   count: number
   accentBorderColor: string
+  isOver: boolean
   children: ReactNode
 }
 
-export function BoardColumn({ name, count, accentBorderColor, children }: BoardColumnProps) {
+export function BoardColumn({ columnKey, name, count, accentBorderColor, isOver, children }: BoardColumnProps) {
   const { theme } = useTheme()
   const isLight = theme === 'light'
+
+  const { setNodeRef } = useDroppable({ id: columnKey })
 
   const headerBg = isLight ? 'rgba(0,0,0,0.025)' : 'rgba(255,255,255,0.025)'
   const labelColor = isLight ? '#4a5e7a' : '#6b82a0'
@@ -20,12 +25,23 @@ export function BoardColumn({ name, count, accentBorderColor, children }: BoardC
   const badgeColor = isLight ? '#7890aa' : '#3a4f6a'
   const emptyColor = isLight ? '#7890aa' : '#3a4f6a'
 
+  const columnBg = isOver
+    ? (isLight ? 'rgba(161,214,124,0.06)' : 'rgba(161,214,124,0.06)')
+    : 'transparent'
+  const columnOutline = isOver
+    ? `1px solid rgba(161,214,124,0.3)`
+    : '1px solid transparent'
+
   return (
     <div
       style={{
         minWidth: '280px',
         width: '280px',
         flexShrink: 0,
+        borderRadius: '8px',
+        background: columnBg,
+        outline: columnOutline,
+        transition: 'background 0.15s, outline 0.15s',
       }}
     >
       {/* Column header */}
@@ -69,14 +85,17 @@ export function BoardColumn({ name, count, accentBorderColor, children }: BoardC
         </span>
       </div>
 
-      {/* Card list */}
+      {/* Card list — droppable target */}
       <div
+        ref={setNodeRef}
         style={{
           display: 'flex',
           flexDirection: 'column',
           gap: '10px',
           overflowY: 'auto',
           maxHeight: 'calc(100vh - 340px)',
+          minHeight: '80px',
+          padding: '0 4px 4px',
         }}
       >
         {count === 0 ? (
