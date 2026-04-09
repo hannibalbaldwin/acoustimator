@@ -7,6 +7,7 @@ import type {
   TrendDataPoint,
   ComparableProject,
   ConfidenceLevel,
+  VendorPriceSummary,
 } from './types'
 
 // ── API wire types ────────────────────────────────────────────────────────────
@@ -50,6 +51,11 @@ interface ApiEstimateResponse {
   scopes: ApiScopeResponse[]
   created_at: string
   comparable_projects: ApiComparableProjectResponse[]
+  // Phase 7.1
+  actual_total_cost?: number | null
+  actual_cost_date?: string | null
+  accuracy_note?: string | null
+  variance_pct?: number | null
 }
 
 export interface EstimateListItem {
@@ -123,6 +129,10 @@ function mapEstimate(raw: ApiEstimateResponse): EstimateResponse {
     scopes: raw.scopes.map(mapScope),
     created_at: raw.created_at,
     comparable_projects,
+    actual_total_cost: raw.actual_total_cost ?? null,
+    actual_cost_date: raw.actual_cost_date ?? null,
+    accuracy_note: raw.accuracy_note ?? null,
+    variance_pct: raw.variance_pct ?? null,
   }
 }
 
@@ -273,6 +283,33 @@ export async function deleteScope(estimateId: string, scopeId: string): Promise<
   } catch {
     // Ignore errors (endpoint may not exist yet or scope may already be gone)
   }
+}
+
+export async function recordActual(
+  estimateId: string,
+  data: { actual_total_cost: number; actual_cost_date: string; accuracy_note?: string }
+): Promise<EstimateResponse> {
+  const raw = await apiFetch<ApiEstimateResponse>(`/api/estimates/${estimateId}/actual`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  return mapEstimate(raw)
+}
+
+export interface AccuracyStats {
+  total_with_actuals: number
+  mean_absolute_pct_error: number | null
+  mean_bias_pct: number | null
+  by_scope_type: Record<string, { mape: number; n: number }>
+}
+
+export async function getAccuracyStats(): Promise<AccuracyStats> {
+  return apiFetch<AccuracyStats>('/api/stats/accuracy')
+}
+
+export async function getVendorPriceSummary(): Promise<VendorPriceSummary[]> {
+  return apiFetch<VendorPriceSummary[]>('/api/vendors/price-summary')
 }
 
 export async function generateQuote(

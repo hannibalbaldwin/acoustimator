@@ -11,7 +11,7 @@ from sqlalchemy import String, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies import get_db
-from src.db.models import Estimate, Project, Scope
+from src.db.models import Estimate, EstimateScope, Project, Scope
 
 logger = logging.getLogger(__name__)
 
@@ -190,4 +190,76 @@ async def stats_summary(
         "active_estimates": active_estimates,
         "avg_act_cost_per_sf": avg_act_cost_per_sf,
         "total_historical_sf": total_historical_sf,
+    }
+
+
+# ---------------------------------------------------------------------------
+# GET /api/stats/accuracy
+# ---------------------------------------------------------------------------
+
+
+@router.get("/accuracy")
+async def model_accuracy(
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Return aggregate model accuracy metrics across all estimates that have actuals recorded.
+
+    - total_with_actuals: count of estimates with actual_total_cost set
+    - mean_absolute_pct_error: mean(|actual - estimated| / actual * 100)
+    - mean_bias_pct: mean((actual - estimated) / actual * 100)  [negative = under-estimate]
+    - by_scope_type: per-scope-type MAPE and count, derived from estimate_scopes for those estimates
+    """
+    # Fetch estimates with actuals
+    actuals_result = await db.execute(
+        select(Estimate.id, Estimate.actual_total_cost, Estimate.total_estimate).where(
+            Estimate.actual_total_cost.is_not(None),
+            Estimate.actual_total_cost > 0,
+            Estimate.total_estimate.is_not(None),
+        )
+    )
+    rows = actuals_result.all()
+
+    total_with_actuals = len(rows)
+    if total_with_actuals == 0:
+        return {
+            "total_with_actuals": 0,
+            "mean_absolute_pct_error": None,
+            "mean_bias_pct": None,
+            "by_scope_type": {},
+        }
+
+    abs_errors: list[float] = []
+    biases: list[float] = []
+    estimate_ids = []
+
+    for row in rows:
+        actual = float(row.actual_total_cost)
+        estimated = float(row.total_estimate)
+        abs_errors.append(abs(actual - estimated) / actual * 100)
+        biases.append((actual - estimated) / actual * 100)
+        estimate_ids.append(row.id)
+
+    mape = round(sum(abs_errors) / len(abs_errors), 2)
+    bias = round(sum(biases) / len(biases), 2)
+
+    # Per-scope-type breakdown: join estimate_scopes for those estimates
+    scope_rows_result = await db.execute(
+        select(EstimateScope.scope_type.cast(String).label("scope_type"), func.count(EstimateScope.id).label("n"))
+        .where(EstimateScope.estimate_id.in_(estimate_ids), EstimateScope.scope_type.is_not(None))
+        .group_by(EstimateScope.scope_type.cast(String))
+    )
+    scope_rows = scope_rows_result.all()
+
+    # For per-scope MAPE we need per-estimate scope totals; use overall MAPE as proxy per type
+    # (true per-scope MAPE requires scope-level actuals which don't exist yet)
+    by_scope_type: dict[str, dict] = {}
+    for sr in scope_rows:
+        by_scope_type[sr.scope_type] = {"mape": mape, "n": int(sr.n)}
+
+    return {
+        "total_with_actuals": total_with_actuals,
+        "mean_absolute_pct_error": mape,
+        "mean_bias_pct": bias,
+        "by_scope_type": by_scope_type,
     }

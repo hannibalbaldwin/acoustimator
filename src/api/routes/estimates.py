@@ -21,6 +21,7 @@ from src.api.schemas.estimates import (
     ComparableProjectResponse,
     EstimateListItem,
     EstimateResponse,
+    RecordActualRequest,
     ScopeResponse,
     UpdateScopeRequest,
 )
@@ -179,6 +180,12 @@ async def _build_response(estimate: Estimate, db: AsyncSession) -> EstimateRespo
 
     scope_responses = [ScopeResponse.from_orm_scope(s) for s in scopes]
 
+    # Actual cost fields and variance
+    actual_total_cost = float(estimate.actual_total_cost) if estimate.actual_total_cost is not None else None
+    variance_pct: float | None = None
+    if actual_total_cost is not None and actual_total_cost != 0 and total_cost is not None:
+        variance_pct = round((actual_total_cost - total_cost) / actual_total_cost * 100, 2)
+
     return EstimateResponse(
         id=estimate.id,
         project_name=estimate.name,
@@ -194,6 +201,10 @@ async def _build_response(estimate: Estimate, db: AsyncSession) -> EstimateRespo
         created_at=estimate.created_at,
         scopes=scope_responses,
         comparable_projects=comparable_projects,
+        actual_total_cost=actual_total_cost,
+        actual_cost_date=estimate.actual_cost_date,
+        accuracy_note=estimate.accuracy_note,
+        variance_pct=variance_pct,
     )
 
 
@@ -473,6 +484,36 @@ async def delete_scope(
     estimate.total_estimate = new_total
 
     await db.commit()
+
+
+# ---------------------------------------------------------------------------
+# PATCH /api/estimates/{id}/actual
+# ---------------------------------------------------------------------------
+
+
+@router.patch("/{estimate_id}/actual", response_model=EstimateResponse)
+async def record_actual_cost(
+    estimate_id: UUID,
+    body: RecordActualRequest,
+    db: AsyncSession = Depends(get_db),
+) -> EstimateResponse:
+    """Record the actual project cost so model accuracy can be tracked over time."""
+    from datetime import date as date_type
+
+    estimate = await _fetch_estimate_or_404(estimate_id, db)
+
+    estimate.actual_total_cost = Decimal(str(body.actual_total_cost))
+    try:
+        estimate.actual_cost_date = date_type.fromisoformat(body.actual_cost_date)
+    except ValueError as err:
+        raise HTTPException(status_code=422, detail=f"Invalid date format: {body.actual_cost_date}") from err
+    if body.accuracy_note is not None:
+        estimate.accuracy_note = body.accuracy_note
+
+    await db.commit()
+    await db.refresh(estimate)
+    estimate = await _fetch_estimate_or_404(estimate.id, db)
+    return await _build_response(estimate, db)
 
 
 # ---------------------------------------------------------------------------

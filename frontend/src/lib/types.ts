@@ -43,6 +43,11 @@ export interface EstimateResponse {
   scopes: ScopeResponse[]
   created_at: string
   comparable_projects: ComparableProject[]
+  // Phase 7.1: actual cost tracking
+  actual_total_cost?: number | null
+  actual_cost_date?: string | null
+  accuracy_note?: string | null
+  variance_pct?: number | null
 }
 
 export interface ProjectScopeSummary {
@@ -90,4 +95,16 @@ export interface TrendDataPoint {
   FW?: number | null
   SM?: number | null
   _count?: number
+}
+
+export interface VendorPriceSummary {
+  vendor_name: string
+  canonical_name: string
+  quote_count: number
+  avg_total: number | null
+  recent_avg: number | null
+  baseline_avg: number | null
+  pct_change: number | null
+  alert: boolean
+  alert_message: string | null
 }

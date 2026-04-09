@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
 
@@ -92,6 +92,11 @@ class EstimateResponse(BaseModel):
     created_at: datetime
     scopes: list[ScopeResponse] = []
     comparable_projects: list[ComparableProjectResponse] = []
+    # Actual cost tracking fields (Phase 7.1)
+    actual_total_cost: float | None = None
+    actual_cost_date: date | None = None
+    accuracy_note: str | None = None
+    variance_pct: float | None = None  # (actual - estimated) / actual * 100
 
     @classmethod
     def from_orm(cls, estimate: object, scopes: list[object] | None = None) -> EstimateResponse:
@@ -176,3 +181,11 @@ class UpdateScopeRequest(BaseModel):
     markup_pct: float | None = None
     labor_days: float | None = None
     is_accepted: bool | None = None
+
+
+class RecordActualRequest(BaseModel):
+    """Body for PATCH /api/estimates/{id}/actual."""
+
+    actual_total_cost: float
+    actual_cost_date: str  # ISO date string e.g. "2025-03-15"
+    accuracy_note: str | None = None
