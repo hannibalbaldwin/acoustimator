@@ -1,8 +1,9 @@
 """API key authentication middleware."""
 from __future__ import annotations
 
-import os
 import logging
+import os
+
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
