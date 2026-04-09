@@ -5,6 +5,7 @@ import type { ScopeResponse, ScopeType } from '@/lib/types'
 import { formatCurrency, formatPct, cn } from '@/lib/utils'
 import { ScopeTypeBadge } from './ScopeTypeBadge'
 import { ConfidenceBadge } from './ConfidenceBadge'
+import { FilterSelect } from '@/components/ui/FilterSelect'
 
 interface EditState {
   product_name: string
@@ -75,24 +76,12 @@ function ScopeRow({ scope, isLight, onAccept, onSave, onDelete, onAddToCatalog }
       <td className="px-3 py-2 whitespace-nowrap">
         <div className="flex items-center gap-1.5">
           {(editing || isNewBlank) ? (
-            <select
+            <FilterSelect
               value={edits.scope_type}
-              onChange={(e) => setEdits((p) => ({ ...p, scope_type: e.target.value }))}
-              style={{
-                background: isLight ? '#f5f7fa' : '#0e1219',
-                border: `1px solid ${isLight ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.15)'}`,
-                color: isLight ? '#0f1923' : '#d8e4f5',
-                borderRadius: '4px',
-                fontSize: '11px',
-                padding: '2px 4px',
-                height: '24px',
-                outline: 'none',
-              }}
-            >
-              {['ACT', 'AWP', 'FW', 'SM', 'WW', 'Baffles', 'RPG', 'Other'].map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
+              onChange={(v) => setEdits((p) => ({ ...p, scope_type: v }))}
+              options={['ACT', 'AWP', 'FW', 'SM', 'WW', 'Baffles', 'RPG', 'Other']}
+              className="w-[90px]"
+            />
           ) : (
             <>
               <ScopeTypeBadge type={scope.scope_type} />
