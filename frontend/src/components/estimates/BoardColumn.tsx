@@ -1,4 +1,7 @@
+'use client'
+
 import type { ReactNode } from 'react'
+import { useTheme } from '@/components/ThemeProvider'
 
 interface BoardColumnProps {
   name: string
@@ -8,6 +11,15 @@ interface BoardColumnProps {
 }
 
 export function BoardColumn({ name, count, accentBorderColor, children }: BoardColumnProps) {
+  const { theme } = useTheme()
+  const isLight = theme === 'light'
+
+  const headerBg = isLight ? 'rgba(0,0,0,0.025)' : 'rgba(255,255,255,0.025)'
+  const labelColor = isLight ? '#4a5e7a' : '#6b82a0'
+  const badgeBg = isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)'
+  const badgeColor = isLight ? '#7890aa' : '#3a4f6a'
+  const emptyColor = isLight ? '#7890aa' : '#3a4f6a'
+
   return (
     <div
       style={{
@@ -21,7 +33,7 @@ export function BoardColumn({ name, count, accentBorderColor, children }: BoardC
         style={{
           borderTop: `2px solid ${accentBorderColor}`,
           borderRadius: '6px 6px 0 0',
-          background: 'rgba(255,255,255,0.025)',
+          background: headerBg,
           paddingLeft: '12px',
           paddingRight: '12px',
           paddingTop: '10px',
@@ -38,7 +50,7 @@ export function BoardColumn({ name, count, accentBorderColor, children }: BoardC
             fontWeight: 600,
             textTransform: 'uppercase',
             letterSpacing: '0.07em',
-            color: '#6b82a0',
+            color: labelColor,
           }}
         >
           {name}
@@ -49,8 +61,8 @@ export function BoardColumn({ name, count, accentBorderColor, children }: BoardC
             fontFamily: 'monospace',
             padding: '2px 6px',
             borderRadius: '3px',
-            background: 'rgba(255,255,255,0.08)',
-            color: '#3a4f6a',
+            background: badgeBg,
+            color: badgeColor,
           }}
         >
           {count}
@@ -74,7 +86,7 @@ export function BoardColumn({ name, count, accentBorderColor, children }: BoardC
               paddingBottom: '32px',
               textAlign: 'center',
               fontSize: '12px',
-              color: '#3a4f6a',
+              color: emptyColor,
             }}
           >
             No estimates

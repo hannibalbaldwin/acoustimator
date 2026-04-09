@@ -11,7 +11,7 @@ from pathlib import Path
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, UploadFile
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -132,6 +132,50 @@ async def _build_response(estimate: Estimate, db: AsyncSession) -> EstimateRespo
                 )
         except Exception:
             logger.warning("Failed to enrich comparable projects", exc_info=True)
+
+    # Fallback: parse comparable names from ai_notes if no comparable_project_ids
+    if not comparable_ids:
+        name_hints: list[str] = []
+        for s in scopes:
+            if s.ai_notes:
+                # ai_notes stores names like "Brandon Library; Seven Rivers HS"
+                parts = [p.strip() for p in s.ai_notes.split(";") if p.strip()]
+                name_hints.extend(parts)
+        name_hints = list(dict.fromkeys(name_hints))[:5]  # deduplicate, cap at 5
+
+        if name_hints:
+            try:
+                conditions = [func.lower(Project.name).contains(hint.lower()) for hint in name_hints]
+                proj_result = await db.execute(
+                    select(Project).options(selectinload(Project.scopes)).where(or_(*conditions)).limit(5)
+                )
+                found_projects = proj_result.scalars().all()
+                for p in found_projects:
+                    year = p.quote_date.year if p.quote_date else None
+                    scope_type_val: str | None = None
+                    area_sf_val: float | None = None
+                    cost_per_sf_val: float | None = None
+                    total_cost_val: float | None = None
+                    if hasattr(p, "scopes") and p.scopes:
+                        first_scope = p.scopes[0]
+                        scope_type_val = str(first_scope.scope_type) if first_scope.scope_type else None
+                        area_sf_val = float(first_scope.square_footage) if first_scope.square_footage else None
+                        cost_per_sf_val = float(first_scope.cost_per_unit) if first_scope.cost_per_unit else None
+                        total_cost_val = float(first_scope.total) if first_scope.total else None
+                    comparable_projects.append(
+                        ComparableProjectResponse(
+                            id=str(p.id),
+                            folder_name=p.folder_name or p.name or "",
+                            scope_type=scope_type_val,
+                            area_sf=area_sf_val,
+                            cost_per_sf=cost_per_sf_val,
+                            total_cost=total_cost_val,
+                            year=year,
+                            similarity_score=0.75,
+                        )
+                    )
+            except Exception:
+                logger.warning("Failed to enrich comparable projects from ai_notes", exc_info=True)
 
     scope_responses = [ScopeResponse.from_orm_scope(s) for s in scopes]
 
@@ -393,6 +437,42 @@ async def update_scope(
     await db.refresh(estimate)
     estimate = await _fetch_estimate_or_404(estimate.id, db)
     return await _build_response(estimate, db)
+
+
+# ---------------------------------------------------------------------------
+# DELETE /api/estimates/{estimate_id}/scopes/{scope_id}
+# ---------------------------------------------------------------------------
+
+
+@router.delete("/{estimate_id}/scopes/{scope_id}", status_code=204)
+async def delete_scope(
+    estimate_id: UUID,
+    scope_id: UUID,
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """Remove a scope line item from an estimate."""
+    estimate = await _fetch_estimate_or_404(estimate_id, db)
+
+    scope_to_delete: EstimateScope | None = None
+    for s in estimate.estimate_scopes:
+        if s.id == scope_id:
+            scope_to_delete = s
+            break
+
+    if scope_to_delete is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Scope {scope_id} not found on estimate {estimate_id}",
+        )
+
+    await db.delete(scope_to_delete)
+
+    # Recompute estimate total
+    remaining = [s for s in estimate.estimate_scopes if s.id != scope_id]
+    new_total = sum((s.total or Decimal(0)) for s in remaining)
+    estimate.total_estimate = new_total
+
+    await db.commit()
 
 
 # ---------------------------------------------------------------------------

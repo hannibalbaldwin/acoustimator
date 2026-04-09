@@ -6,6 +6,7 @@ import { ConfidenceBadge } from './ConfidenceBadge'
 import { formatCurrency } from '@/lib/utils'
 import type { ScopeType, ConfidenceLevel } from '@/lib/types'
 import { useState } from 'react'
+import { useTheme } from '@/components/ThemeProvider'
 
 interface EstimateCardProps {
   id: string
@@ -28,6 +29,18 @@ export function EstimateCard({
   created_at,
 }: EstimateCardProps) {
   const [hovered, setHovered] = useState(false)
+  const { theme } = useTheme()
+  const isLight = theme === 'light'
+
+  const cardBg = hovered
+    ? (isLight ? '#eaf0f8' : '#1f2a3d')
+    : (isLight ? '#ffffff' : '#1a2235')
+  const cardBorder = hovered
+    ? (isLight ? 'rgba(0,0,0,0.14)' : 'rgba(255,255,255,0.15)')
+    : (isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)')
+  const textPrimary = isLight ? '#0f1923' : '#d8e4f5'
+  const textMuted = isLight ? '#7890aa' : '#3a4f6a'
+  const dividerColor = isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)'
 
   return (
     <Link
@@ -39,8 +52,8 @@ export function EstimateCard({
       <div
         style={{
           borderRadius: '8px',
-          background: hovered ? '#1f2a3d' : '#1a2235',
-          border: `1px solid ${hovered ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.08)'}`,
+          background: cardBg,
+          border: `1px solid ${cardBorder}`,
           padding: '12px 14px',
           transition: 'border-color 0.15s, background 0.15s',
         }}
@@ -51,7 +64,7 @@ export function EstimateCard({
             style={{
               fontSize: '13px',
               fontWeight: 600,
-              color: '#d8e4f5',
+              color: textPrimary,
               margin: 0,
               lineHeight: '1.3',
               flex: 1,
@@ -66,7 +79,7 @@ export function EstimateCard({
           <span
             style={{
               fontSize: '11px',
-              color: '#a1d67c',
+              color: isLight ? '#4a8a10' : '#a1d67c',
               opacity: hovered ? 1 : 0,
               transition: 'opacity 0.15s',
               flexShrink: 0,
@@ -81,7 +94,7 @@ export function EstimateCard({
         <p
           style={{
             fontSize: '11px',
-            color: '#3a4f6a',
+            color: textMuted,
             margin: '2px 0 0 0',
           }}
         >
@@ -92,7 +105,7 @@ export function EstimateCard({
         <div
           style={{
             height: '1px',
-            background: 'rgba(255,255,255,0.06)',
+            background: dividerColor,
             margin: '8px 0',
           }}
         />
@@ -109,7 +122,7 @@ export function EstimateCard({
             <p
               style={{
                 fontSize: '10px',
-                color: '#3a4f6a',
+                color: textMuted,
                 marginTop: '6px',
                 fontFamily: 'var(--font-jetbrains-mono), monospace',
               }}
@@ -124,7 +137,7 @@ export function EstimateCard({
               style={{
                 fontSize: '13px',
                 fontWeight: 600,
-                color: '#d8e4f5',
+                color: textPrimary,
                 fontFamily: 'var(--font-jetbrains-mono), monospace',
                 margin: 0,
                 fontVariantNumeric: 'tabular-nums',

@@ -513,34 +513,43 @@ Covered by 5.2 above. Format B/C match with optional Notes sheet.
 
 ### 6.1: FastAPI Backend ✅ COMPLETE
 
-All six endpoints built, tested (8 contract tests), and deployed to Vercel serverless:
+All endpoints built, tested, and running locally (Vercel deployment pending env var config):
 
 - `POST /api/estimates` — Create estimate from uploaded plans
+- `GET /api/estimates` — List estimates (paginated, status-filterable)
 - `GET /api/estimates/{id}` — Retrieve estimate with scopes + comparables
 - `PATCH /api/estimates/{id}/scopes/{scope_id}` — Adjust scope fields inline
 - `GET /api/projects` — Browse historical projects (paginated, filterable)
+- `GET /api/stats/cost-trends` — Aggregate cost/SF by year + scope type
 - `POST /api/estimates/{id}/export` — StreamingResponse Excel (.xlsx) buildup
-- `POST /api/estimates/{id}/quote` — Quote PDF stub (Phase 6.5)
+- `POST /api/estimates/{id}/quote` — Quote PDF (reportlab-generated, sequential CA-YYYY-NNNN numbering)
 
-**Key files:** `src/api/main.py`, `src/api/routes/estimates.py`, `src/api/routes/projects.py`, `api/index.py` (Vercel entrypoint)
+**Additional infrastructure (post-PR merge):**
+- `src/api/middleware/api_key.py` — `ApiKeyMiddleware` (dev-safe X-API-Key header check)
+- CORS fixed for `http://localhost:4000` dev server
+- `src/db/migrations/add_quotes_table.sql` — `quotes` table migrated to Neon dev branch
+- Bug fix: `cast(str)` → `cast(String)` in `stats.py` and `projects.py` (SQLAlchemy requires `String` type, not Python `str`)
+
+**Key files:** `src/api/main.py`, `src/api/routes/estimates.py`, `src/api/routes/projects.py`, `src/api/routes/stats.py`, `api/index.py` (Vercel entrypoint)
 
 **Note:** ML model imports wrapped in `try/except ImportError` so API starts on Vercel without sklearn (model `.joblib` files are gitignored). Vercel slim `api/requirements.txt` excludes sklearn/scipy/xgboost.
 
 ### 6.2: Next.js Frontend ✅ COMPLETE
 
-Full CA brand dark theme + real API wiring (PRs #8, #10):
+Full CA brand theme + real API wiring (PRs #8, #10):
 - Space Grotesk + JetBrains Mono fonts, CA green `#a1d67c` sole accent
-- `#080b10` → `#0e1219` → `#131822` surface layers, translucent borders
+- `#080b10` → `#0e1219` → `#131822` dark surface layers, translucent borders
 - `frontend/src/lib/api.ts` — typed client with field mapping from API wire format → frontend types
+- Frontend runs on `:4000`, backend on `:8000` (CORS configured for both)
 
 **Pages:** Dashboard, `/estimates` (new), New Estimate wizard, Estimate detail, Projects browser — all wired to real API via `useEffect` + `useState`. Mock data fully replaced.
 **Components:** StatCard, CostTrendChart, ConfidenceBadge, ScopeTypeBadge, EstimateTable (inline-editable, PATCH wired), EstimateSummary, ComparableProjects, PlanUploadZone
 
 ### 6.3: Project Dashboard ✅ COMPLETE
 
-- Stat cards (hardcoded totals — TODO: add DB aggregate endpoint)
-- Cost/SF trend chart driven by real `GET /api/stats/cost-trends`
-- Recent estimates table + **Kanban board toggle** (PR #12)
+- Stat cards (hardcoded totals — ⚠️ TODO: add DB aggregate endpoint for live counts)
+- Cost/SF trend chart driven by real `GET /api/stats/cost-trends` (⚠️ returns empty until `quote_date` loader bug is fixed — see Phase 2.3)
+- Recent estimates table + **Kanban board toggle**
 - Table/board toggle: ≡ table view, ⊞ board view
 - Board groups by status: Draft → Reviewed → Finalized → Exported
 
@@ -570,17 +579,31 @@ Full CA brand dark theme + real API wiring (PRs #8, #10):
 - `MobileHeader.tsx` — 48px top bar (hamburger + wordmark) for mobile
 - Responsive: 2-col stat cards on mobile, `overflow-x-auto` tables, stacked estimate detail, `left-0 md:left-56` sticky bar
 
-### 6.5: Quote Generation ❌ NOT STARTED
+### 6.4.3: Light/Dark Theme System ✅ COMPLETE
 
-- T-004A / T-004B / T-004E template families
-- Auto-populate from estimate data
-- Sequential quote number assignment
-- PDF export via `POST /api/estimates/{id}/quote` (stub exists)
+- `ThemeProvider.tsx` — React context managing `dark`/`light` class on `<html>`, persisted to `localStorage`
+- `useTheme()` hook consumed by all client components
+- `globals.css` — `html.light { ... }` block overrides all shadcn CSS variables for light mode
+- Theme toggle pill in sidebar bottom-left (with account row, version label, settings gear)
+- All pages and components fully theme-aware: Dashboard, Estimates, Projects, StatCard, CostTrendChart, EstimateCard, BoardColumn, FilterSelect, Sidebar
 
-### 6.6: User Authentication and Roles ❌ NOT STARTED
+### 6.4.4: Custom Dropdown Components ✅ COMPLETE
 
-- Admin, Estimator, Viewer roles
-- API key authentication (internal tool — single header middleware)
+- `FilterSelect.tsx` — theme-aware custom dropdown replacing all native `<select>` elements
+- CA brand styling: translucent panel, checkmark on selected, animated caret chevron
+- Closes on outside click via `useRef` + `mousedown` listener
+
+### 6.5: Quote Generation ⚠️ PARTIAL
+
+- Backend: `POST /api/estimates/{id}/quote` returns reportlab-generated PDF with `CA-YYYY-NNNN` sequential numbering
+- `quotes` table migrated to Neon dev branch
+- ❌ Frontend flow not yet implemented (button wiring, template selector, download trigger)
+- ❌ Full T-004A/B/E template content not yet populated (line items, terms, CA letterhead)
+
+### 6.6: User Authentication and Roles ⚠️ PARTIAL
+
+- `ApiKeyMiddleware` in place as dev scaffold (passes all when `ACOUSTIMATOR_API_KEY` env var not set)
+- ❌ Real auth (login, roles, session) not implemented — deferred until multi-user need arises
 
 **Phase 6 Deliverable:** Working web app for Commercial Acoustics staff.
 
@@ -636,17 +659,24 @@ Full CA brand dark theme + real API wiring (PRs #8, #10):
 | Phase 3.5 | ✅ | Labor model, man_days ∝ SF^0.49, 66% MAPE (expected variance) |
 | Phase 4 | ✅ | 331 drawings extracted, 8,493 scopes, 5.4M SF, 100% success |
 | Phase 5 | ✅ | $68,677 Seven Pines estimate, Excel export, 357 tests |
-| Phase 5.5 | 🔄 | GitHub CI/CD, branch protection, agent review, pre-commit |
-| Phase 6 | ❌ | Not started |
+| Phase 5.5 | ✅ | GitHub CI/CD, branch protection, agent review active |
+| Phase 6.1 | ✅ | FastAPI backend, all endpoints, middleware, bug fixes |
+| Phase 6.2 | ✅ | Next.js frontend, full API wiring, CA brand theme |
+| Phase 6.3 | ✅ | Dashboard (stat cards hardcoded, cost chart empty pending quote_date fix) |
+| Phase 6.4 | ✅ | Estimate builder, kanban board, PWA, light/dark theme, custom dropdowns |
+| Phase 6.5 | ⚠️ | Quote PDF backend done; frontend flow + full template content not implemented |
+| Phase 6.6 | ⚠️ | API key middleware scaffold only; real auth deferred |
 | Phase 7 | ❌ | Not started |
 
 ---
 
 ## Immediate Next Steps (Priority Order)
 
-1. **Phase 5.5** — GitHub CI/CD + agent code review. In progress.
-2. **Phase 6** — Web app (Next.js + FastAPI). Starts after Phase 5.5 CI is green.
-3. **Populate `project_type`** — healthcare/education/church flags already engineered; persist them to `projects.project_type` to unlock the biggest missing signal for markup + cost models.
+1. **Fix `quote_date` loader bug** — `src/db/loader.py` needs to persist `extraction_result.project.quote_date` to `projects.quote_date`. This is the single change that unblocks the Cost/SF Trends chart with real historical data.
+2. **Dashboard aggregate endpoint** — `GET /api/stats/summary` returning live project count, active estimate count, total SF estimated, avg ACT cost/SF. Replaces hardcoded StatCard values.
+3. **Phase 6.5: Complete quote generation** — Wire frontend "Generate Quote" button to `POST /api/estimates/{id}/quote`, add template selector (T-004A/B/E), implement download. Populate full CA template content (line items, clauses, letterhead).
+4. **Populate `project_type`** — healthcare/education/church flags already engineered in features.py; persist them to `projects.project_type` to unlock the biggest missing signal for markup + cost models.
+5. **Phase 7: Continuous Learning** — Feedback loop for actual vs. estimated costs; monthly model retraining pipeline.
 
 ---
 

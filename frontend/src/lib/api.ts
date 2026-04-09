@@ -235,11 +235,44 @@ export async function listProjects(params?: {
   if (params?.limit != null) qs.set('limit', String(params.limit))
   if (params?.offset != null) qs.set('offset', String(params.offset))
   const query = qs.toString() ? `?${qs.toString()}` : ''
-  return apiFetch<PaginatedResponse<ProjectResponse>>(`/api/projects${query}`)
+  const raw = await apiFetch<PaginatedResponse<ProjectResponse>>(`/api/projects${query}`)
+  // Ensure scope_types is always an array (guard against old API responses)
+  raw.items = raw.items.map((p) => ({
+    ...p,
+    scope_types: p.scope_types ?? [],
+    scopes: (p.scopes ?? []).map((s) => ({
+      ...s,
+      area_sf: (s as unknown as { area_sf?: number | null; square_footage?: number | null }).area_sf
+        ?? (s as unknown as { square_footage?: number | null }).square_footage
+        ?? null,
+    })),
+  }))
+  return raw
 }
 
-export async function getCostTrends(): Promise<TrendDataPoint[]> {
-  return apiFetch<TrendDataPoint[]>('/api/stats/cost-trends')
+export async function getCostTrends(granularity: 'year' | 'quarter' | 'month' = 'year'): Promise<TrendDataPoint[]> {
+  return apiFetch<TrendDataPoint[]>(`/api/stats/cost-trends?granularity=${granularity}`)
+}
+
+export interface DashboardStats {
+  total_projects: number
+  active_estimates: number
+  avg_act_cost_per_sf: number | null
+  total_historical_sf: number | null
+}
+
+export async function getDashboardStats(): Promise<DashboardStats> {
+  return apiFetch<DashboardStats>('/api/stats/summary')
+}
+
+export async function deleteScope(estimateId: string, scopeId: string): Promise<void> {
+  try {
+    await apiFetch<void>(`/api/estimates/${estimateId}/scopes/${scopeId}`, {
+      method: 'DELETE',
+    })
+  } catch {
+    // Ignore errors (endpoint may not exist yet or scope may already be gone)
+  }
 }
 
 export async function generateQuote(

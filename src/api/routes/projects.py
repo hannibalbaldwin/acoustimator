@@ -6,7 +6,7 @@ import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select
+from sqlalchemy import String, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -40,7 +40,7 @@ async def list_projects(
 
     if scope_type:
         base_query = base_query.where(
-            Project.id.in_(select(Scope.project_id).where(Scope.scope_type.cast(str).ilike(scope_type)))
+            Project.id.in_(select(Scope.project_id).where(Scope.scope_type.cast(String).ilike(scope_type)))
         )
 
     if gc_name:
@@ -57,11 +57,13 @@ async def list_projects(
     total: int = count_result.scalar_one()
 
     # Fetch page
-    page_query = base_query.order_by(Project.created_at.desc()).offset(offset).limit(limit)
+    page_query = (
+        base_query.order_by(Project.created_at.desc()).offset(offset).limit(limit).options(selectinload(Project.scopes))
+    )
     result = await db.execute(page_query)
     projects = result.scalars().all()
 
-    items = [ProjectResponse.from_orm(p, include_scopes=False) for p in projects]
+    items = [ProjectResponse.from_orm(p, include_scopes=True) for p in projects]
 
     return PaginatedResponse(items=items, total=total, limit=limit, offset=offset)
 

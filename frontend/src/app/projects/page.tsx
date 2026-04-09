@@ -4,31 +4,19 @@ import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { formatCurrency, formatCurrencyFull, formatSF } from '@/lib/utils'
 import { ScopeTypeBadge } from '@/components/estimates/ScopeTypeBadge'
+import { FilterSelect } from '@/components/ui/FilterSelect'
 import { listProjects } from '@/lib/api'
 import type { ProjectResponse, ScopeType } from '@/lib/types'
+import { useTheme } from '@/components/ThemeProvider'
 
 const ALL_GCS = ['All GCs', 'Skanska USA', 'Turner Construction', 'DPR Construction', 'Balfour Beatty', 'Hensel Phelps']
 const ALL_SCOPES = ['All Scopes', 'ACT', 'AWP', 'FW', 'SM', 'WW', 'Baffles', 'RPG']
 const ALL_YEARS = ['All Years', '2021', '2022', '2023', '2024']
 
-const inputStyle: React.CSSProperties = {
-  background: '#0e1219',
-  border: '1px solid rgba(255,255,255,0.12)',
-  color: '#d8e4f5',
-  borderRadius: '6px',
-  fontSize: '13px',
-  padding: '8px 12px',
-  outline: 'none',
-}
-
-const selectStyle: React.CSSProperties = {
-  ...inputStyle,
-  appearance: 'none',
-  paddingRight: '28px',
-  cursor: 'pointer',
-}
-
 export default function ProjectsPage() {
+  const { theme } = useTheme()
+  const isLight = theme === 'light'
+
   const [gcFilter, setGcFilter] = useState('All GCs')
   const [scopeFilter, setScopeFilter] = useState('All Scopes')
   const [yearFilter, setYearFilter] = useState('All Years')
@@ -38,6 +26,32 @@ export default function ProjectsPage() {
   const [totalCount, setTotalCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Theme-aware colors
+  const textPrimary = isLight ? '#0f1923' : '#d8e4f5'
+  const textSubtitle = isLight ? '#5a7a9a' : '#3a4f6a'
+  const textMuted = isLight ? '#7890aa' : '#3a4f6a'
+  const textSecondary = isLight ? '#4a5e7a' : '#6b82a0'
+  const tableBg = isLight ? '#ffffff' : '#131822'
+  const inputBg = isLight ? '#f7f9fc' : '#0e1219'
+  const borderDefault = isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.12)'
+  const borderSubtle = isLight ? 'rgba(0,0,0,0.07)' : 'rgba(255,255,255,0.07)'
+  const borderFaint = isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)'
+  const borderHairline = isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.04)'
+  const rowHoverBg = isLight ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.025)'
+  const tableBorderOuter = isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)'
+  const tableBorderInner = isLight ? 'rgba(0,0,0,0.09)' : 'rgba(255,255,255,0.09)'
+  const clearFilterColor = isLight ? '#4a5e7a' : '#6b82a0'
+
+  const inputStyle: React.CSSProperties = {
+    background: inputBg,
+    border: `1px solid ${borderDefault}`,
+    color: textPrimary,
+    borderRadius: '6px',
+    fontSize: '13px',
+    padding: '8px 12px',
+    outline: 'none',
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -69,7 +83,7 @@ export default function ProjectsPage() {
   const filtered = useMemo(() => {
     if (!search.trim()) return projects
     return projects.filter((p) =>
-      p.folder_name.toLowerCase().includes(search.toLowerCase())
+      p.name.toLowerCase().includes(search.toLowerCase())
     )
   }, [projects, search])
 
@@ -97,17 +111,17 @@ export default function ProjectsPage() {
   }
 
   return (
-    <div className="px-4 py-6 md:px-8 md:py-8 max-w-7xl">
+    <div className="px-4 py-6 md:px-8 md:py-8 w-full max-w-screen-2xl">
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
           <h1
             className="text-[22px] font-semibold tracking-tight leading-tight"
-            style={{ color: '#d8e4f5' }}
+            style={{ color: textPrimary }}
           >
             Projects
           </h1>
-          <p className="text-[13px] mt-1" style={{ color: '#3a4f6a' }}>
+          <p className="text-[13px] mt-1" style={{ color: textSubtitle }}>
             Historical project database · {totalCount} projects total
           </p>
         </div>
@@ -133,7 +147,7 @@ export default function ProjectsPage() {
         <div className="relative flex-1 max-w-xs">
           <svg
             className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5"
-            style={{ color: '#3a4f6a' }}
+            style={{ color: textMuted }}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -151,84 +165,33 @@ export default function ProjectsPage() {
         </div>
 
         {/* Scope filter */}
-        <div className="relative">
-          <select
-            value={scopeFilter}
-            onChange={(e) => setScopeFilter(e.target.value)}
-            style={selectStyle}
-          >
-            {ALL_SCOPES.map((s) => (
-              <option key={s} value={s} style={{ background: '#0e1219', color: '#d8e4f5' }}>
-                {s}
-              </option>
-            ))}
-          </select>
-          <svg
-            className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none"
-            style={{ color: '#3a4f6a' }}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path d="M19 9l-7 7-7-7" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-        </div>
+        <FilterSelect
+          value={scopeFilter}
+          onChange={setScopeFilter}
+          options={ALL_SCOPES}
+        />
 
         {/* GC filter */}
-        <div className="relative">
-          <select
-            value={gcFilter}
-            onChange={(e) => setGcFilter(e.target.value)}
-            style={selectStyle}
-          >
-            {ALL_GCS.map((g) => (
-              <option key={g} value={g} style={{ background: '#0e1219', color: '#d8e4f5' }}>
-                {g}
-              </option>
-            ))}
-          </select>
-          <svg
-            className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none"
-            style={{ color: '#3a4f6a' }}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path d="M19 9l-7 7-7-7" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-        </div>
+        <FilterSelect
+          value={gcFilter}
+          onChange={setGcFilter}
+          options={ALL_GCS}
+        />
 
         {/* Year filter */}
-        <div className="relative">
-          <select
-            value={yearFilter}
-            onChange={(e) => setYearFilter(e.target.value)}
-            style={selectStyle}
-          >
-            {ALL_YEARS.map((y) => (
-              <option key={y} value={y} style={{ background: '#0e1219', color: '#d8e4f5' }}>
-                {y}
-              </option>
-            ))}
-          </select>
-          <svg
-            className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none"
-            style={{ color: '#3a4f6a' }}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path d="M19 9l-7 7-7-7" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-        </div>
+        <FilterSelect
+          value={yearFilter}
+          onChange={setYearFilter}
+          options={ALL_YEARS}
+        />
 
         {hasActiveFilter && (
           <button
             onClick={clearFilters}
             className="text-[12px] font-medium transition-colors"
-            style={{ color: '#3a4f6a' }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = '#a1d67c')}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = '#3a4f6a')}
+            style={{ color: clearFilterColor }}
+            onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = isLight ? '#4a8a10' : '#a1d67c')}
+            onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = clearFilterColor)}
           >
             Clear filters ×
           </button>
@@ -237,9 +200,9 @@ export default function ProjectsPage() {
 
       {/* Summary row */}
       <div className="flex items-center gap-5 mb-4">
-        <span className="text-[12px]" style={{ color: '#3a4f6a' }}>
+        <span className="text-[12px]" style={{ color: textMuted }}>
           Showing{' '}
-          <span className="font-semibold" style={{ color: '#6b82a0' }}>
+          <span className="font-semibold" style={{ color: textSecondary }}>
             {filtered.length}
           </span>{' '}
           of {totalCount} projects
@@ -247,20 +210,20 @@ export default function ProjectsPage() {
         {avgCostPerSF != null && (
           <span
             className="text-[12px] tabular-nums"
-            style={{ color: '#3a4f6a', fontFamily: 'var(--font-jetbrains-mono), monospace' }}
+            style={{ color: textMuted, fontFamily: 'var(--font-jetbrains-mono), monospace' }}
           >
             Avg $/SF:{' '}
-            <span style={{ color: '#6b82a0', fontWeight: 600 }}>
+            <span style={{ color: textSecondary, fontWeight: 600 }}>
               {formatCurrencyFull(avgCostPerSF)}
             </span>
           </span>
         )}
         <span
           className="text-[12px] tabular-nums"
-          style={{ color: '#3a4f6a', fontFamily: 'var(--font-jetbrains-mono), monospace' }}
+          style={{ color: textMuted, fontFamily: 'var(--font-jetbrains-mono), monospace' }}
         >
           Total:{' '}
-          <span style={{ color: '#6b82a0', fontWeight: 600 }}>{formatCurrency(totalValue)}</span>
+          <span style={{ color: textSecondary, fontWeight: 600 }}>{formatCurrency(totalValue)}</span>
         </span>
       </div>
 
@@ -272,13 +235,13 @@ export default function ProjectsPage() {
       <div
         className={`rounded-[8px] overflow-x-auto ${loading ? 'opacity-50 pointer-events-none' : ''}`}
         style={{
-          background: '#131822',
-          border: '1px solid rgba(255,255,255,0.08)',
+          background: tableBg,
+          border: `1px solid ${tableBorderOuter}`,
         }}
       >
         <table className="w-full text-[13px]">
           <thead>
-            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            <tr style={{ borderBottom: `1px solid ${borderFaint}` }}>
               {[
                 { label: 'Project / Folder', align: 'left' },
                 { label: 'GC', align: 'left' },
@@ -294,7 +257,7 @@ export default function ProjectsPage() {
                   className={`px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.09em] ${
                     col.align === 'right' ? 'text-right' : 'text-left'
                   }`}
-                  style={{ color: '#3a4f6a' }}
+                  style={{ color: textMuted }}
                 >
                   {col.label}
                 </th>
@@ -314,32 +277,31 @@ export default function ProjectsPage() {
                 <tr
                   key={project.id}
                   className="group transition-colors"
-                  style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+                  style={{ borderBottom: `1px solid ${borderHairline}` }}
                   onMouseEnter={(e) =>
-                    ((e.currentTarget as HTMLTableRowElement).style.background =
-                      'rgba(255,255,255,0.025)')
+                    ((e.currentTarget as HTMLTableRowElement).style.background = rowHoverBg)
                   }
                   onMouseLeave={(e) =>
                     ((e.currentTarget as HTMLTableRowElement).style.background = 'transparent')
                   }
                 >
                   <td className="px-4 py-2.5">
-                    <p className="font-medium" style={{ color: '#d8e4f5' }}>
-                      {project.folder_name}
+                    <p className="font-medium" style={{ color: textPrimary }}>
+                      {project.name}
                     </p>
                     {project.address && (
-                      <p className="text-[11px] mt-0.5" style={{ color: '#3a4f6a' }}>
+                      <p className="text-[11px] mt-0.5" style={{ color: textMuted }}>
                         {project.address}
                       </p>
                     )}
                   </td>
-                  <td className="px-4 py-2.5" style={{ color: '#6b82a0' }}>
+                  <td className="px-4 py-2.5" style={{ color: textSecondary }}>
                     {project.gc_name ?? '—'}
                   </td>
                   <td className="px-4 py-2.5">
                     <div className="flex flex-wrap gap-1">
-                      {project.scopes.map((s, i) => (
-                        <ScopeTypeBadge key={i} type={s.scope_type as ScopeType} />
+                      {project.scope_types.map((s) => (
+                        <ScopeTypeBadge key={s} type={s as ScopeType} />
                       ))}
                     </div>
                   </td>
@@ -348,7 +310,7 @@ export default function ProjectsPage() {
                     style={{
                       fontFamily: 'var(--font-jetbrains-mono), monospace',
                       fontSize: '12px',
-                      color: '#6b82a0',
+                      color: textSecondary,
                     }}
                   >
                     {totalSF > 0 ? formatSF(totalSF) : '—'}
@@ -357,7 +319,7 @@ export default function ProjectsPage() {
                     className="px-4 py-2.5 text-right tabular-nums font-semibold"
                     style={{
                       fontFamily: 'var(--font-jetbrains-mono), monospace',
-                      color: '#d8e4f5',
+                      color: textPrimary,
                     }}
                   >
                     {formatCurrency(project.total_cost)}
@@ -367,7 +329,7 @@ export default function ProjectsPage() {
                     style={{
                       fontFamily: 'var(--font-jetbrains-mono), monospace',
                       fontSize: '12px',
-                      color: '#6b82a0',
+                      color: textSecondary,
                     }}
                   >
                     {avgCPS != null ? formatCurrencyFull(avgCPS) : '—'}
@@ -377,7 +339,7 @@ export default function ProjectsPage() {
                     style={{
                       fontFamily: 'var(--font-jetbrains-mono), monospace',
                       fontSize: '11px',
-                      color: '#3a4f6a',
+                      color: textMuted,
                     }}
                   >
                     {project.quote_date ?? '—'}
@@ -386,7 +348,7 @@ export default function ProjectsPage() {
                     <Link
                       href={`/projects/${project.id}`}
                       className="text-[12px] font-medium opacity-0 group-hover:opacity-100 transition-opacity"
-                      style={{ color: '#a1d67c' }}
+                      style={{ color: isLight ? '#4a8a10' : '#a1d67c' }}
                     >
                       View →
                     </Link>
@@ -399,16 +361,16 @@ export default function ProjectsPage() {
 
         {!loading && filtered.length === 0 && (
           <div className="py-16 text-center">
-            <p className="text-[13px]" style={{ color: '#3a4f6a' }}>
+            <p className="text-[13px]" style={{ color: textMuted }}>
               No projects match the current filters
             </p>
             {hasActiveFilter && (
               <button
                 onClick={clearFilters}
                 className="mt-2 text-[12px] font-medium transition-colors"
-                style={{ color: '#3a4f6a' }}
-                onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = '#a1d67c')}
-                onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = '#3a4f6a')}
+                style={{ color: clearFilterColor }}
+                onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = isLight ? '#4a8a10' : '#a1d67c')}
+                onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = clearFilterColor)}
               >
                 Clear all filters
               </button>

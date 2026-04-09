@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     database_url_direct: str = "postgresql://localhost/acoustimator"
     anthropic_api_key: str = ""
     data_source_path: Path = Path("data/raw")
+    cors_origins: str = "http://localhost:3000"
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 

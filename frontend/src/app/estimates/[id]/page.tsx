@@ -6,12 +6,15 @@ import { EstimateSummary } from '@/components/estimates/EstimateSummary'
 import { EstimateTable } from '@/components/estimates/EstimateTable'
 import { ComparableProjects } from '@/components/estimates/ComparableProjects'
 import { formatCurrency } from '@/lib/utils'
-import { getEstimate, updateScope, exportEstimate, generateQuote } from '@/lib/api'
+import { getEstimate, updateScope, exportEstimate, generateQuote, deleteScope } from '@/lib/api'
 import type { EstimateResponse, ScopeResponse, UpdateScopeRequest } from '@/lib/types'
+import { useTheme } from '@/components/ThemeProvider'
 
 export default function EstimateDetailPage() {
   const params = useParams<{ id: string }>()
   const id = params.id
+  const { theme } = useTheme()
+  const isLight = theme === 'light'
 
   const [estimate, setEstimate] = useState<EstimateResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -19,6 +22,7 @@ export default function EstimateDetailPage() {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [quoteLoading, setQuoteLoading] = useState(false)
   const [quoteSuccess, setQuoteSuccess] = useState<string | null>(null)
+  const [quoteTemplate, setQuoteTemplate] = useState<'T-004A' | 'T-004B' | 'T-004E'>('T-004B')
 
   useEffect(() => {
     if (!id) return
@@ -66,6 +70,15 @@ export default function EstimateDetailPage() {
     }
   }
 
+  const handleScopeDelete = async (scopeId: string) => {
+    if (!estimate) return
+    try {
+      await deleteScope(estimate.id, scopeId)
+    } catch {
+      // Fire-and-forget — backend endpoint may not exist yet; don't surface the error
+    }
+  }
+
   const handleExport = async () => {
     if (!id) return
     try {
@@ -81,7 +94,7 @@ export default function EstimateDetailPage() {
     setSaveError(null)
     setQuoteSuccess(null)
     try {
-      await generateQuote(id, 'T-004B')
+      await generateQuote(id, quoteTemplate)
       setQuoteSuccess('Quote downloaded')
       setTimeout(() => setQuoteSuccess(null), 4000)
     } catch (err: unknown) {
@@ -121,23 +134,23 @@ export default function EstimateDetailPage() {
         <div
           className="flex items-center gap-1.5 text-[11px] mb-5"
           style={{
-            color: '#3a4f6a',
+            color: isLight ? '#7890aa' : '#3a4f6a',
             fontFamily: 'var(--font-jetbrains-mono), monospace',
           }}
         >
           <a
             href="/dashboard"
             className="transition-colors"
-            style={{ color: '#3a4f6a' }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = '#6b82a0')}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = '#3a4f6a')}
+            style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}
+            onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = isLight ? '#4a6a8a' : '#6b82a0')}
+            onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = isLight ? '#7890aa' : '#3a4f6a')}
           >
             Dashboard
           </a>
-          <span style={{ color: 'rgba(255,255,255,0.12)' }}>/</span>
-          <span style={{ color: '#3a4f6a' }}>Estimates</span>
-          <span style={{ color: 'rgba(255,255,255,0.12)' }}>/</span>
-          <span style={{ color: '#6b82a0' }}>{estimate.id}</span>
+          <span style={{ color: isLight ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.12)' }}>/</span>
+          <span style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}>Estimates</span>
+          <span style={{ color: isLight ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.12)' }}>/</span>
+          <span style={{ color: isLight ? '#4a6a8a' : '#6b82a0' }}>{estimate.id}</span>
         </div>
 
         {/* Summary */}
@@ -151,26 +164,28 @@ export default function EstimateDetailPage() {
           <div className="flex-1 min-w-0">
             <EstimateTable
               scopes={estimate.scopes}
+              isLight={isLight}
               onScopesChange={handleScopesChange}
               onScopeUpdate={handleScopeUpdate}
+              onScopeDelete={handleScopeDelete}
             />
           </div>
 
           {/* Sidebar */}
           <div className="w-full md:w-72 flex-shrink-0 space-y-4">
-            <ComparableProjects projects={estimate.comparable_projects} />
+            <ComparableProjects projects={estimate.comparable_projects} isLight={isLight} />
 
             {/* Notes card */}
             <div
               className="rounded-[8px] p-4"
               style={{
-                background: '#131822',
-                border: '1px solid rgba(255,255,255,0.08)',
+                background: isLight ? '#ffffff' : '#131822',
+                border: `1px solid ${isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)'}`,
               }}
             >
               <h3
                 className="text-[10px] font-semibold uppercase tracking-[0.09em] mb-2.5"
-                style={{ color: '#3a4f6a' }}
+                style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}
               >
                 Estimate Notes
               </h3>
@@ -179,9 +194,9 @@ export default function EstimateDetailPage() {
                 rows={4}
                 className="w-full text-[12px] resize-none rounded-[6px] p-2.5 transition-all focus:outline-none"
                 style={{
-                  background: '#0e1219',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  color: '#d8e4f5',
+                  background: isLight ? '#f5f7fa' : '#0e1219',
+                  border: `1px solid ${isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'}`,
+                  color: isLight ? '#0f1923' : '#d8e4f5',
                 }}
               />
             </div>
@@ -218,21 +233,21 @@ export default function EstimateDetailPage() {
       <div
         className="fixed bottom-0 left-0 md:left-56 right-0 px-4 md:px-8 py-3 flex items-center justify-between"
         style={{
-          background: '#0e1219',
-          borderTop: '1px solid rgba(255,255,255,0.08)',
-          boxShadow: '0 -8px 32px rgba(0,0,0,0.4)',
+          background: isLight ? '#ffffff' : '#0e1219',
+          borderTop: `1px solid ${isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)'}`,
+          boxShadow: isLight ? '0 -8px 32px rgba(0,0,0,0.08)' : '0 -8px 32px rgba(0,0,0,0.4)',
         }}
       >
         <div className="flex items-center gap-5">
           <div>
-            <p className="text-[10px] uppercase tracking-[0.09em] font-semibold" style={{ color: '#3a4f6a' }}>
+            <p className="text-[10px] uppercase tracking-[0.09em] font-semibold" style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}>
               Estimated total
             </p>
             <p
               className="text-[20px] font-bold tabular-nums leading-tight"
               style={{
                 fontFamily: 'var(--font-jetbrains-mono), monospace',
-                color: '#a1d67c',
+                color: isLight ? '#3d7010' : '#a1d67c',
                 letterSpacing: '-0.03em',
               }}
             >
@@ -241,21 +256,21 @@ export default function EstimateDetailPage() {
           </div>
           <div
             className="h-8 w-px"
-            style={{ background: 'rgba(255,255,255,0.08)' }}
+            style={{ background: isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)' }}
           />
           <div>
-            <p className="text-[10px] uppercase tracking-[0.09em] font-semibold" style={{ color: '#3a4f6a' }}>
+            <p className="text-[10px] uppercase tracking-[0.09em] font-semibold" style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}>
               Accepted scopes
             </p>
             <p
               className="text-[14px] font-semibold tabular-nums"
               style={{
                 fontFamily: 'var(--font-jetbrains-mono), monospace',
-                color: '#d8e4f5',
+                color: isLight ? '#0f1923' : '#d8e4f5',
               }}
             >
               {estimate.scopes.filter((s) => s.is_accepted).length}
-              <span style={{ color: '#3a4f6a' }}> / {estimate.scopes.length}</span>
+              <span style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}> / {estimate.scopes.length}</span>
             </p>
           </div>
         </div>
@@ -265,25 +280,25 @@ export default function EstimateDetailPage() {
             <span className="text-[12px]" style={{ color: '#f05252' }}>{saveError}</span>
           )}
           {quoteSuccess && (
-            <span className="text-[12px]" style={{ color: '#a1d67c' }}>{quoteSuccess}</span>
+            <span className="text-[12px]" style={{ color: isLight ? '#3d7010' : '#a1d67c' }}>{quoteSuccess}</span>
           )}
           <button
             onClick={handleExport}
             className="flex items-center gap-2 px-4 py-2 text-[13px] font-medium rounded-[6px] transition-all"
             style={{
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.12)',
-              color: '#6b82a0',
+              background: isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.05)',
+              border: `1px solid ${isLight ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.12)'}`,
+              color: isLight ? '#7890aa' : '#6b82a0',
             }}
             onMouseEnter={(e) => {
               const el = e.currentTarget as HTMLButtonElement
-              el.style.background = 'rgba(255,255,255,0.08)'
-              el.style.color = '#d8e4f5'
+              el.style.background = isLight ? 'rgba(0,0,0,0.07)' : 'rgba(255,255,255,0.08)'
+              el.style.color = isLight ? '#0f1923' : '#d8e4f5'
             }}
             onMouseLeave={(e) => {
               const el = e.currentTarget as HTMLButtonElement
-              el.style.background = 'rgba(255,255,255,0.05)'
-              el.style.color = '#6b82a0'
+              el.style.background = isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.05)'
+              el.style.color = isLight ? '#7890aa' : '#6b82a0'
             }}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -294,6 +309,31 @@ export default function EstimateDetailPage() {
             </svg>
             Export Excel
           </button>
+
+          {/* Template picker */}
+          <div className="flex items-center gap-1">
+            {(['T-004A', 'T-004B', 'T-004E'] as const).map((tpl) => (
+              <button
+                key={tpl}
+                onClick={() => setQuoteTemplate(tpl)}
+                className="text-[11px] font-medium px-2.5 py-1.5 rounded-[5px] transition-all"
+                style={
+                  quoteTemplate === tpl
+                    ? isLight
+                      ? { background: 'rgba(82,155,30,0.12)', border: '1px solid rgba(82,155,30,0.28)', color: '#3d7010' }
+                      : { background: 'rgba(161,214,124,0.12)', border: '1px solid rgba(161,214,124,0.22)', color: '#a1d67c' }
+                    : {
+                        background: 'transparent',
+                        border: `1px solid ${isLight ? 'rgba(0,0,0,0.10)' : 'rgba(255,255,255,0.08)'}`,
+                        color: isLight ? '#7890aa' : '#3a4f6a',
+                      }
+                }
+              >
+                {tpl}
+              </button>
+            ))}
+          </div>
+
           <button
             onClick={handleGenerateQuote}
             disabled={quoteLoading}
