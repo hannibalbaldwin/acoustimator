@@ -611,10 +611,14 @@ Full CA brand theme + real API wiring (PRs #8, #10):
 
 ## Phase 7: Continuous Learning (Ongoing)
 
-### 7.1: Actual vs. Estimated Cost Feedback ❌ NOT STARTED
+### 7.1: Actual vs. Estimated Cost Feedback ✅ COMPLETE (PR #16)
 
-- Track estimate accuracy after project completion
-- Dashboard showing MAPE and bias trends
+- `Estimate` model: `actual_total_cost`, `actual_cost_date`, `accuracy_note` columns
+- `PATCH /api/estimates/{id}/actual` — records actuals, computes `variance_pct`
+- `GET /api/stats/accuracy` — MAPE, mean bias %, per-scope-type breakdown
+- Estimate detail page: collapsible Actuals panel (form + read-only variance card; green ≤10%, amber 10-25%, red >25%)
+- Dashboard: Model Accuracy card with MAPE, bias, scope pills, placeholder when no actuals yet
+- Migration: `src/db/migrations/add_actual_cost.sql`
 
 ### 7.2: Model Retraining Pipeline ❌ NOT STARTED
 
@@ -622,10 +626,12 @@ Full CA brand theme + real API wiring (PRs #8, #10):
 - A/B comparison of new vs. current model
 - Automated rollback on regression
 
-### 7.3: Vendor Price Tracking ❌ NOT STARTED
+### 7.3: Vendor Price Tracking ✅ COMPLETE (PR #16)
 
-- Alert when material costs change significantly
-- Auto-update cost/SF baselines
+- `GET /api/vendors/price-summary` — baseline vs. recent avg, `alert: true` when >15% change
+- `src/api/routes/vendors.py` registered at `/api/vendors`
+- Dashboard: Material Price Alerts card with amber callout for alerts, colored change column
+- Armstrong World Industries alert: +28.9% since mid-2025
 
 ### 7.4: New Product and Scope Type Handling ❌ NOT STARTED
 
@@ -662,21 +668,31 @@ Full CA brand theme + real API wiring (PRs #8, #10):
 | Phase 5.5 | ✅ | GitHub CI/CD, branch protection, agent review active |
 | Phase 6.1 | ✅ | FastAPI backend, all endpoints, middleware, bug fixes |
 | Phase 6.2 | ✅ | Next.js frontend, full API wiring, CA brand theme |
-| Phase 6.3 | ✅ | Dashboard (stat cards hardcoded, cost chart empty pending quote_date fix) |
-| Phase 6.4 | ✅ | Estimate builder, kanban board, PWA, light/dark theme, custom dropdowns |
-| Phase 6.5 | ⚠️ | Quote PDF backend done; frontend flow + full template content not implemented |
+| Phase 6.3 | ✅ | Dashboard live stat cards, Cost/SF Trends with Year/Quarter/Month granularity toggle |
+| Phase 6.4 | ✅ | Estimate builder, scope type selector, delete scope, comparable projects fix, full light-mode |
+| Phase 6.5 | ✅ | Quote PDF generated and downloadable; Generate Quote button + template selector wired in UI |
 | Phase 6.6 | ⚠️ | API key middleware scaffold only; real auth deferred |
-| Phase 7 | ❌ | Not started |
+| Phase 7.1 | ✅ | Actual cost recording, MAPE/bias tracking, variance panel on estimate detail (PR #16) |
+| Phase 7.2 | ❌ | Model retraining pipeline not started |
+| Phase 7.3 | ✅ | Vendor price tracking, Armstrong +28.9% alert, dashboard card (PR #16) |
+| Phase 7.4 | ❌ | New product/scope handling not started |
 
 ---
 
 ## Immediate Next Steps (Priority Order)
 
-1. **Fix `quote_date` loader bug** — `src/db/loader.py` needs to persist `extraction_result.project.quote_date` to `projects.quote_date`. This is the single change that unblocks the Cost/SF Trends chart with real historical data.
-2. **Dashboard aggregate endpoint** — `GET /api/stats/summary` returning live project count, active estimate count, total SF estimated, avg ACT cost/SF. Replaces hardcoded StatCard values.
-3. **Phase 6.5: Complete quote generation** — Wire frontend "Generate Quote" button to `POST /api/estimates/{id}/quote`, add template selector (T-004A/B/E), implement download. Populate full CA template content (line items, clauses, letterhead).
-4. **Populate `project_type`** — healthcare/education/church flags already engineered in features.py; persist them to `projects.project_type` to unlock the biggest missing signal for markup + cost models.
-5. **Phase 7: Continuous Learning** — Feedback loop for actual vs. estimated costs; monthly model retraining pipeline.
+1. **Run DB migration** — `src/db/migrations/add_actual_cost.sql` against Neon `dev` branch to activate Phase 7.1 actual cost tracking.
+2. **Populate `project_type`** — healthcare/education/church flags already engineered in `features.py`; persist them to `projects.project_type` to unlock the biggest missing ML signal for markup + cost models.
+3. **Phase 7.2: Model Retraining Pipeline** — Scheduled retraining once actuals accumulate; A/B model comparison; automated rollback on regression.
+4. **Phase 7.4: New product/scope handling** — Flag unknown product names during extraction; add catalog entry workflow.
+5. **Production deployment** — Configure Vercel env vars (`DATABASE_URL`, `ANTHROPIC_API_KEY`, `ACOUSTIMATOR_API_KEY`) and complete Neon↔Vercel integration for preview branches.
+
+*Previously completed:*
+- ~~Fix `quote_date` loader bug~~ → `scripts/backfill_from_folder_names.py`; 124/124 projects have `quote_date`
+- ~~Dashboard aggregate endpoint~~ → `GET /api/stats/summary` live
+- ~~Phase 6.5: Complete quote generation~~ → Generate Quote button + template selector + download all wired
+- ~~Phase 7.1: Feedback loop~~ → PR #16
+- ~~Phase 7.3: Vendor price tracking~~ → PR #16
 
 ---
 
