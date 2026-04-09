@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import calendar
+import json
 import logging
+from pathlib import Path
 from typing import Literal
 
 from fastapi import APIRouter, Depends, Query
@@ -16,6 +18,8 @@ from src.db.models import Estimate, EstimateScope, Project, Scope
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/stats", tags=["stats"])
+
+_MANIFEST_PATH = Path(__file__).resolve().parent.parent.parent.parent / "data" / "models" / "model_manifest.json"
 
 _MAIN_SCOPE_TYPES = {"ACT", "AWP", "FW", "SM"}
 _YEAR_MIN = 2020
@@ -262,4 +266,109 @@ async def model_accuracy(
         "mean_absolute_pct_error": mape,
         "mean_bias_pct": bias,
         "by_scope_type": by_scope_type,
+    }
+
+
+# ---------------------------------------------------------------------------
+# GET /api/stats/model-status
+# ---------------------------------------------------------------------------
+
+# Known cost-model scope types in display order
+_COST_SCOPE_TYPES = ["ACT", "AWP", "AP", "Baffles", "FW", "WW", "GENERAL"]
+
+# Manifest keys that map to cost models
+_COST_MANIFEST_KEYS = set(_COST_SCOPE_TYPES)
+
+
+@router.get("/model-status")
+async def model_status(db: AsyncSession = Depends(get_db)) -> dict:
+    """Return the current model state from model_manifest.json.
+
+    Also checks whether a retrain is recommended based on actuals counts.
+
+    Response shape::
+
+        {
+          "last_retrain": "2026-04-09T15:00:00Z" | null,
+          "models": [
+            { "scope_type": "ACT", "mape": 13.5, "n_train": 82, "algorithm": "RandomForest" },
+            ...
+          ],
+          "needs_retrain": false,
+          "retrain_reason": "Only 0 actuals recorded (need 5)"
+        }
+    """
+    # ── Load manifest ────────────────────────────────────────────────
+    manifest: dict = {}
+    if _MANIFEST_PATH.exists():
+        try:
+            manifest = json.loads(_MANIFEST_PATH.read_text())
+        except Exception as exc:
+            logger.warning("Could not parse model_manifest.json: %s", exc)
+
+    last_retrain: str | None = manifest.get("last_retrain")
+
+    # ── Build models list ────────────────────────────────────────────
+    models: list[dict] = []
+
+    # Cost models (per-scope-type + general)
+    for st in _COST_SCOPE_TYPES:
+        entry = manifest.get(st)
+        if not isinstance(entry, dict) or entry.get("status") not in ("trained", None):
+            continue
+        mape_raw = entry.get("cv_mape") or entry.get("test_mape")
+        models.append(
+            {
+                "scope_type": st,
+                "mape": round(float(mape_raw) * 100, 2) if mape_raw is not None else None,
+                "n_train": entry.get("n_training_rows"),
+                "algorithm": entry.get("model_type", "RandomForest"),
+                "model_family": "cost",
+            }
+        )
+
+    # Markup model
+    markup_entry = manifest.get("markup_model")
+    if isinstance(markup_entry, dict):
+        mape_raw = markup_entry.get("test_mape") or markup_entry.get("cv_mape")
+        models.append(
+            {
+                "scope_type": "markup",
+                "mape": round(float(mape_raw) * 100, 2) if mape_raw is not None else None,
+                "n_train": markup_entry.get("n_train"),
+                "algorithm": "GradientBoosting",
+                "model_family": "markup",
+            }
+        )
+
+    # Labor model
+    labor_entry = manifest.get("labor_model")
+    if isinstance(labor_entry, dict):
+        mape_raw = labor_entry.get("cv_mape_mean") or labor_entry.get("cv_mape")
+        models.append(
+            {
+                "scope_type": "labor",
+                "mape": round(float(mape_raw) * 100, 2) if mape_raw is not None else None,
+                "n_train": labor_entry.get("n_train"),
+                "algorithm": "RandomForest",
+                "model_family": "labor",
+            }
+        )
+
+    # ── needs_retrain check ──────────────────────────────────────────
+    try:
+        from src.models.retrainer import ModelRetrainer
+
+        retrainer = ModelRetrainer()
+        needs_retrain, retrain_reason = await retrainer.should_retrain(db)
+    except Exception as exc:
+        logger.warning("should_retrain check failed: %s", exc)
+        needs_retrain = False
+        retrain_reason = "Status check unavailable"
+
+    return {
+        "last_retrain": last_retrain,
+        "models": models,
+        "needs_retrain": needs_retrain,
+        "retrain_reason": retrain_reason,
     }

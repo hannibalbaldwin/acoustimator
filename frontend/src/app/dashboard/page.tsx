@@ -8,10 +8,86 @@ import { CostTrendChart } from '@/components/dashboard/CostTrendChart'
 import { ConfidenceBadge } from '@/components/estimates/ConfidenceBadge'
 import { ScopeTypeBadge } from '@/components/estimates/ScopeTypeBadge'
 import { EstimateBoard } from '@/components/estimates/EstimateBoard'
-import { listEstimates, getDashboardStats, getAccuracyStats, getVendorPriceSummary, type EstimateListItem, type DashboardStats, type AccuracyStats } from '@/lib/api'
+import { listEstimates, getDashboardStats, getAccuracyStats, getVendorPriceSummary, getModelStatus, type EstimateListItem, type DashboardStats, type AccuracyStats, type ModelStatus } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
 import type { ScopeType, VendorPriceSummary } from '@/lib/types'
 import { useTheme } from '@/components/ThemeProvider'
+
+// ---------------------------------------------------------------------------
+// ModelStatusRow — shown inside Model Accuracy card
+// ---------------------------------------------------------------------------
+
+function formatRetrainDate(iso: string | null): string {
+  if (!iso) return 'Never'
+  try {
+    return format(new Date(iso), 'MMM d, yyyy')
+  } catch {
+    return iso
+  }
+}
+
+function ModelStatusRow({
+  modelStatus,
+  isLight,
+}: {
+  modelStatus: ModelStatus | null
+  isLight: boolean
+}) {
+  if (!modelStatus) return null
+
+  // Pick the main cost-model MAPEs to surface (ACT + AWP are most relevant)
+  const costModels = modelStatus.models.filter(
+    (m) => m.model_family === 'cost' && m.mape != null && ['ACT', 'AWP'].includes(m.scope_type)
+  )
+
+  const lastTrained = formatRetrainDate(modelStatus.last_retrain)
+
+  return (
+    <div
+      className="mt-4 pt-4 flex flex-wrap items-center gap-x-4 gap-y-2"
+      style={{ borderTop: `1px solid ${isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)'}` }}
+    >
+      <span className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}>
+        Model Status
+      </span>
+
+      <span className="text-[12px]" style={{ color: isLight ? '#5a7a9a' : '#4a6888' }}>
+        Last trained:&nbsp;
+        <span style={{ color: isLight ? '#1a2335' : '#d8e4f5', fontWeight: 600 }}>{lastTrained}</span>
+      </span>
+
+      {costModels.map((m) => (
+        <span
+          key={m.scope_type}
+          className="text-[12px]"
+          style={{ color: isLight ? '#5a7a9a' : '#4a6888', fontFamily: 'var(--font-jetbrains-mono), monospace' }}
+        >
+          <span style={{ color: isLight ? '#3d7010' : '#a1d67c', fontWeight: 600 }}>{m.scope_type}</span>
+          {' '}{m.mape?.toFixed(1)}% MAPE
+        </span>
+      ))}
+
+      {modelStatus.needs_retrain && (
+        <span
+          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[4px] text-[11px] font-semibold"
+          style={{
+            background: 'rgba(245,158,11,0.12)',
+            border: '1px solid rgba(245,158,11,0.30)',
+            color: '#f59e0b',
+          }}
+        >
+          <span
+            className="inline-block w-1.5 h-1.5 rounded-full"
+            style={{ background: '#f59e0b' }}
+          />
+          Retrain recommended
+        </span>
+      )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 
 const STATUS_STYLES: Record<string, { color: string; bg: string; border: string }> = {
   draft:     { color: '#6b82a0', bg: 'rgba(107,130,160,0.10)', border: 'rgba(107,130,160,0.18)' },
@@ -27,6 +103,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [accuracy, setAccuracy] = useState<AccuracyStats | null>(null)
   const [vendorPrices, setVendorPrices] = useState<VendorPriceSummary[] | null>(null)
+  const [modelStatus, setModelStatus] = useState<ModelStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [view, setView] = useState<'table' | 'board'>('table')
@@ -38,13 +115,15 @@ export default function DashboardPage() {
       getDashboardStats(),
       getAccuracyStats(),
       getVendorPriceSummary().catch(() => null),
+      getModelStatus().catch(() => null),
     ])
-      .then(([estimatesRes, dashStats, accuracyStats, vendorData]) => {
+      .then(([estimatesRes, dashStats, accuracyStats, vendorData, modelStatusData]) => {
         if (cancelled) return
         setEstimates(estimatesRes.items)
         setStats(dashStats)
         setAccuracy(accuracyStats)
         setVendorPrices(vendorData)
+        setModelStatus(modelStatusData)
         setLoading(false)
       })
       .catch((err: unknown) => {
@@ -138,10 +217,11 @@ export default function DashboardPage() {
             <div className="h-3 w-48 rounded" style={{ background: isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.03)' }} />
           </div>
         ) : accuracy == null || accuracy.total_with_actuals === 0 ? (
-          <div className="px-5 py-6">
-            <p className="text-[13px]" style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}>
+          <div className="px-5 py-5">
+            <p className="text-[13px] mb-4" style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}>
               No actuals recorded yet — mark a Finalized estimate as complete to start tracking accuracy.
             </p>
+            <ModelStatusRow modelStatus={modelStatus} isLight={isLight} />
           </div>
         ) : (
           <div className="px-5 py-5">
@@ -215,6 +295,9 @@ export default function DashboardPage() {
                 ))}
               </div>
             )}
+
+            {/* Model Status row */}
+            <ModelStatusRow modelStatus={modelStatus} isLight={isLight} />
           </div>
         )}
       </div>

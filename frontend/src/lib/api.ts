@@ -312,6 +312,25 @@ export async function getVendorPriceSummary(): Promise<VendorPriceSummary[]> {
   return apiFetch<VendorPriceSummary[]>('/api/vendors/price-summary')
 }
 
+export interface ModelStatusEntry {
+  scope_type: string
+  mape: number | null
+  n_train: number | null
+  algorithm: string | null
+  model_family: string | null
+}
+
+export interface ModelStatus {
+  last_retrain: string | null
+  models: ModelStatusEntry[]
+  needs_retrain: boolean
+  retrain_reason: string
+}
+
+export async function getModelStatus(): Promise<ModelStatus> {
+  return apiFetch<ModelStatus>('/api/stats/model-status')
+}
+
 export async function generateQuote(
   estimateId: string,
   template: 'T-004A' | 'T-004B' | 'T-004E' = 'T-004B'
