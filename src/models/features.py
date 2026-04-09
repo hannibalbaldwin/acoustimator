@@ -148,7 +148,7 @@ def _to_float(v: Any) -> float | None:
 
 def _product_tier(product_name: str | None) -> int:
     """Return 0-3 product tier from product name keywords."""
-    if not product_name:
+    if not product_name or not isinstance(product_name, str):
         return 1  # assume standard if unknown
     pn_lower = product_name.lower()
     for tier, kws in PRODUCT_TIER_KEYWORDS:
@@ -158,7 +158,9 @@ def _product_tier(product_name: str | None) -> int:
 
 
 def _keyword_flag(text1: str | None, text2: str | None, keywords: list[str]) -> bool:
-    combined = f"{text1 or ''} {text2 or ''}".lower()
+    t1 = text1 if isinstance(text1, str) else ""
+    t2 = text2 if isinstance(text2, str) else ""
+    combined = f"{t1} {t2}".lower()
     return any(kw in combined for kw in keywords)
 
 
@@ -190,8 +192,9 @@ async def _fetch_all_scopes() -> list[dict[str, Any]]:
                 s.material_price,
                 s.total,
                 s.daily_labor_rate,
-                p.name      AS project_name,
+                p.name         AS project_name,
                 p.gc_name,
+                p.project_type,
                 p.bid_due_date,
                 (SELECT COUNT(*) FROM scopes s2
                  WHERE s2.project_id = p.id) AS project_scope_count
@@ -235,6 +238,18 @@ class FeatureEngineer:
         df = fe.to_dataframe()
     """
 
+    # Mapping from DB project_type string to a numeric label.
+    # 0 = other/unknown (safe default), 1-6 = known types.
+    PROJECT_TYPE_MAP: dict[str, int] = {
+        "other": 0,
+        "healthcare": 1,
+        "education": 2,
+        "commercial_office": 3,
+        "worship": 4,
+        "government": 5,
+        "residential": 6,
+    }
+
     # Features produced (order matters for array indexing)
     FEATURE_NAMES: list[str] = [
         "log_square_footage",
@@ -246,6 +261,7 @@ class FeatureEngineer:
         "is_healthcare",
         "is_education",
         "is_church",
+        "project_type_encoded",
         # extra numeric features (only when non-null — filled with median)
         "markup_pct",
         "man_days_per_sf",
@@ -367,48 +383,93 @@ class FeatureEngineer:
             ]
             markup_medians[st] = float(np.median(vals)) if vals else 0.30
 
+        # Detect whether raw_data rows come from the pre-engineered CSV
+        # (i.e. already have derived features like man_days_per_sf).
+        # If so, we reuse those values rather than recomputing from missing raw columns.
+        _sample = self._raw[0] if self._raw else {}
+        _pre_engineered = "man_days_per_sf" in _sample
+
         for row in self._raw:
             st = row.get("scope_type") or "Other"
             sf = _to_float(row.get("square_footage"))
             cost_per_unit = _to_float(row.get("cost_per_unit"))
             total = _to_float(row.get("total"))
-            material_cost = _to_float(row.get("material_cost"))
-            material_price = _to_float(row.get("material_price"))
-            man_days = _to_float(row.get("man_days"))
-            labor_rate = _to_float(row.get("daily_labor_rate"))
             markup_pct = _to_float(row.get("markup_pct"))
-            project_name = row.get("project_name") or ""
-            gc_name = row.get("gc_name") or ""
+            _pn = row.get("project_name")
+            project_name = _pn if isinstance(_pn, str) else ""
+            _gn = row.get("gc_name")
+            gc_name = _gn if isinstance(_gn, str) else ""
             project_scope_count = int(row.get("project_scope_count") or 1)
 
             # Derived target: total price / SF
-            cost_per_sf_total: float | None = None
-            if total and sf and sf > 0:
+            cost_per_sf_total: float | None = _to_float(row.get("cost_per_sf_total"))
+            if cost_per_sf_total is None and total and sf and sf > 0:
                 cost_per_sf_total = round(total / sf, 4)
 
-            # Normalise labor rate
-            has_labor_rate = labor_rate is not None and labor_rate > 0
-            labor_rate_normalized = labor_rate / CURRENT_LABOR_RATE if has_labor_rate else None
+            if _pre_engineered:
+                # Reuse pre-computed features from the CSV — avoids recomputing from
+                # raw columns that are absent in the serialised training data.
+                log_sf = _to_float(row.get("log_square_footage"))
+                has_labor_rate_val = int(row.get("has_labor_rate") or 0)
+                has_labor_rate = bool(has_labor_rate_val)
+                labor_rate_normalized = _to_float(row.get("labor_rate_normalized")) or 1.0
+                man_days_per_sf = _to_float(row.get("man_days_per_sf"))
+                material_cost_per_sf = _to_float(row.get("material_cost_per_sf"))
+            else:
+                material_cost = _to_float(row.get("material_cost"))
+                material_price = _to_float(row.get("material_price"))
+                man_days = _to_float(row.get("man_days"))
+                labor_rate = _to_float(row.get("daily_labor_rate"))
 
-            # log(1 + SF)
-            log_sf = float(np.log1p(sf)) if sf and sf > 0 else None
+                # Normalise labor rate
+                has_labor_rate = labor_rate is not None and labor_rate > 0
+                labor_rate_normalized = labor_rate / CURRENT_LABOR_RATE if has_labor_rate else None
 
-            # man_days per SF
-            man_days_per_sf: float | None = None
-            if man_days and sf and sf > 0:
-                man_days_per_sf = round(man_days / sf, 6)
+                # log(1 + SF)
+                log_sf = float(np.log1p(sf)) if sf and sf > 0 else None
 
-            # material cost per SF (from material_cost, not the per_unit price)
-            material_cost_per_sf: float | None = None
-            if (material_cost or material_price) and sf and sf > 0:
-                mc = material_cost or material_price
-                if mc:
-                    material_cost_per_sf = round(mc / sf, 4)
+                # man_days per SF
+                man_days_per_sf = None
+                if man_days and sf and sf > 0:
+                    man_days_per_sf = round(man_days / sf, 6)
 
-            # Context flags
-            is_healthcare = _keyword_flag(project_name, gc_name, HEALTHCARE_KEYWORDS)
-            is_education = _keyword_flag(project_name, gc_name, EDUCATION_KEYWORDS)
-            is_church = _keyword_flag(project_name, gc_name, CHURCH_KEYWORDS)
+                # material cost per SF (from material_cost, not the per_unit price)
+                material_cost_per_sf = None
+                if (material_cost or material_price) and sf and sf > 0:
+                    mc = material_cost or material_price
+                    if mc:
+                        material_cost_per_sf = round(mc / sf, 4)
+
+            # project_type_encoded: use DB field when available, else fall back to 0 (other)
+            # Guard against NaN floats that can arrive when FeatureEngineer is fed CSV rows
+            _pt_raw = row.get("project_type")
+            if _pt_raw is None or (isinstance(_pt_raw, float) and _pt_raw != _pt_raw):
+                project_type = ""
+            else:
+                project_type = str(_pt_raw).strip()
+            pt_lower = project_type.lower() if project_type else ""
+
+            # When pre-engineered CSV rows already have project_type_encoded, reuse it;
+            # otherwise compute from the DB-sourced project_type string.
+            if _pre_engineered and "project_type_encoded" in row:
+                _pte = row.get("project_type_encoded")
+                project_type_encoded = int(_pte) if isinstance(_pte, (int, float)) and _pte == _pte else 0
+            else:
+                project_type_encoded = self.PROJECT_TYPE_MAP.get(pt_lower, 0)
+
+            # Context flags — prefer DB project_type; fall back to keyword inference
+            if _pre_engineered and "is_healthcare" in row:
+                is_healthcare = bool(int(row.get("is_healthcare") or 0))
+                is_education = bool(int(row.get("is_education") or 0))
+                is_church = bool(int(row.get("is_church") or 0))
+            elif pt_lower in self.PROJECT_TYPE_MAP and pt_lower != "other":
+                is_healthcare = pt_lower == "healthcare"
+                is_education = pt_lower == "education"
+                is_church = pt_lower == "worship"
+            else:
+                is_healthcare = _keyword_flag(project_name, gc_name, HEALTHCARE_KEYWORDS)
+                is_education = _keyword_flag(project_name, gc_name, EDUCATION_KEYWORDS)
+                is_church = _keyword_flag(project_name, gc_name, CHURCH_KEYWORDS)
 
             rec: dict[str, Any] = {
                 # Identifiers
@@ -418,6 +479,7 @@ class FeatureEngineer:
                 "product_name": row.get("product_name"),
                 "project_name": project_name,
                 "gc_name": gc_name,
+                "project_type": project_type,
                 # Raw numeric
                 "square_footage": sf,
                 "cost_per_unit": cost_per_unit,
@@ -435,6 +497,7 @@ class FeatureEngineer:
                 "is_healthcare": int(is_healthcare),
                 "is_education": int(is_education),
                 "is_church": int(is_church),
+                "project_type_encoded": project_type_encoded,
                 "markup_pct": markup_pct if markup_pct is not None else markup_medians.get(st, 0.30),
                 "man_days_per_sf": man_days_per_sf,  # imputed below
                 "material_cost_per_sf": material_cost_per_sf,  # imputed below

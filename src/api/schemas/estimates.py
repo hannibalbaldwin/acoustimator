@@ -31,6 +31,7 @@ class ScopeResponse(BaseModel):
     floor: str | None = None
     building: str | None = None
     manually_adjusted: bool = False
+    unknown_product: bool = False
 
     @classmethod
     def from_orm_scope(cls, scope: object) -> ScopeResponse:
@@ -57,6 +58,7 @@ class ScopeResponse(BaseModel):
             floor=scope.floor,  # type: ignore[attr-defined]
             building=scope.building,  # type: ignore[attr-defined]
             manually_adjusted=scope.manually_adjusted,  # type: ignore[attr-defined]
+            unknown_product=False,  # caller sets this via is_known_product()
         )
 
 

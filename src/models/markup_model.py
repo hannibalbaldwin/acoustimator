@@ -106,7 +106,10 @@ class MarkupModel:
     @staticmethod
     def _infer_project_flags(project_name: str | None, gc_name: str | None) -> tuple[int, int, int]:
         """Return (is_healthcare, is_education, is_church) from free-text fields."""
-        text = " ".join(filter(None, [project_name, gc_name])).lower()
+        # Guard against NaN floats that arrive when records come from a CSV
+        _pn = project_name if isinstance(project_name, str) else None
+        _gn = gc_name if isinstance(gc_name, str) else None
+        text = " ".join(filter(None, [_pn, _gn])).lower()
         is_healthcare = int(any(kw in text for kw in HEALTHCARE_KEYWORDS))
         is_education = int(any(kw in text for kw in EDUCATION_KEYWORDS))
         is_church = int(any(kw in text for kw in CHURCH_KEYWORDS))
@@ -114,12 +117,16 @@ class MarkupModel:
 
     def _build_feature_row(self, row: dict) -> list[float]:
         scope_type = row.get("scope_type")
-        square_footage = row.get("square_footage") or 0.0
-        project_scope_count = row.get("project_scope_count") or 1.0
+        _sf = row.get("square_footage")
+        square_footage = float(_sf) if isinstance(_sf, (int, float)) and _sf == _sf else 0.0
+        _psc = row.get("project_scope_count")
+        project_scope_count = float(_psc) if isinstance(_psc, (int, float)) and _psc == _psc else 1.0
         project_name = row.get("project_name")
         gc_name = row.get("gc_name")
-        daily_labor_rate = row.get("daily_labor_rate") or 0.0
-        cost_per_sf = row.get("cost_per_sf") or row.get("cost_per_unit")
+        _dlr = row.get("daily_labor_rate")
+        daily_labor_rate = float(_dlr) if isinstance(_dlr, (int, float)) and _dlr == _dlr else 0.0
+        _cpu = row.get("cost_per_sf") or row.get("cost_per_unit")
+        cost_per_sf = _cpu if _cpu is not None and isinstance(_cpu, (int, float)) and _cpu == _cpu else None
 
         is_healthcare, is_education, is_church = self._infer_project_flags(project_name, gc_name)
 

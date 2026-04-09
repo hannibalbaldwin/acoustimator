@@ -6,7 +6,7 @@ import { EstimateSummary } from '@/components/estimates/EstimateSummary'
 import { EstimateTable } from '@/components/estimates/EstimateTable'
 import { ComparableProjects } from '@/components/estimates/ComparableProjects'
 import { formatCurrency } from '@/lib/utils'
-import { getEstimate, updateScope, exportEstimate, generateQuote, deleteScope, recordActual } from '@/lib/api'
+import { getEstimate, updateScope, exportEstimate, generateQuote, deleteScope, recordActual, addProduct } from '@/lib/api'
 import type { EstimateResponse, ScopeResponse, UpdateScopeRequest } from '@/lib/types'
 import { useTheme } from '@/components/ThemeProvider'
 
@@ -30,6 +30,16 @@ export default function EstimateDetailPage() {
   const [actualNote, setActualNote] = useState('')
   const [actualsLoading, setActualsLoading] = useState(false)
   const [actualsError, setActualsError] = useState<string | null>(null)
+
+  // Unknown-product banner + Add to Catalog modal state
+  const [unknownBannerDismissed, setUnknownBannerDismissed] = useState(false)
+  const [catalogModal, setCatalogModal] = useState<{ scope: ScopeResponse } | null>(null)
+  const [catalogName, setCatalogName] = useState('')
+  const [catalogCategory, setCatalogCategory] = useState('ACT')
+  const [catalogAliases, setCatalogAliases] = useState('')
+  const [catalogLoading, setCatalogLoading] = useState(false)
+  const [catalogError, setCatalogError] = useState<string | null>(null)
+  const [catalogToast, setCatalogToast] = useState<string | null>(null)
 
   useEffect(() => {
     if (!id) return
@@ -130,6 +140,48 @@ export default function EstimateDetailPage() {
     }
   }
 
+  const handleOpenCatalogModal = (scope: ScopeResponse) => {
+    setCatalogModal({ scope })
+    setCatalogName(scope.product_name ?? '')
+    setCatalogCategory('ACT')
+    setCatalogAliases('')
+    setCatalogError(null)
+  }
+
+  const handleSubmitCatalog = async () => {
+    if (!catalogModal) return
+    setCatalogLoading(true)
+    setCatalogError(null)
+    try {
+      const aliases = catalogAliases
+        .split(',')
+        .map((a) => a.trim())
+        .filter(Boolean)
+      await addProduct({
+        name: catalogName.trim(),
+        canonical_name: catalogName.trim(),
+        category: catalogCategory,
+        aliases,
+      })
+      // Optimistic update: clear unknown_product flag on the matching scope
+      if (estimate) {
+        setEstimate({
+          ...estimate,
+          scopes: estimate.scopes.map((s) =>
+            s.id === catalogModal.scope.id ? { ...s, unknown_product: false } : s
+          ),
+        })
+      }
+      setCatalogModal(null)
+      setCatalogToast('Added to catalog')
+      setTimeout(() => setCatalogToast(null), 3500)
+    } catch (err: unknown) {
+      setCatalogError(err instanceof Error ? err.message : 'Failed to add product')
+    } finally {
+      setCatalogLoading(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="px-4 py-6 md:px-8 md:py-8 animate-pulse">
@@ -154,6 +206,7 @@ export default function EstimateDetailPage() {
   }
 
   return (
+    <>
     <div className="pb-24">
       <div className="px-4 py-6 md:px-8 md:py-8">
         {/* Breadcrumb */}
@@ -179,6 +232,35 @@ export default function EstimateDetailPage() {
           <span style={{ color: isLight ? '#4a6a8a' : '#6b82a0' }}>{estimate.id}</span>
         </div>
 
+        {/* Unknown-product banner */}
+        {(() => {
+          const unknownCount = estimate.scopes.filter((s) => s.unknown_product).length
+          if (unknownCount === 0 || unknownBannerDismissed) return null
+          return (
+            <div
+              className="flex items-center justify-between rounded-[8px] px-4 py-3 mb-4"
+              style={{
+                background: 'rgba(245,158,11,0.1)',
+                border: '1px solid rgba(245,158,11,0.3)',
+              }}
+            >
+              <div className="flex items-center gap-2">
+                <span style={{ color: '#f59e0b', fontSize: '15px' }}>⚠</span>
+                <span className="text-[13px] font-medium" style={{ color: '#f59e0b' }}>
+                  {unknownCount} scope{unknownCount !== 1 ? 's' : ''} use{unknownCount === 1 ? 's' : ''} products not in the catalog. Verify pricing or add them.
+                </span>
+              </div>
+              <button
+                onClick={() => setUnknownBannerDismissed(true)}
+                className="text-[12px] font-medium ml-4 flex-shrink-0"
+                style={{ color: '#f59e0b', opacity: 0.7 }}
+              >
+                Dismiss
+              </button>
+            </div>
+          )
+        })()}
+
         {/* Summary */}
         <div className="mb-5">
           <EstimateSummary estimate={estimate} />
@@ -194,6 +276,7 @@ export default function EstimateDetailPage() {
               onScopesChange={handleScopesChange}
               onScopeUpdate={handleScopeUpdate}
               onScopeDelete={handleScopeDelete}
+              onAddToCatalog={handleOpenCatalogModal}
             />
           </div>
 
@@ -580,5 +663,153 @@ export default function EstimateDetailPage() {
         </div>
       </div>
     </div>
+
+      {/* ── Add to Catalog toast ── */}
+      {catalogToast && (
+        <div
+          className="fixed bottom-20 right-6 px-4 py-2.5 rounded-[8px] text-[13px] font-semibold shadow-lg z-50"
+          style={{
+            background: isLight ? '#ffffff' : '#1e2638',
+            border: '1px solid rgba(245,158,11,0.4)',
+            color: '#f59e0b',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+          }}
+        >
+          ✓ {catalogToast}
+        </div>
+      )}
+
+      {/* ── Add to Catalog modal ── */}
+      {catalogModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-4"
+          style={{ background: 'rgba(0,0,0,0.55)' }}
+          onClick={(e) => { if (e.target === e.currentTarget) setCatalogModal(null) }}
+        >
+          <div
+            className="w-full max-w-md rounded-[8px] p-6 space-y-4"
+            style={{
+              background: isLight ? '#ffffff' : '#1e2638',
+              border: `1px solid ${isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'}`,
+              boxShadow: '0 16px 48px rgba(0,0,0,0.4)',
+            }}
+          >
+            {/* Modal header */}
+            <div className="flex items-center justify-between">
+              <h2 className="text-[15px] font-semibold" style={{ color: isLight ? '#0f1923' : '#d8e4f5' }}>
+                Add Product to Catalog
+              </h2>
+              <button
+                onClick={() => setCatalogModal(null)}
+                className="text-[18px] leading-none"
+                style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Name */}
+            <div>
+              <label
+                className="block text-[10px] uppercase tracking-[0.09em] font-semibold mb-1.5"
+                style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}
+              >
+                Product Name
+              </label>
+              <input
+                type="text"
+                value={catalogName}
+                onChange={(e) => setCatalogName(e.target.value)}
+                className="w-full text-[13px] rounded-[6px] px-3 py-2 focus:outline-none"
+                style={{
+                  background: isLight ? '#f5f7fa' : '#0e1219',
+                  border: `1px solid ${isLight ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.1)'}`,
+                  color: isLight ? '#0f1923' : '#d8e4f5',
+                }}
+              />
+            </div>
+
+            {/* Category */}
+            <div>
+              <label
+                className="block text-[10px] uppercase tracking-[0.09em] font-semibold mb-1.5"
+                style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}
+              >
+                Category
+              </label>
+              <select
+                value={catalogCategory}
+                onChange={(e) => setCatalogCategory(e.target.value)}
+                className="w-full text-[13px] rounded-[6px] px-3 py-2 focus:outline-none"
+                style={{
+                  background: isLight ? '#f5f7fa' : '#0e1219',
+                  border: `1px solid ${isLight ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.1)'}`,
+                  color: isLight ? '#0f1923' : '#d8e4f5',
+                }}
+              >
+                {['ACT', 'AWP', 'FW', 'WW', 'SM', 'Baffles', 'RPG', 'Other'].map((cat) => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Aliases */}
+            <div>
+              <label
+                className="block text-[10px] uppercase tracking-[0.09em] font-semibold mb-1.5"
+                style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}
+              >
+                Aliases <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(comma-separated, optional)</span>
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Short Name, Brand Variant"
+                value={catalogAliases}
+                onChange={(e) => setCatalogAliases(e.target.value)}
+                className="w-full text-[13px] rounded-[6px] px-3 py-2 focus:outline-none"
+                style={{
+                  background: isLight ? '#f5f7fa' : '#0e1219',
+                  border: `1px solid ${isLight ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.1)'}`,
+                  color: isLight ? '#0f1923' : '#d8e4f5',
+                }}
+              />
+            </div>
+
+            {catalogError && (
+              <p className="text-[12px]" style={{ color: '#f05252' }}>{catalogError}</p>
+            )}
+
+            {/* Actions */}
+            <div className="flex items-center gap-3 pt-1">
+              <button
+                onClick={handleSubmitCatalog}
+                disabled={catalogLoading || !catalogName.trim()}
+                className="flex-1 py-2 text-[13px] font-semibold rounded-[6px] transition-all"
+                style={{
+                  background: catalogLoading || !catalogName.trim()
+                    ? 'rgba(245,158,11,0.3)'
+                    : 'linear-gradient(135deg, #b8760a 0%, #f59e0b 100%)',
+                  color: '#080b10',
+                  cursor: catalogLoading || !catalogName.trim() ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {catalogLoading ? 'Adding...' : 'Add to Catalog'}
+              </button>
+              <button
+                onClick={() => setCatalogModal(null)}
+                className="px-4 py-2 text-[13px] font-medium rounded-[6px]"
+                style={{
+                  background: isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.07)',
+                  border: `1px solid ${isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'}`,
+                  color: isLight ? '#4a5e7a' : '#6b82a0',
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   )
 }
