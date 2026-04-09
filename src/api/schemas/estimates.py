@@ -192,3 +192,9 @@ class RecordActualRequest(BaseModel):
     actual_total_cost: float
     actual_cost_date: str  # ISO date string e.g. "2025-03-15"
     accuracy_note: str | None = None
+
+
+class UpdateEstimateBody(BaseModel):
+    """Body for PATCH /api/estimates/{id} — update estimate status."""
+
+    status: str

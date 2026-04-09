@@ -417,6 +417,15 @@ export async function deleteAdminUser(userId: string): Promise<void> {
   return apiFetch<void>(`/api/admin/users/${userId}`, { method: 'DELETE' })
 }
 
+export async function updateEstimateStatus(id: string, status: string): Promise<EstimateResponse> {
+  const res = await apiFetch<ApiEstimateResponse>(`/api/estimates/${id}`, {
+    method: 'PATCH',
+    headers: apiHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ status }),
+  })
+  return mapEstimate(res)
+}
+
 export async function generateQuote(
   estimateId: string,
   template: 'T-004A' | 'T-004B' | 'T-004E' = 'T-004B'

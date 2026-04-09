@@ -23,6 +23,7 @@ from src.api.schemas.estimates import (
     EstimateResponse,
     RecordActualRequest,
     ScopeResponse,
+    UpdateEstimateBody,
     UpdateScopeRequest,
 )
 from src.api.schemas.exports import QuoteRequest
@@ -419,6 +420,69 @@ async def delete_estimate(
     estimate = await _fetch_estimate_or_404(estimate_id, db)
     await db.delete(estimate)
     await db.commit()
+
+
+# ---------------------------------------------------------------------------
+# PATCH /api/estimates/{id}  — update status
+# ---------------------------------------------------------------------------
+
+
+@router.patch("/{estimate_id}", response_model=EstimateResponse)
+async def update_estimate_status(
+    estimate_id: UUID,
+    body: UpdateEstimateBody,
+    db: AsyncSession = Depends(get_db),
+) -> EstimateResponse:
+    """Update estimate status. Forward transitions are validated; backward transitions are always allowed."""
+    estimate = await _fetch_estimate_or_404(estimate_id, db)
+
+    try:
+        new_status = EstimateStatus(body.status)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=f"Invalid status: {body.status}") from exc
+
+    current = estimate.status or EstimateStatus.DRAFT
+    STATUS_ORDER = [EstimateStatus.DRAFT, EstimateStatus.REVIEWED, EstimateStatus.FINALIZED, EstimateStatus.EXPORTED]
+    current_idx = STATUS_ORDER.index(current)
+    new_idx = STATUS_ORDER.index(new_status)
+
+    if new_idx > current_idx:  # Forward — validate
+        # Eagerly load scopes for validation
+        scope_result = await db.execute(
+            select(EstimateScope).where(EstimateScope.estimate_id == estimate_id)
+        )
+        scopes = list(scope_result.scalars().all())
+
+        if new_status == EstimateStatus.REVIEWED:
+            if not scopes:
+                raise HTTPException(status_code=422, detail="Add at least one scope before marking as Reviewed.")
+            if not any(s.square_footage and s.square_footage > 0 for s in scopes):
+                raise HTTPException(
+                    status_code=422,
+                    detail="At least one scope must have area (SF > 0) before marking as Reviewed.",
+                )
+
+        elif new_status == EstimateStatus.FINALIZED:
+            if not scopes:
+                raise HTTPException(status_code=422, detail="Add at least one scope before finalizing.")
+            if not any(getattr(s, "manually_adjusted", None) for s in scopes):
+                raise HTTPException(status_code=422, detail="Accept at least one scope before finalizing.")
+            if not estimate.gc_name:
+                raise HTTPException(
+                    status_code=422,
+                    detail="GC name is required before finalizing (needed for quote generation).",
+                )
+
+        # EXPORTED: no additional rules beyond FINALIZED
+
+    if new_status == current:
+        return await _build_response(estimate, db)
+
+    estimate.status = new_status
+    await db.commit()
+    await db.refresh(estimate)
+    estimate = await _fetch_estimate_or_404(estimate.id, db)
+    return await _build_response(estimate, db)
 
 
 # ---------------------------------------------------------------------------

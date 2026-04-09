@@ -6,7 +6,7 @@ import { EstimateSummary } from '@/components/estimates/EstimateSummary'
 import { EstimateTable } from '@/components/estimates/EstimateTable'
 import { ComparableProjects } from '@/components/estimates/ComparableProjects'
 import { formatCurrency } from '@/lib/utils'
-import { getEstimate, updateScope, exportEstimate, generateQuote, deleteScope, recordActual, addProduct, deleteEstimate } from '@/lib/api'
+import { getEstimate, updateScope, exportEstimate, generateQuote, deleteScope, recordActual, addProduct, deleteEstimate, updateEstimateStatus } from '@/lib/api'
 import type { EstimateResponse, ScopeResponse, UpdateScopeRequest } from '@/lib/types'
 import { useTheme } from '@/components/ThemeProvider'
 import { FilterSelect } from '@/components/ui/FilterSelect'
@@ -43,21 +43,28 @@ export default function EstimateDetailPage() {
   const [catalogError, setCatalogError] = useState<string | null>(null)
   const [catalogToast, setCatalogToast] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (!id) return
-    let cancelled = false
-    getEstimate(id)
+  // Status bar state
+  const [statusChanging, setStatusChanging] = useState(false)
+  const [statusError, setStatusError] = useState<string | null>(null)
+
+  const loadEstimate = (estimateId: string) => {
+    setLoading(true)
+    setError(null)
+    getEstimate(estimateId)
       .then((data) => {
-        if (cancelled) return
         setEstimate(data)
         setLoading(false)
       })
       .catch((err: unknown) => {
-        if (cancelled) return
         setError(err instanceof Error ? err.message : 'Failed to load estimate')
         setLoading(false)
       })
-    return () => { cancelled = true }
+  }
+
+  useEffect(() => {
+    if (!id) return
+    loadEstimate(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
   const handleScopesChange = (scopes: ScopeResponse[]) => {
@@ -273,6 +280,194 @@ export default function EstimateDetailPage() {
             Delete
           </button>
         </div>
+
+        {/* ── Status transition bar ── */}
+        {(() => {
+          const STATUS_ORDER_PAGE = ['draft', 'reviewed', 'finalized', 'exported'] as const
+          type PageStatus = typeof STATUS_ORDER_PAGE[number]
+          const STATUS_LABELS: Record<PageStatus, string> = {
+            draft: 'Draft',
+            reviewed: 'Reviewed',
+            finalized: 'Finalized',
+            exported: 'Exported',
+          }
+          const STATUS_COLORS: Record<PageStatus, string> = {
+            draft: isLight ? '#4a5e7a' : '#6b82a0',
+            reviewed: '#60a5fa',
+            finalized: '#a1d67c',
+            exported: '#c084fc',
+          }
+          const STATUS_BG: Record<PageStatus, string> = {
+            draft: isLight ? 'rgba(74,94,122,0.10)' : 'rgba(107,130,160,0.12)',
+            reviewed: 'rgba(96,165,250,0.10)',
+            finalized: 'rgba(161,214,124,0.10)',
+            exported: 'rgba(192,132,252,0.10)',
+          }
+          const STATUS_BORDER: Record<PageStatus, string> = {
+            draft: isLight ? 'rgba(74,94,122,0.2)' : 'rgba(107,130,160,0.2)',
+            reviewed: 'rgba(96,165,250,0.25)',
+            finalized: 'rgba(161,214,124,0.25)',
+            exported: 'rgba(192,132,252,0.25)',
+          }
+          const FORWARD_LABELS: Partial<Record<PageStatus, string>> = {
+            draft: 'Mark Reviewed',
+            reviewed: 'Finalize',
+            finalized: 'Mark Exported',
+          }
+          const currentStatus = (estimate.status ?? 'draft') as PageStatus
+          const currentIdx = STATUS_ORDER_PAGE.indexOf(currentStatus)
+          const prevStatus = currentIdx > 0 ? STATUS_ORDER_PAGE[currentIdx - 1] : null
+          const nextStatus = currentIdx < STATUS_ORDER_PAGE.length - 1 ? STATUS_ORDER_PAGE[currentIdx + 1] : null
+          const forwardLabel = nextStatus ? FORWARD_LABELS[currentStatus] : null
+
+          const handleStatusTransition = async (targetStatus: string) => {
+            if (!id) return
+            setStatusChanging(true)
+            setStatusError(null)
+            try {
+              await updateEstimateStatus(id, targetStatus)
+              loadEstimate(id)
+            } catch (err: unknown) {
+              let msg = err instanceof Error ? err.message : 'Failed to update status'
+              try {
+                const jsonStart = msg.indexOf('{')
+                if (jsonStart !== -1) {
+                  const parsed = JSON.parse(msg.slice(jsonStart)) as { detail?: string }
+                  if (parsed.detail) msg = parsed.detail
+                }
+              } catch { /* ignore */ }
+              setStatusError(msg)
+            } finally {
+              setStatusChanging(false)
+            }
+          }
+
+          return (
+            <div style={{ marginBottom: '16px' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  flexWrap: 'wrap',
+                }}
+              >
+                {/* Current status pill */}
+                <span
+                  style={{
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    padding: '4px 10px',
+                    borderRadius: '6px',
+                    color: STATUS_COLORS[currentStatus],
+                    background: STATUS_BG[currentStatus],
+                    border: `1px solid ${STATUS_BORDER[currentStatus]}`,
+                    textTransform: 'capitalize',
+                  }}
+                >
+                  {STATUS_LABELS[currentStatus]}
+                </span>
+
+                {/* Forward button */}
+                {nextStatus && forwardLabel && (
+                  <button
+                    disabled={statusChanging}
+                    onClick={() => void handleStatusTransition(nextStatus)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      padding: '5px 14px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      cursor: statusChanging ? 'wait' : 'pointer',
+                      background: 'linear-gradient(135deg, #5a8a1e 0%, #a1d67c 100%)',
+                      color: '#080b10',
+                      opacity: statusChanging ? 0.7 : 1,
+                      transition: 'opacity 0.15s',
+                    }}
+                  >
+                    {statusChanging ? (
+                      <span
+                        style={{
+                          width: '12px',
+                          height: '12px',
+                          border: '2px solid rgba(0,0,0,0.3)',
+                          borderTopColor: '#080b10',
+                          borderRadius: '50%',
+                          display: 'inline-block',
+                          animation: 'spin 0.7s linear infinite',
+                        }}
+                      />
+                    ) : '→'}
+                    {forwardLabel}
+                  </button>
+                )}
+
+                {/* Backward button */}
+                {prevStatus && (
+                  <button
+                    disabled={statusChanging}
+                    onClick={() => void handleStatusTransition(prevStatus)}
+                    style={{
+                      fontSize: '12px',
+                      fontWeight: 500,
+                      padding: '4px 10px',
+                      borderRadius: '6px',
+                      border: `1px solid ${isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'}`,
+                      cursor: statusChanging ? 'wait' : 'pointer',
+                      background: 'transparent',
+                      color: isLight ? '#7890aa' : '#6b82a0',
+                      opacity: statusChanging ? 0.5 : 1,
+                      transition: 'opacity 0.15s',
+                    }}
+                  >
+                    ← Back to {STATUS_LABELS[prevStatus]}
+                  </button>
+                )}
+              </div>
+
+              {/* Inline error */}
+              {statusError && (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    marginTop: '8px',
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    background: 'rgba(245,158,11,0.08)',
+                    border: '1px solid rgba(245,158,11,0.3)',
+                    fontSize: '13px',
+                    color: '#d97706',
+                  }}
+                >
+                  <span style={{ flex: 1 }}>{statusError}</span>
+                  <button
+                    onClick={() => setStatusError(null)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: '#d97706',
+                      fontSize: '14px',
+                      padding: '0 2px',
+                      opacity: 0.7,
+                      lineHeight: 1,
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
+
+              <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+            </div>
+          )
+        })()}
 
         {/* Unknown-product banner */}
         {(() => {

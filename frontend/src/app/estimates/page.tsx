@@ -184,7 +184,14 @@ export default function EstimatesPage() {
       {/* ── Content ── */}
       <div className={loading ? 'opacity-50 pointer-events-none' : undefined}>
         {view === 'board' ? (
-          <EstimateBoard estimates={estimates} />
+          <EstimateBoard
+            estimates={estimates}
+            onStatusChange={(changedId, newStatus) => {
+              setEstimates((prev) =>
+                prev.map((e) => e.id === changedId ? { ...e, status: newStatus } : e)
+              )
+            }}
+          />
         ) : (
           <div
             className="rounded-[8px] overflow-hidden"
