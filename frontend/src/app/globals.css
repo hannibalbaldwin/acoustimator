@@ -169,6 +169,45 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
+   LIGHT THEME — applied when html.light is set
+   ───────────────────────────────────────────────────────────────────────────── */
+
+html.light {
+  --background:             #f0f4f8;
+  --foreground:             #1a2335;
+  --card:                   #ffffff;
+  --card-foreground:        #1a2335;
+  --popover:                #ffffff;
+  --popover-foreground:     #1a2335;
+  --primary:                #5a8a1e;
+  --primary-foreground:     #ffffff;
+  --secondary:              #e4eaf2;
+  --secondary-foreground:   #1a2335;
+  --muted:                  #e4eaf2;
+  --muted-foreground:       #4a5e7a;
+  --accent:                 rgba(161, 214, 124, 0.18);
+  --accent-foreground:      #3d6e10;
+  --destructive:            #dc2626;
+  --border:                 rgba(0, 0, 0, 0.09);
+  --input:                  rgba(0, 0, 0, 0.06);
+  --ring:                   rgba(108, 153, 42, 0.5);
+
+  --sidebar:                  #e8ecf2;
+  --sidebar-foreground:       #1a2335;
+  --sidebar-primary:          #6c992a;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent:           rgba(161, 214, 124, 0.2);
+  --sidebar-accent-foreground: #3d6e10;
+  --sidebar-border:           rgba(0, 0, 0, 0.08);
+  --sidebar-ring:             rgba(108, 153, 42, 0.5);
+}
+
+html.light body {
+  background: #f0f4f8;
+  color: #1a2335;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
    BASE LAYER
    ───────────────────────────────────────────────────────────────────────────── */
 

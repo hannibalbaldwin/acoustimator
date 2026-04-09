@@ -3,6 +3,7 @@ import { Space_Grotesk, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { SidebarController } from '@/components/layout/SidebarController'
+import { ThemeProvider } from '@/components/ThemeProvider'
 
 // Space Grotesk — geometric, modern tech feel
 const spaceGrotesk = Space_Grotesk({
@@ -52,12 +53,14 @@ export default function RootLayout({
       lang="en"
       className={`${spaceGrotesk.variable} ${jetbrainsMono.variable} h-full`}
     >
-      <body className="h-full antialiased bg-[#080b10] text-[#d8e4f5]">
-        <TooltipProvider>
-          <SidebarController>
-            {children}
-          </SidebarController>
-        </TooltipProvider>
+      <body className="h-full antialiased bg-[#080b10] text-[#d8e4f5] light:bg-[#f0f4f8] light:text-[#1a2335]">
+        <ThemeProvider>
+          <TooltipProvider>
+            <SidebarController>
+              {children}
+            </SidebarController>
+          </TooltipProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

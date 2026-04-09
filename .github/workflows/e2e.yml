@@ -1,76 +1,139 @@
-# E2E Smoke Tests
-#
-# Phase 6 (Next.js frontend + FastAPI backend) will replace this stub with:
-#   1. Build the Next.js frontend and start it on a preview port.
-#   2. Start the FastAPI backend with a test database (DATABASE_URL secret).
-#   3. Run Playwright tests against the running stack.
-#   4. Upload Playwright HTML report as an artifact.
-#
-# When Phase 6 is ready, uncomment the full Playwright job below and remove
-# the placeholder step.
-
 name: E2E
 
 on:
+  pull_request:
+    branches: [main]
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      full:
+        description: "Run full E2E (requires ANTHROPIC_API_KEY)"
+        required: false
+        default: "false"
+        type: boolean
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  e2e-smoke:
-    name: E2E Smoke
+  smoke:
+    name: Smoke Tests
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Placeholder — Phase 6 pending
-        run: echo "E2E tests not yet configured — Phase 6 pending"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
 
-      # -------------------------------------------------------------------
-      # Full Playwright job (uncomment for Phase 6)
-      # -------------------------------------------------------------------
-      # - uses: actions/setup-node@v4
-      #   with:
-      #     node-version: "20"
-      #     cache: "npm"
-      #     cache-dependency-path: frontend/package-lock.json
-      #
-      # - name: Install frontend deps
-      #   run: npm ci --prefix frontend
-      #
-      # - name: Install Playwright browsers
-      #   run: npx --prefix frontend playwright install --with-deps chromium
-      #
-      # - uses: astral-sh/setup-uv@v4
-      #   with:
-      #     python-version: "3.12"
-      #
-      # - name: Install Python deps
-      #   run: uv sync --frozen
-      #
-      # - name: Start FastAPI backend
-      #   env:
-      #     DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      #   run: uv run uvicorn src.acoustimator.main:app --host 0.0.0.0 --port 8000 &
-      #
-      # - name: Build and start Next.js frontend
-      #   run: npm run build --prefix frontend && npm run start --prefix frontend &
-      #
-      # - name: Wait for services
-      #   run: npx wait-on http://localhost:3000 http://localhost:8000/health
-      #
-      # - name: Run Playwright tests
-      #   run: npx --prefix frontend playwright test
-      #
-      # - name: Upload Playwright report
-      #   uses: actions/upload-artifact@v4
-      #   if: always()
-      #   with:
-      #     name: playwright-report
-      #     path: frontend/playwright-report/
-      #     retention-days: 7
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: astral-sh/setup-uv@v4
+        with:
+          python-version: "3.12"
+
+      - name: Install Python deps
+        run: uv sync --frozen
+
+      - name: Install frontend deps
+        run: pnpm install --prefix frontend
+
+      - name: Install Playwright browsers
+        run: cd frontend && pnpm exec playwright install --with-deps chromium
+
+      - name: Start backend
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: uv run uvicorn src.api.main:app --host 0.0.0.0 --port 8000 &
+
+      - name: Build Next.js
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+          NEXT_PUBLIC_API_KEY: ""
+        run: cd frontend && pnpm build
+
+      - name: Start Next.js
+        run: cd frontend && pnpm start &
+
+      - name: Wait for services
+        run: npx wait-on http://localhost:3000 http://localhost:8000/health --timeout 60000
+
+      - name: Run smoke tests
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+          NEXT_PUBLIC_API_KEY: ""
+        run: cd frontend && pnpm exec playwright test --grep "@smoke"
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-smoke
+          path: frontend/playwright-report/
+          retention-days: 7
+
+  full-e2e:
+    name: Full E2E
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: astral-sh/setup-uv@v4
+        with:
+          python-version: "3.12"
+
+      - name: Install Python deps
+        run: uv sync --frozen
+
+      - name: Install frontend deps
+        run: pnpm install --prefix frontend
+
+      - name: Install Playwright browsers
+        run: cd frontend && pnpm exec playwright install --with-deps chromium
+
+      - name: Start backend
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: uv run uvicorn src.api.main:app --host 0.0.0.0 --port 8000 &
+
+      - name: Build Next.js
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+          NEXT_PUBLIC_API_KEY: ""
+        run: cd frontend && pnpm build
+
+      - name: Start Next.js
+        run: cd frontend && pnpm start &
+
+      - name: Wait for services
+        run: npx wait-on http://localhost:3000 http://localhost:8000/health --timeout 60000
+
+      - name: Run full E2E tests
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+          NEXT_PUBLIC_API_KEY: ""
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: cd frontend && pnpm exec playwright test tests/e2e/new-estimate.spec.ts
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-full
+          path: frontend/playwright-report/
+          retention-days: 7

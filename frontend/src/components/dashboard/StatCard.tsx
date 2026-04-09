@@ -1,4 +1,7 @@
+'use client'
+
 import { cn } from '@/lib/utils'
+import { useTheme } from '@/components/ThemeProvider'
 
 interface StatCardProps {
   label: string
@@ -13,30 +16,34 @@ interface StatCardProps {
 }
 
 export function StatCard({ label, value, delta, accent, className }: StatCardProps) {
+  const { theme } = useTheme()
+  const isLight = theme === 'light'
+
   return (
     <div
       className={cn('relative px-5 py-4 rounded-[8px] overflow-hidden', className)}
       style={{
         background: accent
           ? 'linear-gradient(135deg, rgba(90,138,30,0.25) 0%, rgba(161,214,124,0.12) 100%)'
-          : '#131822',
+          : isLight ? '#ffffff' : '#131822',
         border: accent
-          ? '1px solid rgba(161,214,124,0.25)'
-          : '1px solid rgba(255,255,255,0.08)',
+          ? `1px solid ${isLight ? 'rgba(161,214,124,0.3)' : 'rgba(161,214,124,0.25)'}`
+          : `1px solid ${isLight ? 'rgba(0,0,0,0.09)' : 'rgba(255,255,255,0.08)'}`,
       }}
     >
       {/* Subtle gradient overlay */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background:
-            'linear-gradient(145deg, rgba(255,255,255,0.025) 0%, rgba(255,255,255,0) 60%)',
+          background: isLight
+            ? 'linear-gradient(145deg, rgba(0,0,0,0.015) 0%, rgba(0,0,0,0) 60%)'
+            : 'linear-gradient(145deg, rgba(255,255,255,0.025) 0%, rgba(255,255,255,0) 60%)',
         }}
       />
 
       <p
         className="text-[11px] font-semibold uppercase tracking-[0.09em] mb-2"
-        style={{ color: '#3a4f6a' }}
+        style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}
       >
         {label}
       </p>
@@ -47,7 +54,7 @@ export function StatCard({ label, value, delta, accent, className }: StatCardPro
           style={{
             fontFamily: 'var(--font-jetbrains-mono), monospace',
             fontWeight: 600,
-            color: accent ? '#a1d67c' : '#d8e4f5',
+            color: accent ? '#a1d67c' : isLight ? '#1a2335' : '#d8e4f5',
             letterSpacing: '-0.03em',
           }}
         >

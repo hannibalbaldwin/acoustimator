@@ -46,19 +46,24 @@ export interface EstimateResponse {
 }
 
 export interface ProjectScopeSummary {
-  scope_type: ScopeType
-  total_cost: number | null
+  id: string
+  scope_type: string | null
+  product_name: string | null
   area_sf: number | null
   cost_per_sf: number | null
+  total: number | null
 }
 
 export interface ProjectResponse {
   id: string
-  folder_name: string
+  name: string
   gc_name: string | null
   address: string | null
+  status: string | null
   quote_date: string | null
+  created_at: string
   scopes: ProjectScopeSummary[]
+  scope_types: string[]
   total_cost: number | null
 }
 

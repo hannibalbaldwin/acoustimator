@@ -8,9 +8,10 @@ import { CostTrendChart } from '@/components/dashboard/CostTrendChart'
 import { ConfidenceBadge } from '@/components/estimates/ConfidenceBadge'
 import { ScopeTypeBadge } from '@/components/estimates/ScopeTypeBadge'
 import { EstimateBoard } from '@/components/estimates/EstimateBoard'
-import { listEstimates, getCostTrends, type EstimateListItem } from '@/lib/api'
+import { listEstimates, getCostTrends, getDashboardStats, type EstimateListItem, type DashboardStats } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
 import type { ScopeType, TrendDataPoint } from '@/lib/types'
+import { useTheme } from '@/components/ThemeProvider'
 
 const STATUS_STYLES: Record<string, { color: string; bg: string; border: string }> = {
   draft:     { color: '#6b82a0', bg: 'rgba(107,130,160,0.10)', border: 'rgba(107,130,160,0.18)' },
@@ -20,8 +21,11 @@ const STATUS_STYLES: Record<string, { color: string; bg: string; border: string 
 }
 
 export default function DashboardPage() {
+  const { theme } = useTheme()
+  const isLight = theme === 'light'
   const [estimates, setEstimates] = useState<EstimateListItem[]>([])
   const [trendData, setTrendData] = useState<TrendDataPoint[]>([])
+  const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [view, setView] = useState<'table' | 'board'>('table')
@@ -31,11 +35,13 @@ export default function DashboardPage() {
     Promise.all([
       listEstimates({ limit: 20 }),
       getCostTrends(),
+      getDashboardStats(),
     ])
-      .then(([estimatesRes, trends]) => {
+      .then(([estimatesRes, trends, dashStats]) => {
         if (cancelled) return
         setEstimates(estimatesRes.items)
         setTrendData(trends)
+        setStats(dashStats)
         setLoading(false)
       })
       .catch((err: unknown) => {
@@ -47,18 +53,18 @@ export default function DashboardPage() {
   }, [])
 
   return (
-    <div className="px-4 py-6 md:px-8 md:py-8 max-w-7xl">
+    <div className="px-4 py-6 md:px-8 md:py-8 w-full max-w-screen-2xl">
 
       {/* ── Header ── */}
       <div className="flex items-start justify-between mb-7">
         <div>
           <h1
             className="text-[22px] font-semibold tracking-tight leading-tight"
-            style={{ color: '#d8e4f5' }}
+            style={{ color: isLight ? '#0f1923' : '#d8e4f5' }}
           >
             Dashboard
           </h1>
-          <p className="text-[13px] mt-1" style={{ color: '#3a4f6a' }}>
+          <p className="text-[13px] mt-1" style={{ color: isLight ? '#5a7a9a' : '#3a4f6a' }}>
             {format(new Date(), 'MMMM d, yyyy')} · Commercial Acoustics, Tampa FL
           </p>
         </div>
@@ -80,28 +86,24 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Stat cards ── */}
-      {/* TODO: These need separate DB aggregate queries */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 mb-6">
         <StatCard
           label="Total Projects"
-          value="124"
-          delta={{ value: '12 this year', positive: true }}
+          value={loading ? '—' : (stats?.total_projects.toString() ?? '—')}
         />
         <StatCard
           label="Active Estimates"
-          value="7"
-          delta={{ value: '3 pending review', neutral: true }}
+          value={loading ? '—' : (stats?.active_estimates.toString() ?? '—')}
         />
         <StatCard
           label="Avg ACT Cost / SF"
-          value="$4.05"
-          delta={{ value: '+0.23 YoY', positive: true }}
+          value={loading ? '—' : (stats?.avg_act_cost_per_sf != null ? '$' + stats.avg_act_cost_per_sf.toFixed(2) : '—')}
           accent
         />
         <StatCard
           label="Total SF Estimated"
-          value="5.4M"
-          delta={{ value: '2026 YTD', neutral: true }}
+          value={loading ? '—' : (stats?.total_historical_sf != null ? (stats.total_historical_sf / 1_000_000).toFixed(1) + 'M' : '—')}
+          delta={{ value: 'historical', neutral: true }}
         />
       </div>
 
@@ -114,16 +116,16 @@ export default function DashboardPage() {
       <div
         className="rounded-[8px] overflow-hidden"
         style={{
-          background: '#131822',
-          border: '1px solid rgba(255,255,255,0.08)',
+          background: isLight ? '#ffffff' : '#131822',
+          border: `1px solid ${isLight ? 'rgba(0,0,0,0.09)' : 'rgba(255,255,255,0.08)'}`,
         }}
       >
         {/* Section header with view toggle */}
         <div
           className="flex items-center justify-between px-5 py-3.5"
-          style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}
+          style={{ borderBottom: `1px solid ${isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.07)'}` }}
         >
-          <h2 className="text-[13px] font-semibold" style={{ color: '#d8e4f5' }}>
+          <h2 className="text-[13px] font-semibold" style={{ color: isLight ? '#1a2335' : '#d8e4f5' }}>
             Recent Estimates
           </h2>
           <div className="flex items-center gap-2">
@@ -134,8 +136,10 @@ export default function DashboardPage() {
                 className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-[4px] transition-all"
                 style={
                   view === 'table'
-                    ? { background: 'rgba(161,214,124,0.12)', border: '1px solid rgba(161,214,124,0.22)', color: '#a1d67c' }
-                    : { background: 'transparent', border: '1px solid rgba(255,255,255,0.08)', color: '#3a4f6a' }
+                    ? isLight
+                      ? { background: 'rgba(82,155,30,0.12)', border: '1px solid rgba(82,155,30,0.28)', color: '#3d7010' }
+                      : { background: 'rgba(161,214,124,0.12)', border: '1px solid rgba(161,214,124,0.22)', color: '#a1d67c' }
+                    : { background: 'transparent', border: `1px solid ${isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)'}`, color: isLight ? '#7890aa' : '#3a4f6a' }
                 }
               >
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
@@ -150,8 +154,10 @@ export default function DashboardPage() {
                 className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-[4px] transition-all"
                 style={
                   view === 'board'
-                    ? { background: 'rgba(161,214,124,0.12)', border: '1px solid rgba(161,214,124,0.22)', color: '#a1d67c' }
-                    : { background: 'transparent', border: '1px solid rgba(255,255,255,0.08)', color: '#3a4f6a' }
+                    ? isLight
+                      ? { background: 'rgba(82,155,30,0.12)', border: '1px solid rgba(82,155,30,0.28)', color: '#3d7010' }
+                      : { background: 'rgba(161,214,124,0.12)', border: '1px solid rgba(161,214,124,0.22)', color: '#a1d67c' }
+                    : { background: 'transparent', border: `1px solid ${isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)'}`, color: isLight ? '#7890aa' : '#3a4f6a' }
                 }
               >
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -166,7 +172,7 @@ export default function DashboardPage() {
             <Link
               href="/projects"
               className="text-[12px] font-medium transition-colors"
-              style={{ color: '#a1d67c' }}
+              style={{ color: isLight ? '#4a8a10' : '#a1d67c' }}
             >
               View all projects →
             </Link>
@@ -183,7 +189,7 @@ export default function DashboardPage() {
           <div className={`overflow-x-auto${loading ? ' opacity-50 pointer-events-none' : ''}`}>
             <table className="w-full text-[13px]">
               <thead>
-                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <tr style={{ borderBottom: `1px solid ${isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)'}` }}>
                   {['Project', 'Scopes', 'Total', 'Confidence', 'Status', 'Date', ''].map(
                     (col, i) => (
                       <th
@@ -191,7 +197,7 @@ export default function DashboardPage() {
                         className={`px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.09em] ${
                           col === 'Total' ? 'text-right' : 'text-left'
                         }`}
-                        style={{ color: '#3a4f6a' }}
+                        style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}
                       >
                         {col}
                       </th>
@@ -206,20 +212,20 @@ export default function DashboardPage() {
                     <tr
                       key={est.id}
                       className="group transition-colors"
-                      style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+                      style={{ borderBottom: `1px solid ${isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.04)'}` }}
                       onMouseEnter={(e) =>
                         ((e.currentTarget as HTMLTableRowElement).style.background =
-                          'rgba(255,255,255,0.025)')
+                          isLight ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.025)')
                       }
                       onMouseLeave={(e) =>
                         ((e.currentTarget as HTMLTableRowElement).style.background = 'transparent')
                       }
                     >
                       <td className="px-4 py-2.5">
-                        <p className="font-medium" style={{ color: '#d8e4f5' }}>
+                        <p className="font-medium" style={{ color: isLight ? '#1a2335' : '#d8e4f5' }}>
                           {est.project_name}
                         </p>
-                        <p className="text-[11px] mt-0.5" style={{ color: '#3a4f6a' }}>
+                        <p className="text-[11px] mt-0.5" style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}>
                           {est.gc_name}
                         </p>
                       </td>
@@ -233,7 +239,7 @@ export default function DashboardPage() {
                       <td className="px-4 py-2.5 text-right tabular-nums font-semibold"
                         style={{
                           fontFamily: 'var(--font-jetbrains-mono), monospace',
-                          color: '#d8e4f5',
+                          color: isLight ? '#1a2335' : '#d8e4f5',
                         }}
                       >
                         {formatCurrency(est.total_cost)}
@@ -252,7 +258,7 @@ export default function DashboardPage() {
                       <td
                         className="px-4 py-2.5 text-[11px] tabular-nums"
                         style={{
-                          color: '#3a4f6a',
+                          color: isLight ? '#7890aa' : '#3a4f6a',
                           fontFamily: 'var(--font-jetbrains-mono), monospace',
                         }}
                       >
@@ -262,7 +268,7 @@ export default function DashboardPage() {
                         <Link
                           href={`/estimates/${est.id}`}
                           className="text-[12px] font-medium opacity-0 group-hover:opacity-100 transition-opacity"
-                          style={{ color: '#a1d67c' }}
+                          style={{ color: isLight ? '#4a8a10' : '#a1d67c' }}
                         >
                           Review →
                         </Link>

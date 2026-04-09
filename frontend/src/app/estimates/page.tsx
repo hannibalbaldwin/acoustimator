@@ -8,6 +8,7 @@ import { ScopeTypeBadge } from '@/components/estimates/ScopeTypeBadge'
 import { listEstimates, type EstimateListItem } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
 import type { ScopeType } from '@/lib/types'
+import { useTheme } from '@/components/ThemeProvider'
 
 const STATUS_STYLES: Record<string, { color: string; bg: string; border: string }> = {
   draft:     { color: '#6b82a0', bg: 'rgba(107,130,160,0.10)', border: 'rgba(107,130,160,0.18)' },
@@ -19,6 +20,20 @@ const STATUS_STYLES: Record<string, { color: string; bg: string; border: string 
 const STATUS_FILTERS = ['All', 'draft', 'reviewed', 'finalized', 'exported'] as const
 
 export default function EstimatesPage() {
+  const { theme } = useTheme()
+  const isLight = theme === 'light'
+
+  const textPrimary = isLight ? '#0f1923' : '#d8e4f5'
+  const textSubtitle = isLight ? '#5a7a9a' : '#3a4f6a'
+  const textMuted = isLight ? '#7890aa' : '#3a4f6a'
+  const tableBg = isLight ? '#ffffff' : '#131822'
+  const borderDefault = isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)'
+  const borderFaint = isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)'
+  const borderHairline = isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.04)'
+  const rowHoverBg = isLight ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.025)'
+  const inactiveFilterBorder = isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)'
+  const inactiveFilterColor = isLight ? '#7890aa' : '#3a4f6a'
+
   const [estimates, setEstimates] = useState<EstimateListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -49,18 +64,18 @@ export default function EstimatesPage() {
   }, [statusFilter])
 
   return (
-    <div className="px-4 py-6 md:px-8 md:py-8 max-w-[1400px]">
+    <div className="px-4 py-6 md:px-8 md:py-8 w-full max-w-screen-2xl">
 
       {/* ── Header ── */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1
             className="text-[22px] font-semibold tracking-tight leading-tight"
-            style={{ color: '#d8e4f5' }}
+            style={{ color: textPrimary }}
           >
             Estimates
           </h1>
-          <p className="text-[13px] mt-1" style={{ color: '#3a4f6a' }}>
+          <p className="text-[13px] mt-1" style={{ color: textSubtitle }}>
             {loading ? '...' : `${estimates.length} estimate${estimates.length !== 1 ? 's' : ''}`}
             {statusFilter !== 'All' && ` · filtered by ${statusFilter}`}
           </p>
@@ -74,8 +89,10 @@ export default function EstimatesPage() {
               className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-[4px] transition-all"
               style={
                 view === 'table'
-                  ? { background: 'rgba(161,214,124,0.12)', border: '1px solid rgba(161,214,124,0.22)', color: '#a1d67c' }
-                  : { background: 'transparent', border: '1px solid rgba(255,255,255,0.08)', color: '#3a4f6a' }
+                  ? isLight
+                    ? { background: 'rgba(82,155,30,0.12)', border: '1px solid rgba(82,155,30,0.28)', color: '#3d7010' }
+                    : { background: 'rgba(161,214,124,0.12)', border: '1px solid rgba(161,214,124,0.22)', color: '#a1d67c' }
+                  : { background: 'transparent', border: `1px solid ${inactiveFilterBorder}`, color: inactiveFilterColor }
               }
             >
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
@@ -90,8 +107,10 @@ export default function EstimatesPage() {
               className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-[4px] transition-all"
               style={
                 view === 'board'
-                  ? { background: 'rgba(161,214,124,0.12)', border: '1px solid rgba(161,214,124,0.22)', color: '#a1d67c' }
-                  : { background: 'transparent', border: '1px solid rgba(255,255,255,0.08)', color: '#3a4f6a' }
+                  ? isLight
+                    ? { background: 'rgba(82,155,30,0.12)', border: '1px solid rgba(82,155,30,0.28)', color: '#3d7010' }
+                    : { background: 'rgba(161,214,124,0.12)', border: '1px solid rgba(161,214,124,0.22)', color: '#a1d67c' }
+                  : { background: 'transparent', border: `1px solid ${inactiveFilterBorder}`, color: inactiveFilterColor }
               }
             >
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -133,8 +152,10 @@ export default function EstimatesPage() {
               className="text-[11px] font-medium px-3 py-1 rounded-[4px] transition-all capitalize"
               style={
                 isActive
-                  ? { background: 'rgba(161,214,124,0.12)', border: '1px solid rgba(161,214,124,0.22)', color: '#a1d67c' }
-                  : { background: 'transparent', border: '1px solid rgba(255,255,255,0.08)', color: '#3a4f6a' }
+                  ? isLight
+                    ? { background: 'rgba(82,155,30,0.12)', border: '1px solid rgba(82,155,30,0.28)', color: '#3d7010' }
+                    : { background: 'rgba(161,214,124,0.12)', border: '1px solid rgba(161,214,124,0.22)', color: '#a1d67c' }
+                  : { background: 'transparent', border: `1px solid ${inactiveFilterBorder}`, color: inactiveFilterColor }
               }
             >
               {s}
@@ -156,17 +177,17 @@ export default function EstimatesPage() {
         ) : (
           <div
             className="rounded-[8px] overflow-hidden"
-            style={{ background: '#131822', border: '1px solid rgba(255,255,255,0.08)' }}
+            style={{ background: tableBg, border: `1px solid ${borderDefault}` }}
           >
             <div className="overflow-x-auto">
               <table className="w-full text-[13px]">
                 <thead>
-                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                  <tr style={{ borderBottom: `1px solid ${borderFaint}` }}>
                     {['Project', 'Scopes', 'Total', 'Confidence', 'Status', 'Date', ''].map((col, i) => (
                       <th
                         key={i}
                         className={`px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.09em] ${col === 'Total' ? 'text-right' : 'text-left'}`}
-                        style={{ color: '#3a4f6a' }}
+                        style={{ color: textMuted }}
                       >
                         {col}
                       </th>
@@ -176,7 +197,7 @@ export default function EstimatesPage() {
                 <tbody>
                   {estimates.length === 0 && !loading && (
                     <tr>
-                      <td colSpan={7} className="px-4 py-8 text-center text-[13px]" style={{ color: '#3a4f6a' }}>
+                      <td colSpan={7} className="px-4 py-8 text-center text-[13px]" style={{ color: textMuted }}>
                         No estimates found
                       </td>
                     </tr>
@@ -187,19 +208,19 @@ export default function EstimatesPage() {
                       <tr
                         key={est.id}
                         className="group transition-colors"
-                        style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+                        style={{ borderBottom: `1px solid ${borderHairline}` }}
                         onMouseEnter={(e) =>
-                          ((e.currentTarget as HTMLTableRowElement).style.background = 'rgba(255,255,255,0.025)')
+                          ((e.currentTarget as HTMLTableRowElement).style.background = rowHoverBg)
                         }
                         onMouseLeave={(e) =>
                           ((e.currentTarget as HTMLTableRowElement).style.background = 'transparent')
                         }
                       >
                         <td className="px-4 py-2.5">
-                          <p className="font-medium" style={{ color: '#d8e4f5' }}>
+                          <p className="font-medium" style={{ color: textPrimary }}>
                             {est.project_name}
                           </p>
-                          <p className="text-[11px] mt-0.5" style={{ color: '#3a4f6a' }}>
+                          <p className="text-[11px] mt-0.5" style={{ color: textMuted }}>
                             {est.gc_name}
                           </p>
                         </td>
@@ -212,7 +233,7 @@ export default function EstimatesPage() {
                         </td>
                         <td
                           className="px-4 py-2.5 text-right tabular-nums font-semibold"
-                          style={{ fontFamily: 'var(--font-jetbrains-mono), monospace', color: '#d8e4f5' }}
+                          style={{ fontFamily: 'var(--font-jetbrains-mono), monospace', color: textPrimary }}
                         >
                           {formatCurrency(est.total_cost)}
                         </td>
@@ -229,7 +250,7 @@ export default function EstimatesPage() {
                         </td>
                         <td
                           className="px-4 py-2.5 text-[11px] tabular-nums"
-                          style={{ color: '#3a4f6a', fontFamily: 'var(--font-jetbrains-mono), monospace' }}
+                          style={{ color: textMuted, fontFamily: 'var(--font-jetbrains-mono), monospace' }}
                         >
                           {est.created_at.slice(0, 10)}
                         </td>
@@ -237,7 +258,7 @@ export default function EstimatesPage() {
                           <Link
                             href={`/estimates/${est.id}`}
                             className="text-[12px] font-medium opacity-0 group-hover:opacity-100 transition-opacity"
-                            style={{ color: '#a1d67c' }}
+                            style={{ color: isLight ? '#4a8a10' : '#a1d67c' }}
                           >
                             Review →
                           </Link>
