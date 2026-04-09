@@ -12,47 +12,18 @@ interface EditState {
   material_cost_per_sf: string
   markup_pct: string
   labor_days: string
+  scope_type: string
 }
 
 interface RowProps {
   scope: ScopeResponse
+  isLight?: boolean
   onAccept: (id: string, accepted: boolean) => void
   onSave: (id: string, edits: EditState) => void
+  onDelete: (id: string) => void
 }
 
-const inputStyle: React.CSSProperties = {
-  background: '#0e1219',
-  border: '1px solid rgba(255,255,255,0.15)',
-  color: '#d8e4f5',
-  borderRadius: '4px',
-  fontSize: '11px',
-  padding: '2px 6px',
-  height: '24px',
-  outline: 'none',
-  fontFamily: 'var(--font-jetbrains-mono), monospace',
-  width: '100%',
-}
-
-function InlineInput({
-  value,
-  onChange,
-  className,
-}: {
-  value: string
-  onChange: (v: string) => void
-  className?: string
-}) {
-  return (
-    <input
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      style={inputStyle}
-      className={cn('tabular-nums', className)}
-    />
-  )
-}
-
-function ScopeRow({ scope, onAccept, onSave }: RowProps) {
+function ScopeRow({ scope, isLight, onAccept, onSave, onDelete }: RowProps) {
   const [editing, setEditing] = useState(false)
   const [edits, setEdits] = useState<EditState>({
     product_name: scope.product_name ?? '',
@@ -60,7 +31,21 @@ function ScopeRow({ scope, onAccept, onSave }: RowProps) {
     material_cost_per_sf: scope.material_cost_per_sf?.toString() ?? '',
     markup_pct: scope.markup_pct != null ? (scope.markup_pct * 100).toFixed(1) : '',
     labor_days: scope.labor_days?.toString() ?? '',
+    scope_type: scope.scope_type ?? 'ACT',
   })
+
+  const inputStyle: React.CSSProperties = {
+    background: isLight ? '#f5f7fa' : '#0e1219',
+    border: `1px solid ${isLight ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.15)'}`,
+    color: isLight ? '#0f1923' : '#d8e4f5',
+    borderRadius: '4px',
+    fontSize: '11px',
+    padding: '2px 6px',
+    height: '24px',
+    outline: 'none',
+    fontFamily: 'var(--font-jetbrains-mono), monospace',
+    width: '100%',
+  }
 
   const accentColor = scope.is_accepted ? '#a1d67c' : '#f59e0b'
 
@@ -69,15 +54,17 @@ function ScopeRow({ scope, onAccept, onSave }: RowProps) {
     setEditing(false)
   }
 
+  const isNewBlank = scope.is_ai_suggested === false && scope.confidence_score === null
+
   return (
     <tr
       className="group transition-colors"
       style={{
-        borderBottom: '1px solid rgba(255,255,255,0.04)',
+        borderBottom: `1px solid ${isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.04)'}`,
         borderLeft: `2px solid ${accentColor}`,
       }}
       onMouseEnter={(e) =>
-        ((e.currentTarget as HTMLTableRowElement).style.background = 'rgba(255,255,255,0.025)')
+        ((e.currentTarget as HTMLTableRowElement).style.background = isLight ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.025)')
       }
       onMouseLeave={(e) =>
         ((e.currentTarget as HTMLTableRowElement).style.background = 'transparent')
@@ -86,14 +73,37 @@ function ScopeRow({ scope, onAccept, onSave }: RowProps) {
       {/* Scope Type */}
       <td className="px-3 py-2 whitespace-nowrap">
         <div className="flex items-center gap-1.5">
-          <ScopeTypeBadge type={scope.scope_type} />
-          {scope.is_ai_suggested && (
-            <span
-              className="text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wide"
-              style={{ background: 'rgba(129,140,248,0.15)', color: '#818cf8', border: '1px solid rgba(129,140,248,0.25)' }}
+          {(editing || isNewBlank) ? (
+            <select
+              value={edits.scope_type}
+              onChange={(e) => setEdits((p) => ({ ...p, scope_type: e.target.value }))}
+              style={{
+                background: isLight ? '#f5f7fa' : '#0e1219',
+                border: `1px solid ${isLight ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.15)'}`,
+                color: isLight ? '#0f1923' : '#d8e4f5',
+                borderRadius: '4px',
+                fontSize: '11px',
+                padding: '2px 4px',
+                height: '24px',
+                outline: 'none',
+              }}
             >
-              AI
-            </span>
+              {['ACT', 'AWP', 'FW', 'SM', 'WW', 'Baffles', 'RPG', 'Other'].map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          ) : (
+            <>
+              <ScopeTypeBadge type={scope.scope_type} />
+              {scope.is_ai_suggested && (
+                <span
+                  className="text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wide"
+                  style={{ background: 'rgba(129,140,248,0.15)', color: '#818cf8', border: '1px solid rgba(129,140,248,0.25)' }}
+                >
+                  AI
+                </span>
+              )}
+            </>
           )}
         </div>
       </td>
@@ -101,18 +111,20 @@ function ScopeRow({ scope, onAccept, onSave }: RowProps) {
       {/* Product */}
       <td className="px-3 py-2 max-w-[200px]">
         {editing ? (
-          <InlineInput
+          <input
             value={edits.product_name}
-            onChange={(v) => setEdits((p) => ({ ...p, product_name: v }))}
+            onChange={(e) => setEdits((p) => ({ ...p, product_name: e.target.value }))}
+            style={inputStyle}
+            className={cn('tabular-nums')}
           />
         ) : (
           <span
             className="text-[12px] truncate block cursor-pointer transition-colors"
-            style={{ color: scope.product_name ? '#d8e4f5' : '#3a4f6a' }}
+            style={{ color: scope.product_name ? (isLight ? '#0f1923' : '#d8e4f5') : (isLight ? '#7890aa' : '#3a4f6a') }}
             onClick={() => setEditing(true)}
             title={scope.product_name ?? undefined}
           >
-            {scope.product_name ?? <em style={{ color: '#3a4f6a' }}>— click to set —</em>}
+            {scope.product_name ?? <em style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}>— click to set —</em>}
           </span>
         )}
       </td>
@@ -120,15 +132,16 @@ function ScopeRow({ scope, onAccept, onSave }: RowProps) {
       {/* SF */}
       <td className="px-3 py-2 text-right" style={{ fontFamily: 'var(--font-jetbrains-mono), monospace', fontSize: '12px' }}>
         {editing ? (
-          <InlineInput
+          <input
             value={edits.area_sf}
-            onChange={(v) => setEdits((p) => ({ ...p, area_sf: v }))}
-            className="text-right w-24"
+            onChange={(e) => setEdits((p) => ({ ...p, area_sf: e.target.value }))}
+            style={inputStyle}
+            className={cn('tabular-nums', 'text-right w-24')}
           />
         ) : (
           <span
             className="cursor-pointer transition-colors"
-            style={{ color: '#d8e4f5' }}
+            style={{ color: isLight ? '#0f1923' : '#d8e4f5' }}
             onClick={() => setEditing(true)}
           >
             {scope.area_sf != null ? new Intl.NumberFormat('en-US').format(scope.area_sf) : '—'}
@@ -139,15 +152,16 @@ function ScopeRow({ scope, onAccept, onSave }: RowProps) {
       {/* Mat $/SF */}
       <td className="px-3 py-2 text-right" style={{ fontFamily: 'var(--font-jetbrains-mono), monospace', fontSize: '12px' }}>
         {editing ? (
-          <InlineInput
+          <input
             value={edits.material_cost_per_sf}
-            onChange={(v) => setEdits((p) => ({ ...p, material_cost_per_sf: v }))}
-            className="text-right w-20"
+            onChange={(e) => setEdits((p) => ({ ...p, material_cost_per_sf: e.target.value }))}
+            style={inputStyle}
+            className={cn('tabular-nums', 'text-right w-20')}
           />
         ) : (
           <span
             className="cursor-pointer transition-colors"
-            style={{ color: '#d8e4f5' }}
+            style={{ color: isLight ? '#0f1923' : '#d8e4f5' }}
             onClick={() => setEditing(true)}
           >
             {scope.material_cost_per_sf != null ? `$${scope.material_cost_per_sf.toFixed(2)}` : '—'}
@@ -158,15 +172,16 @@ function ScopeRow({ scope, onAccept, onSave }: RowProps) {
       {/* Markup % */}
       <td className="px-3 py-2 text-right" style={{ fontFamily: 'var(--font-jetbrains-mono), monospace', fontSize: '12px' }}>
         {editing ? (
-          <InlineInput
+          <input
             value={edits.markup_pct}
-            onChange={(v) => setEdits((p) => ({ ...p, markup_pct: v }))}
-            className="text-right w-16"
+            onChange={(e) => setEdits((p) => ({ ...p, markup_pct: e.target.value }))}
+            style={inputStyle}
+            className={cn('tabular-nums', 'text-right w-16')}
           />
         ) : (
           <span
             className="cursor-pointer transition-colors"
-            style={{ color: '#d8e4f5' }}
+            style={{ color: isLight ? '#0f1923' : '#d8e4f5' }}
             onClick={() => setEditing(true)}
           >
             {formatPct(scope.markup_pct)}
@@ -177,15 +192,16 @@ function ScopeRow({ scope, onAccept, onSave }: RowProps) {
       {/* Labor Days */}
       <td className="px-3 py-2 text-right" style={{ fontFamily: 'var(--font-jetbrains-mono), monospace', fontSize: '12px' }}>
         {editing ? (
-          <InlineInput
+          <input
             value={edits.labor_days}
-            onChange={(v) => setEdits((p) => ({ ...p, labor_days: v }))}
-            className="text-right w-16"
+            onChange={(e) => setEdits((p) => ({ ...p, labor_days: e.target.value }))}
+            style={inputStyle}
+            className={cn('tabular-nums', 'text-right w-16')}
           />
         ) : (
           <span
             className="cursor-pointer transition-colors"
-            style={{ color: '#d8e4f5' }}
+            style={{ color: isLight ? '#0f1923' : '#d8e4f5' }}
             onClick={() => setEditing(true)}
           >
             {scope.labor_days != null ? scope.labor_days.toFixed(1) : '—'}
@@ -199,7 +215,7 @@ function ScopeRow({ scope, onAccept, onSave }: RowProps) {
         style={{
           fontFamily: 'var(--font-jetbrains-mono), monospace',
           fontSize: '12px',
-          color: '#d8e4f5',
+          color: isLight ? '#0f1923' : '#d8e4f5',
         }}
       >
         {formatCurrency(scope.total_cost)}
@@ -229,9 +245,9 @@ function ScopeRow({ scope, onAccept, onSave }: RowProps) {
                 onClick={() => setEditing(false)}
                 className="text-[11px] px-2 py-0.5 rounded-[4px] font-medium transition-all"
                 style={{
-                  background: 'rgba(255,255,255,0.07)',
-                  color: '#6b82a0',
-                  border: '1px solid rgba(255,255,255,0.1)',
+                  background: isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.07)',
+                  color: isLight ? '#4a5e7a' : '#6b82a0',
+                  border: `1px solid ${isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'}`,
                 }}
               >
                 Cancel
@@ -243,9 +259,9 @@ function ScopeRow({ scope, onAccept, onSave }: RowProps) {
                 onClick={() => setEditing(true)}
                 className="text-[11px] px-2 py-0.5 rounded-[4px] font-medium transition-all"
                 style={{
-                  background: 'rgba(255,255,255,0.07)',
-                  color: '#6b82a0',
-                  border: '1px solid rgba(255,255,255,0.1)',
+                  background: isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.07)',
+                  color: isLight ? '#4a5e7a' : '#6b82a0',
+                  border: `1px solid ${isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'}`,
                 }}
               >
                 Edit
@@ -269,6 +285,18 @@ function ScopeRow({ scope, onAccept, onSave }: RowProps) {
               >
                 {scope.is_accepted ? 'Unaccept' : 'Accept'}
               </button>
+              <button
+                onClick={() => onDelete(scope.id)}
+                className="text-[11px] px-2 py-0.5 rounded-[4px] font-medium transition-all"
+                style={{
+                  background: 'rgba(240,82,82,0.10)',
+                  color: '#f05252',
+                  border: '1px solid rgba(240,82,82,0.20)',
+                }}
+                title="Delete scope"
+              >
+                ✕
+              </button>
             </>
           )}
         </div>
@@ -279,13 +307,15 @@ function ScopeRow({ scope, onAccept, onSave }: RowProps) {
 
 interface EstimateTableProps {
   scopes: ScopeResponse[]
+  isLight?: boolean
   onScopesChange?: (scopes: ScopeResponse[]) => void
   onScopeUpdate?: (scopeId: string, edits: EditState) => void
+  onScopeDelete?: (scopeId: string) => void
 }
 
 const BLANK_SCOPE_TYPES: ScopeType[] = ['ACT', 'AWP', 'FW', 'SM', 'WW', 'Baffles', 'RPG', 'Other']
 
-export function EstimateTable({ scopes, onScopesChange, onScopeUpdate }: EstimateTableProps) {
+export function EstimateTable({ scopes, isLight, onScopesChange, onScopeUpdate, onScopeDelete }: EstimateTableProps) {
   const [localScopes, setLocalScopes] = useState<ScopeResponse[]>(scopes)
 
   const handleAccept = (id: string, accepted: boolean) => {
@@ -299,6 +329,7 @@ export function EstimateTable({ scopes, onScopesChange, onScopeUpdate }: Estimat
       if (s.id !== id) return s
       return {
         ...s,
+        scope_type: edits.scope_type as ScopeType,
         product_name: edits.product_name || null,
         area_sf: edits.area_sf ? parseFloat(edits.area_sf) : null,
         material_cost_per_sf: edits.material_cost_per_sf ? parseFloat(edits.material_cost_per_sf) : null,
@@ -309,6 +340,15 @@ export function EstimateTable({ scopes, onScopesChange, onScopeUpdate }: Estimat
     setLocalScopes(updated)
     onScopesChange?.(updated)
     onScopeUpdate?.(id, edits)
+  }
+
+  const handleDelete = (id: string) => {
+    const updated = localScopes.filter((s) => s.id !== id)
+    setLocalScopes(updated)
+    onScopesChange?.(updated)
+    if (!id.startsWith('scope-new-')) {
+      onScopeDelete?.(id)
+    }
   }
 
   const handleAddScope = () => {
@@ -335,7 +375,7 @@ export function EstimateTable({ scopes, onScopesChange, onScopeUpdate }: Estimat
   const acceptedCount = localScopes.filter((s) => s.is_accepted).length
 
   const thStyle: React.CSSProperties = {
-    color: '#3a4f6a',
+    color: isLight ? '#7890aa' : '#3a4f6a',
     fontSize: '10px',
     fontWeight: 600,
     textTransform: 'uppercase',
@@ -347,20 +387,20 @@ export function EstimateTable({ scopes, onScopesChange, onScopeUpdate }: Estimat
     <div
       className="rounded-[8px] overflow-hidden"
       style={{
-        background: '#131822',
-        border: '1px solid rgba(255,255,255,0.08)',
+        background: isLight ? '#ffffff' : '#131822',
+        border: `1px solid ${isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)'}`,
       }}
     >
       {/* Header */}
       <div
         className="flex items-center justify-between px-4 py-3"
-        style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}
+        style={{ borderBottom: `1px solid ${isLight ? 'rgba(0,0,0,0.07)' : 'rgba(255,255,255,0.07)'}` }}
       >
         <div className="flex items-center gap-3">
-          <h2 className="text-[13px] font-semibold" style={{ color: '#d8e4f5' }}>
+          <h2 className="text-[13px] font-semibold" style={{ color: isLight ? '#0f1923' : '#d8e4f5' }}>
             Scope Line Items
           </h2>
-          <span className="text-[11px]" style={{ color: '#3a4f6a' }}>
+          <span className="text-[11px]" style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}>
             {localScopes.length} scopes · {acceptedCount} accepted
           </span>
         </div>
@@ -369,7 +409,7 @@ export function EstimateTable({ scopes, onScopesChange, onScopeUpdate }: Estimat
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            <tr style={{ borderBottom: `1px solid ${isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)'}` }}>
               <th style={{ ...thStyle, textAlign: 'left' }}>Scope</th>
               <th style={{ ...thStyle, textAlign: 'left' }}>Product / Description</th>
               <th style={{ ...thStyle, textAlign: 'right' }}>SF</th>
@@ -383,7 +423,14 @@ export function EstimateTable({ scopes, onScopesChange, onScopeUpdate }: Estimat
           </thead>
           <tbody>
             {localScopes.map((scope) => (
-              <ScopeRow key={scope.id} scope={scope} onAccept={handleAccept} onSave={handleSave} />
+              <ScopeRow
+                key={scope.id}
+                scope={scope}
+                isLight={isLight}
+                onAccept={handleAccept}
+                onSave={handleSave}
+                onDelete={handleDelete}
+              />
             ))}
           </tbody>
 
@@ -391,14 +438,14 @@ export function EstimateTable({ scopes, onScopesChange, onScopeUpdate }: Estimat
           <tfoot>
             <tr
               style={{
-                borderTop: '2px solid rgba(255,255,255,0.1)',
-                background: 'rgba(255,255,255,0.02)',
+                borderTop: `2px solid ${isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'}`,
+                background: isLight ? 'rgba(0,0,0,0.02)' : 'rgba(255,255,255,0.02)',
               }}
             >
               <td
                 colSpan={2}
                 className="px-3 py-2.5 text-[12px] font-semibold"
-                style={{ color: '#6b82a0' }}
+                style={{ color: isLight ? '#4a5e7a' : '#6b82a0' }}
               >
                 Totals
               </td>
@@ -407,7 +454,7 @@ export function EstimateTable({ scopes, onScopesChange, onScopeUpdate }: Estimat
                 style={{
                   fontFamily: 'var(--font-jetbrains-mono), monospace',
                   fontSize: '12px',
-                  color: '#6b82a0',
+                  color: isLight ? '#4a5e7a' : '#6b82a0',
                 }}
               >
                 {totalSF > 0 ? new Intl.NumberFormat('en-US').format(totalSF) : '—'}
@@ -419,7 +466,7 @@ export function EstimateTable({ scopes, onScopesChange, onScopeUpdate }: Estimat
                 style={{
                   fontFamily: 'var(--font-jetbrains-mono), monospace',
                   fontSize: '12px',
-                  color: '#6b82a0',
+                  color: isLight ? '#4a5e7a' : '#6b82a0',
                 }}
               >
                 {totalDays > 0 ? totalDays.toFixed(1) : '—'}
@@ -443,14 +490,14 @@ export function EstimateTable({ scopes, onScopesChange, onScopeUpdate }: Estimat
       {/* Add scope */}
       <div
         className="px-4 py-3"
-        style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
+        style={{ borderTop: `1px solid ${isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)'}` }}
       >
         <button
           onClick={handleAddScope}
           className="flex items-center gap-1.5 text-[12px] font-medium transition-colors"
-          style={{ color: '#3a4f6a' }}
+          style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}
           onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = '#a1d67c')}
-          onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = '#3a4f6a')}
+          onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = isLight ? '#7890aa' : '#3a4f6a')}
         >
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path d="M12 5v14M5 12h14" strokeWidth="2.5" strokeLinecap="round" />

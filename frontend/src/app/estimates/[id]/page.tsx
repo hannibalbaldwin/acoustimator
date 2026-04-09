@@ -6,7 +6,7 @@ import { EstimateSummary } from '@/components/estimates/EstimateSummary'
 import { EstimateTable } from '@/components/estimates/EstimateTable'
 import { ComparableProjects } from '@/components/estimates/ComparableProjects'
 import { formatCurrency } from '@/lib/utils'
-import { getEstimate, updateScope, exportEstimate, generateQuote } from '@/lib/api'
+import { getEstimate, updateScope, exportEstimate, generateQuote, deleteScope } from '@/lib/api'
 import type { EstimateResponse, ScopeResponse, UpdateScopeRequest } from '@/lib/types'
 import { useTheme } from '@/components/ThemeProvider'
 
@@ -67,6 +67,15 @@ export default function EstimateDetailPage() {
       setEstimate(updated)
     } catch (err: unknown) {
       setSaveError(err instanceof Error ? err.message : 'Failed to save scope')
+    }
+  }
+
+  const handleScopeDelete = async (scopeId: string) => {
+    if (!estimate) return
+    try {
+      await deleteScope(estimate.id, scopeId)
+    } catch {
+      // Fire-and-forget — backend endpoint may not exist yet; don't surface the error
     }
   }
 
@@ -155,14 +164,16 @@ export default function EstimateDetailPage() {
           <div className="flex-1 min-w-0">
             <EstimateTable
               scopes={estimate.scopes}
+              isLight={isLight}
               onScopesChange={handleScopesChange}
               onScopeUpdate={handleScopeUpdate}
+              onScopeDelete={handleScopeDelete}
             />
           </div>
 
           {/* Sidebar */}
           <div className="w-full md:w-72 flex-shrink-0 space-y-4">
-            <ComparableProjects projects={estimate.comparable_projects} />
+            <ComparableProjects projects={estimate.comparable_projects} isLight={isLight} />
 
             {/* Notes card */}
             <div

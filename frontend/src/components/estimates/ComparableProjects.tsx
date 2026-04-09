@@ -7,38 +7,39 @@ import type { ComparableProject } from '@/lib/types'
 
 interface ComparableProjectsProps {
   projects: ComparableProject[]
+  isLight?: boolean
 }
 
-export function ComparableProjects({ projects }: ComparableProjectsProps) {
+export function ComparableProjects({ projects, isLight }: ComparableProjectsProps) {
   const [open, setOpen] = useState(true)
 
   return (
     <div
       className="rounded-[8px] overflow-hidden"
       style={{
-        background: '#131822',
-        border: '1px solid rgba(255,255,255,0.08)',
+        background: isLight ? '#ffffff' : '#131822',
+        border: `1px solid ${isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)'}`,
       }}
     >
       {/* Header */}
       <button
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center justify-between px-4 py-3 transition-colors"
-        style={{ borderBottom: open ? '1px solid rgba(255,255,255,0.07)' : 'none' }}
+        style={{ borderBottom: open ? `1px solid ${isLight ? 'rgba(0,0,0,0.07)' : 'rgba(255,255,255,0.07)'}` : 'none' }}
         onMouseEnter={(e) =>
-          ((e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.02)')
+          ((e.currentTarget as HTMLButtonElement).style.background = isLight ? 'rgba(0,0,0,0.02)' : 'rgba(255,255,255,0.02)')
         }
         onMouseLeave={(e) =>
           ((e.currentTarget as HTMLButtonElement).style.background = 'transparent')
         }
       >
         <div className="flex items-center gap-2">
-          <h3 className="text-[12px] font-semibold" style={{ color: '#d8e4f5' }}>
+          <h3 className="text-[12px] font-semibold" style={{ color: isLight ? '#0f1923' : '#d8e4f5' }}>
             Comparable Projects
           </h3>
           <span
             className="text-[10px] px-1.5 py-0.5 rounded-[3px] font-mono font-semibold"
-            style={{ color: '#6b82a0', background: 'rgba(107,130,160,0.12)' }}
+            style={{ color: isLight ? '#4a5e7a' : '#6b82a0', background: 'rgba(107,130,160,0.12)' }}
           >
             {projects.length}
           </span>
@@ -46,7 +47,7 @@ export function ComparableProjects({ projects }: ComparableProjectsProps) {
         <svg
           className="w-3.5 h-3.5 transition-transform"
           style={{
-            color: '#3a4f6a',
+            color: isLight ? '#7890aa' : '#3a4f6a',
             transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
           }}
           fill="none"
@@ -58,14 +59,14 @@ export function ComparableProjects({ projects }: ComparableProjectsProps) {
       </button>
 
       {open && (
-        <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+        <div className="divide-y" style={{ borderColor: isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)' }}>
           {projects.map((p) => (
             <div key={p.id} className="px-4 py-3">
               {/* Project name + similarity */}
               <div className="flex items-start justify-between gap-2 mb-2">
                 <p
                   className="text-[12px] font-medium leading-tight"
-                  style={{ color: '#d8e4f5' }}
+                  style={{ color: isLight ? '#0f1923' : '#d8e4f5' }}
                 >
                   {p.folder_name}
                 </p>
@@ -89,7 +90,7 @@ export function ComparableProjects({ projects }: ComparableProjectsProps) {
                 {p.year != null && (
                   <span
                     className="text-[11px] tabular-nums"
-                    style={{ color: '#3a4f6a', fontFamily: 'var(--font-jetbrains-mono), monospace' }}
+                    style={{ color: isLight ? '#7890aa' : '#3a4f6a', fontFamily: 'var(--font-jetbrains-mono), monospace' }}
                   >
                     {p.year}
                   </span>
@@ -102,14 +103,14 @@ export function ComparableProjects({ projects }: ComparableProjectsProps) {
                   <div>
                     <p
                       className="text-[10px] uppercase tracking-wide font-semibold"
-                      style={{ color: '#3a4f6a' }}
+                      style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}
                     >
                       Total
                     </p>
                     <p
                       className="text-[12px] font-semibold tabular-nums"
                       style={{
-                        color: '#d8e4f5',
+                        color: isLight ? '#0f1923' : '#d8e4f5',
                         fontFamily: 'var(--font-jetbrains-mono), monospace',
                       }}
                     >
@@ -121,14 +122,14 @@ export function ComparableProjects({ projects }: ComparableProjectsProps) {
                   <div>
                     <p
                       className="text-[10px] uppercase tracking-wide font-semibold"
-                      style={{ color: '#3a4f6a' }}
+                      style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}
                     >
                       $/SF
                     </p>
                     <p
                       className="text-[12px] font-semibold tabular-nums"
                       style={{
-                        color: '#d8e4f5',
+                        color: isLight ? '#0f1923' : '#d8e4f5',
                         fontFamily: 'var(--font-jetbrains-mono), monospace',
                       }}
                     >
@@ -142,7 +143,7 @@ export function ComparableProjects({ projects }: ComparableProjectsProps) {
 
           {projects.length === 0 && (
             <div className="px-4 py-6 text-center">
-              <p className="text-[12px]" style={{ color: '#3a4f6a' }}>
+              <p className="text-[12px]" style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}>
                 No comparable projects found
               </p>
             </div>

@@ -265,6 +265,16 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   return apiFetch<DashboardStats>('/api/stats/summary')
 }
 
+export async function deleteScope(estimateId: string, scopeId: string): Promise<void> {
+  try {
+    await apiFetch<void>(`/api/estimates/${estimateId}/scopes/${scopeId}`, {
+      method: 'DELETE',
+    })
+  } catch {
+    // Ignore errors (endpoint may not exist yet or scope may already be gone)
+  }
+}
+
 export async function generateQuote(
   estimateId: string,
   template: 'T-004A' | 'T-004B' | 'T-004E' = 'T-004B'
