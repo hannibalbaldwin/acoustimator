@@ -129,9 +129,20 @@ function mapEstimate(raw: ApiEstimateResponse): EstimateResponse {
 // ── Base fetch ────────────────────────────────────────────────────────────────
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? ''
+const API_KEY = process.env.NEXT_PUBLIC_API_KEY ?? ''
+
+function apiHeaders(extra?: HeadersInit): HeadersInit {
+  const headers: Record<string, string> = {}
+  if (API_KEY) headers['X-API-Key'] = API_KEY
+  if (extra) Object.assign(headers, extra)
+  return headers
+}
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, init)
+  const res = await fetch(`${BASE}${path}`, {
+    ...init,
+    headers: apiHeaders(init?.headers),
+  })
   if (!res.ok) {
     const text = await res.text().catch(() => '')
     throw new Error(`API ${res.status}: ${text}`)
@@ -144,6 +155,7 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 export async function createEstimate(formData: FormData): Promise<EstimateResponse> {
   const res = await fetch(`${BASE}/api/estimates`, {
     method: 'POST',
+    headers: apiHeaders(),
     body: formData,
   })
   if (!res.ok) {
@@ -186,7 +198,9 @@ export async function updateScope(
 }
 
 export async function exportEstimate(id: string): Promise<void> {
-  const res = await fetch(`${BASE}/api/estimates/${id}/export`)
+  const res = await fetch(`${BASE}/api/estimates/${id}/export`, {
+    headers: apiHeaders(),
+  })
   if (!res.ok) {
     const text = await res.text().catch(() => '')
     throw new Error(`API ${res.status}: ${text}`)

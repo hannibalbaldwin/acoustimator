@@ -10,6 +10,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from src.api.middleware import ApiKeyMiddleware
 from src.api.routes import estimates as estimates_router
 from src.api.routes import projects as projects_router
 from src.api.routes import stats as stats_router
@@ -43,6 +44,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.add_middleware(ApiKeyMiddleware)
 
 # ---------------------------------------------------------------------------
 # Routers
