@@ -503,7 +503,28 @@ Covered by 5.2 above. Format B/C match with optional Notes sheet.
 - Pre-commit hooks and Dependabot not yet configured (low priority)
 - Phase 1–5 already merged to `main` via PR #7 (clean cherry-pick branch)
 
-**Phase 5.5 Deliverable:** ✅ CI pipeline running, Claude PR review active, `main` is always green.
+### 5.5.7: E2E Smoke Suite ✅ COMPLETE (PR #15)
+
+**What was built:**
+- `frontend/tests/e2e/dashboard.spec.ts` — 4 tests: stat cards live data, SVG chart, view toggle, CTA nav
+- `frontend/tests/e2e/estimates.spec.ts` — 4 tests: heading/filter controls, status filter, table toggle, New Estimate nav
+- `frontend/tests/e2e/projects.spec.ts` — 4 tests: 124 projects total, scope filter, dynamic search, clear filters
+- `frontend/tests/e2e/estimate-detail.spec.ts` — 4 tests: scopes visible, total cost, template picker, breadcrumb nav
+- All 16 tests tagged `@smoke`; `playwright.config.ts` uses `PLAYWRIGHT_BASE_URL` env var
+
+**CI integration:**
+- `e2e.yml`: `smoke` job runs on every PR (curl polling for backend/frontend readiness); `full-e2e` job runs on push to `main` with real `ANTHROPIC_API_KEY`
+- `ci.yml`: `frontend-typecheck` (`tsc --noEmit`) and `frontend-build` jobs added
+- 16/16 smoke tests passing locally; Lint, Typecheck, Build, Smoke all green on GitHub CI
+
+**Key fixes discovered:**
+- react-dropzone `accept` attr is `"application/pdf,.pdf"` — selector must be `input[type="file"]`
+- Playwright strict mode: `getByText` fails on duplicate text; use `getByRole('heading', ...)` instead
+- Projects search: dynamic extraction of first project name (hardcoded "BMG" matched nothing)
+- `wait-on` sends HEAD requests; FastAPI `/health` only handles GET — replaced with bash curl loop
+- `pnpm build --prefix frontend` fails without root `package.json` — use `cd frontend && pnpm build`
+
+**Phase 5.5 Deliverable:** ✅ CI pipeline running, Claude PR review active, `main` is always green, 16-test smoke suite covering all critical paths.
 
 ---
 
@@ -547,8 +568,12 @@ Full CA brand theme + real API wiring (PRs #8, #10):
 
 ### 6.3: Project Dashboard ✅ COMPLETE
 
-- Stat cards (hardcoded totals — ⚠️ TODO: add DB aggregate endpoint for live counts)
-- Cost/SF trend chart driven by real `GET /api/stats/cost-trends` (⚠️ returns empty until `quote_date` loader bug is fixed — see Phase 2.3)
+- Stat cards — live data from `GET /api/stats/summary` (projects, estimates, SF estimated, avg ACT $/SF)
+- Cost/SF trend chart driven by real `GET /api/stats/cost-trends` with Year/Quarter/Month granularity toggle
+  - Year/Quarter/Month buttons with CA brand active/inactive style
+  - Self-fetching via useEffect — no prop drilling from dashboard page
+  - Sparse-dot rendering for month view: `_count < 3` jobs shown at 35% opacity, r=2.5
+  - Dynamic subtitles per granularity
 - Recent estimates table + **Kanban board toggle**
 - Table/board toggle: ≡ table view, ⊞ board view
 - Board groups by status: Draft → Reviewed → Finalized → Exported
@@ -556,11 +581,14 @@ Full CA brand theme + real API wiring (PRs #8, #10):
 ### 6.4: Estimate Builder UI ✅ COMPLETE
 
 - Inline-editable scope table wired to `PATCH /api/estimates/{id}/scopes/{scope_id}`
+- Scope type selector shown when adding or editing any scope row
+- Delete scope button (red ✕) — fires `DELETE /api/estimates/{id}/scopes/{scope_id}` (HTTP 204)
 - Accept/Unaccept per scope row
 - Confidence badges with glow dot
-- Comparable projects sidebar panel (enriched from DB)
+- Comparable projects sidebar panel — fuzzy fallback from `ai_notes` semicolon-delimited names (real comparables now showing: Brandon Library, Seven Rivers HS, UF Comp Sciences)
 - AI model notes card
 - Sticky export bar — Export fires `POST /api/estimates/{id}/export` (blob download)
+- Full light-mode support for `EstimateTable` and `ComparableProjects` (all 40+ hardcoded dark colors made theme-aware)
 
 ### 6.4.1: Kanban Board ✅ COMPLETE (PR #12)
 
@@ -650,7 +678,7 @@ Full CA brand theme + real API wiring (PRs #8, #10):
 | Phase 1.6 | ✅ | 223 additional cost items, all 12 types |
 | Phase 2.1 | ✅ | 74 products, 78.5% match rate |
 | Phase 2.2 | ✅ | 64 scopes reclassified, AP eliminated, distribution fixed |
-| Phase 2.3 | ✅⚠️ | PriceIndex built; quote dates NULL in DB (bug tracked) |
+| Phase 2.3 | ✅ | PriceIndex built; quote_date backfilled 124/124 projects (backfill script, priority chain: quote JSON → PDF mtime → Excel filename → Excel mtime) |
 | Phase 2.4 | ✅ | 192 vendor quotes loaded, 35 vendors, VendorCostTracker built |
 | Phase 2.5 | ✅ | Quality dashboard live; ACT ready for ML, others borderline |
 | Phase 3.1 | ✅ | FeatureEngineer built, 326-row training CSV |
@@ -659,11 +687,11 @@ Full CA brand theme + real API wiring (PRs #8, #10):
 | Phase 3.5 | ✅ | Labor model, man_days ∝ SF^0.49, 66% MAPE (expected variance) |
 | Phase 4 | ✅ | 331 drawings extracted, 8,493 scopes, 5.4M SF, 100% success |
 | Phase 5 | ✅ | $68,677 Seven Pines estimate, Excel export, 357 tests |
-| Phase 5.5 | ✅ | GitHub CI/CD, branch protection, agent review active |
+| Phase 5.5 | ✅ | GitHub CI/CD, branch protection, agent review active, 16-test E2E smoke suite (PR #15) |
 | Phase 6.1 | ✅ | FastAPI backend, all endpoints, middleware, bug fixes |
 | Phase 6.2 | ✅ | Next.js frontend, full API wiring, CA brand theme |
-| Phase 6.3 | ✅ | Dashboard (stat cards hardcoded, cost chart empty pending quote_date fix) |
-| Phase 6.4 | ✅ | Estimate builder, kanban board, PWA, light/dark theme, custom dropdowns |
+| Phase 6.3 | ✅ | Dashboard live stat cards, Cost/SF Trends with Year/Quarter/Month granularity toggle |
+| Phase 6.4 | ✅ | Estimate builder, scope type selector, delete scope, comparable projects (fuzzy fallback), full light-mode support |
 | Phase 6.5 | ⚠️ | Quote PDF backend done; frontend flow + full template content not implemented |
 | Phase 6.6 | ⚠️ | API key middleware scaffold only; real auth deferred |
 | Phase 7 | ❌ | Not started |
@@ -672,11 +700,14 @@ Full CA brand theme + real API wiring (PRs #8, #10):
 
 ## Immediate Next Steps (Priority Order)
 
-1. **Fix `quote_date` loader bug** — `src/db/loader.py` needs to persist `extraction_result.project.quote_date` to `projects.quote_date`. This is the single change that unblocks the Cost/SF Trends chart with real historical data.
-2. **Dashboard aggregate endpoint** — `GET /api/stats/summary` returning live project count, active estimate count, total SF estimated, avg ACT cost/SF. Replaces hardcoded StatCard values.
-3. **Phase 6.5: Complete quote generation** — Wire frontend "Generate Quote" button to `POST /api/estimates/{id}/quote`, add template selector (T-004A/B/E), implement download. Populate full CA template content (line items, clauses, letterhead).
-4. **Populate `project_type`** — healthcare/education/church flags already engineered in features.py; persist them to `projects.project_type` to unlock the biggest missing signal for markup + cost models.
-5. **Phase 7: Continuous Learning** — Feedback loop for actual vs. estimated costs; monthly model retraining pipeline.
+1. **Phase 6.5: Complete quote generation** — Wire frontend "Generate Quote" button to `POST /api/estimates/{id}/quote`, add template selector (T-004A/B/E), implement download. Populate full CA template content (line items, clauses, letterhead). *(Backend complete; frontend pending.)*
+2. **Populate `project_type`** — healthcare/education/church flags already engineered in features.py; persist them to `projects.project_type` to unlock the biggest missing signal for markup + cost models.
+3. **Phase 7: Continuous Learning** — Feedback loop for actual vs. estimated costs; monthly model retraining pipeline.
+4. **Merge PR #15** — E2E smoke suite + CI activation once all CI checks pass (lint fix committed 2026-04-09).
+
+*Previously completed from this list:*
+- ~~Fix `quote_date` loader bug~~ → Resolved via `scripts/backfill_from_folder_names.py`; 124/124 projects now have `quote_date`
+- ~~Dashboard aggregate endpoint~~ → `GET /api/stats/summary` live; all stat cards showing real DB data
 
 ---
 
