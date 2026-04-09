@@ -85,8 +85,9 @@ export interface UpdateScopeRequest {
 
 export interface TrendDataPoint {
   date: string
-  ACT: number | null
-  AWP: number | null
-  FW: number | null
-  SM: number | null
+  ACT?: number | null
+  AWP?: number | null
+  FW?: number | null
+  SM?: number | null
+  _count?: number
 }

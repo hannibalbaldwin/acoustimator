@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import calendar
 import logging
+from typing import Literal
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import String, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,7 +19,7 @@ router = APIRouter(prefix="/api/stats", tags=["stats"])
 
 _MAIN_SCOPE_TYPES = {"ACT", "AWP", "FW", "SM"}
 _YEAR_MIN = 2020
-_YEAR_MAX = 2025
+_YEAR_MAX = 2026
 
 
 # ---------------------------------------------------------------------------
@@ -27,52 +29,108 @@ _YEAR_MAX = 2025
 
 @router.get("/cost-trends")
 async def cost_trends(
+    granularity: Literal["year", "quarter", "month"] = Query("year", description="Time bucket size"),
     db: AsyncSession = Depends(get_db),
 ) -> list[dict]:
     """
-    Return average cost-per-SF grouped by year and scope type.
+    Return average cost-per-SF grouped by time bucket and scope type.
 
-    Only years 2020-2025 and scope types ACT, AWP, FW, SM are included.
+    The ``granularity`` parameter controls the time bucket size:
+    - ``year``    — one row per calendar year (default)
+    - ``quarter`` — one row per calendar quarter (e.g. "2025 Q1")
+    - ``month``   — one row per calendar month (e.g. "Jan '25")
+
+    Only years 2020-2026 and scope types ACT, AWP, FW, SM are included.
+    The ``_count`` field on each bucket reflects the number of distinct projects
+    and can be used by the frontend to mute sparse buckets (< 3 projects).
     """
-    # Join scopes → projects, filter valid rows, group by year + scope_type
-    stmt = (
-        select(
-            func.extract("year", Project.quote_date).label("year"),
-            Scope.scope_type.cast(String).label("scope_type"),
-            func.avg(Scope.cost_per_unit).label("avg_cost_per_sf"),
+    year_col = func.extract("year", Project.quote_date).label("year")
+    scope_col = Scope.scope_type.cast(String).label("scope_type")
+    avg_col = func.avg(Scope.cost_per_unit).label("avg_cost_per_sf")
+    count_col = func.count(func.distinct(Project.id)).label("project_count")
+
+    base_where = [
+        Scope.cost_per_unit.is_not(None),
+        Scope.cost_per_unit > 0,
+        Project.quote_date.is_not(None),
+        func.extract("year", Project.quote_date) >= _YEAR_MIN,
+        func.extract("year", Project.quote_date) <= _YEAR_MAX,
+        Scope.scope_type.cast(String).in_(list(_MAIN_SCOPE_TYPES)),
+    ]
+
+    if granularity == "year":
+        stmt = (
+            select(year_col, scope_col, avg_col, count_col)
+            .join(Project, Scope.project_id == Project.id)
+            .where(*base_where)
+            .group_by(func.extract("year", Project.quote_date), Scope.scope_type.cast(String))
+            .order_by(func.extract("year", Project.quote_date).asc())
         )
-        .join(Project, Scope.project_id == Project.id)
-        .where(
-            Scope.cost_per_unit.is_not(None),
-            Scope.cost_per_unit > 0,
-            Project.quote_date.is_not(None),
-            func.extract("year", Project.quote_date) >= _YEAR_MIN,
-            func.extract("year", Project.quote_date) <= _YEAR_MAX,
-            Scope.scope_type.cast(String).in_(list(_MAIN_SCOPE_TYPES)),
+    elif granularity == "quarter":
+        quarter_col = func.extract("quarter", Project.quote_date).label("quarter")
+        stmt = (
+            select(year_col, quarter_col, scope_col, avg_col, count_col)
+            .join(Project, Scope.project_id == Project.id)
+            .where(*base_where)
+            .group_by(
+                func.extract("year", Project.quote_date),
+                func.extract("quarter", Project.quote_date),
+                Scope.scope_type.cast(String),
+            )
+            .order_by(
+                func.extract("year", Project.quote_date).asc(),
+                func.extract("quarter", Project.quote_date).asc(),
+            )
         )
-        .group_by(
-            func.extract("year", Project.quote_date),
-            Scope.scope_type.cast(String),
+    else:  # month
+        month_col = func.extract("month", Project.quote_date).label("month")
+        stmt = (
+            select(year_col, month_col, scope_col, avg_col, count_col)
+            .join(Project, Scope.project_id == Project.id)
+            .where(*base_where)
+            .group_by(
+                func.extract("year", Project.quote_date),
+                func.extract("month", Project.quote_date),
+                Scope.scope_type.cast(String),
+            )
+            .order_by(
+                func.extract("year", Project.quote_date).asc(),
+                func.extract("month", Project.quote_date).asc(),
+            )
         )
-        .order_by(func.extract("year", Project.quote_date).asc())
-    )
 
     result = await db.execute(stmt)
     rows = result.all()
 
-    # Build a dict keyed by year string
-    year_map: dict[str, dict] = {}
+    bucket_map: dict[str, dict] = {}
     for row in rows:
-        year_str = str(int(row.year))
         scope = row.scope_type
         avg_val = float(row.avg_cost_per_sf) if row.avg_cost_per_sf is not None else None
+        proj_count = int(row.project_count) if row.project_count is not None else 0
         if scope not in _MAIN_SCOPE_TYPES or avg_val is None:
             continue
-        if year_str not in year_map:
-            year_map[year_str] = {"date": year_str}
-        year_map[year_str][scope] = round(avg_val, 2)
 
-    return sorted(year_map.values(), key=lambda d: d["date"])
+        # Build the label key
+        year = int(row.year)
+        if granularity == "year":
+            label = str(year)
+        elif granularity == "quarter":
+            quarter = int(row.quarter)
+            label = f"{year} Q{quarter}"
+        else:  # month
+            month = int(row.month)
+            month_abbr = calendar.month_abbr[month]  # 'Jan', 'Feb', …
+            label = f"{month_abbr} '{str(year)[2:]}"  # "Jan '25"
+
+        if label not in bucket_map:
+            bucket_map[label] = {"date": label, "_count": proj_count}
+        else:
+            # Keep the max count seen across scope types for this bucket
+            bucket_map[label]["_count"] = max(bucket_map[label]["_count"], proj_count)
+
+        bucket_map[label][scope] = round(avg_val, 2)
+
+    return sorted(bucket_map.values(), key=lambda d: d["date"])
 
 
 # ---------------------------------------------------------------------------

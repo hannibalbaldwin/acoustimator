@@ -8,9 +8,9 @@ import { CostTrendChart } from '@/components/dashboard/CostTrendChart'
 import { ConfidenceBadge } from '@/components/estimates/ConfidenceBadge'
 import { ScopeTypeBadge } from '@/components/estimates/ScopeTypeBadge'
 import { EstimateBoard } from '@/components/estimates/EstimateBoard'
-import { listEstimates, getCostTrends, getDashboardStats, type EstimateListItem, type DashboardStats } from '@/lib/api'
+import { listEstimates, getDashboardStats, type EstimateListItem, type DashboardStats } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
-import type { ScopeType, TrendDataPoint } from '@/lib/types'
+import type { ScopeType } from '@/lib/types'
 import { useTheme } from '@/components/ThemeProvider'
 
 const STATUS_STYLES: Record<string, { color: string; bg: string; border: string }> = {
@@ -24,7 +24,6 @@ export default function DashboardPage() {
   const { theme } = useTheme()
   const isLight = theme === 'light'
   const [estimates, setEstimates] = useState<EstimateListItem[]>([])
-  const [trendData, setTrendData] = useState<TrendDataPoint[]>([])
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -34,13 +33,11 @@ export default function DashboardPage() {
     let cancelled = false
     Promise.all([
       listEstimates({ limit: 20 }),
-      getCostTrends(),
       getDashboardStats(),
     ])
-      .then(([estimatesRes, trends, dashStats]) => {
+      .then(([estimatesRes, dashStats]) => {
         if (cancelled) return
         setEstimates(estimatesRes.items)
-        setTrendData(trends)
         setStats(dashStats)
         setLoading(false)
       })
@@ -109,7 +106,7 @@ export default function DashboardPage() {
 
       {/* ── Trend chart ── */}
       <div className="mb-6">
-        <CostTrendChart data={trendData} />
+        <CostTrendChart />
       </div>
 
       {/* ── Recent estimates table ── */}

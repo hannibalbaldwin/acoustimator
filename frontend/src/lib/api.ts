@@ -250,8 +250,8 @@ export async function listProjects(params?: {
   return raw
 }
 
-export async function getCostTrends(): Promise<TrendDataPoint[]> {
-  return apiFetch<TrendDataPoint[]>('/api/stats/cost-trends')
+export async function getCostTrends(granularity: 'year' | 'quarter' | 'month' = 'year'): Promise<TrendDataPoint[]> {
+  return apiFetch<TrendDataPoint[]>(`/api/stats/cost-trends?granularity=${granularity}`)
 }
 
 export interface DashboardStats {
