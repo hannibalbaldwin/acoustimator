@@ -113,7 +113,7 @@ export default function DashboardPage() {
     Promise.all([
       listEstimates({ limit: 20 }),
       getDashboardStats(),
-      getAccuracyStats(),
+      getAccuracyStats().catch(() => null),
       getVendorPriceSummary().catch(() => null),
       getModelStatus().catch(() => null),
     ])

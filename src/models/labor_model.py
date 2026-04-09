@@ -156,10 +156,16 @@ class LaborModel:
 
     def _build_feature_row(self, row: dict) -> list[float]:
         scope_type = row.get("scope_type")
-        square_footage = row.get("square_footage") or 0.0
-        product_name = row.get("product_name")
-        daily_labor_rate = row.get("daily_labor_rate") or CURRENT_LABOR_RATE
-        project_scope_count = row.get("project_scope_count") or 1.0
+        _sf = row.get("square_footage")
+        square_footage = float(_sf) if isinstance(_sf, (int, float)) and _sf == _sf and _sf else 0.0
+        _pn = row.get("product_name")
+        product_name = _pn if isinstance(_pn, str) else None
+        _dlr = row.get("daily_labor_rate")
+        daily_labor_rate = (
+            float(_dlr) if isinstance(_dlr, (int, float)) and _dlr == _dlr and _dlr else CURRENT_LABOR_RATE
+        )
+        _psc = row.get("project_scope_count")
+        project_scope_count = float(_psc) if isinstance(_psc, (int, float)) and _psc == _psc and _psc else 1.0
 
         product_tier = infer_product_tier(product_name, scope_type)
         has_sf = 1.0 if float(square_footage) > 0 else 0.0

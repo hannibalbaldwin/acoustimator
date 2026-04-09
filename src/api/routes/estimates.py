@@ -27,6 +27,7 @@ from src.api.schemas.estimates import (
 )
 from src.api.schemas.exports import QuoteRequest
 from src.db.models import Estimate, EstimateScope, EstimateStatus, Project, Quote
+from src.estimation.catalog import is_known_product
 
 logger = logging.getLogger(__name__)
 
@@ -178,7 +179,12 @@ async def _build_response(estimate: Estimate, db: AsyncSession) -> EstimateRespo
             except Exception:
                 logger.warning("Failed to enrich comparable projects from ai_notes", exc_info=True)
 
-    scope_responses = [ScopeResponse.from_orm_scope(s) for s in scopes]
+    scope_responses: list[ScopeResponse] = []
+    for s in scopes:
+        sr = ScopeResponse.from_orm_scope(s)
+        if s.product_name is not None:
+            sr = sr.model_copy(update={"unknown_product": not is_known_product(s.product_name)})
+        scope_responses.append(sr)
 
     # Actual cost fields and variance
     actual_total_cost = float(estimate.actual_total_cost) if estimate.actual_total_cost is not None else None
@@ -708,21 +714,68 @@ def _build_quote_pdf(estimate: Estimate, quote_number: str, template: str) -> by
         fontName="Helvetica",
         textColor=colors.HexColor("#111111"),
     )
-    footer_style = ParagraphStyle(
-        "footer",
+    clause_heading_style = ParagraphStyle(
+        "clause_heading",
+        parent=normal,
+        fontSize=9,
+        fontName="Helvetica-Bold",
+        textColor=colors.HexColor("#1a1a2e"),
+        spaceBefore=6,
+        spaceAfter=2,
+    )
+    clause_body_style = ParagraphStyle(
+        "clause_body",
         parent=normal,
         fontSize=8,
-        fontName="Helvetica-Oblique",
-        textColor=colors.HexColor("#777777"),
+        fontName="Helvetica",
+        textColor=colors.HexColor("#222222"),
+        leading=11,
         spaceAfter=4,
+    )
+    clause_sub_style = ParagraphStyle(
+        "clause_sub",
+        parent=normal,
+        fontSize=8,
+        fontName="Helvetica",
+        textColor=colors.HexColor("#333333"),
+        leading=11,
+        leftIndent=14,
+        spaceAfter=2,
     )
 
     story: list = []
 
-    # ---- Header ----
-    story.append(Paragraph("COMMERCIAL ACOUSTICS", header_style))
-    story.append(Paragraph("Tampa, FL", subheader_style))
-    story.append(Spacer(1, 0.1 * inch))
+    # ---- Header — template-specific ----
+    if template == "T-004A":
+        gc_display = estimate.gc_name or "General Contractor"
+        story.append(Paragraph("COMMERCIAL ACOUSTICS", header_style))
+        story.append(Paragraph("6301 N Florida Ave, Tampa, FL 33604 | 888.815.9691", subheader_style))
+        story.append(Spacer(1, 0.08 * inch))
+        to_style = ParagraphStyle(
+            "to_block",
+            parent=normal,
+            fontSize=9,
+            fontName="Helvetica",
+            textColor=colors.HexColor("#111111"),
+            spaceAfter=2,
+        )
+        story.append(Paragraph(f"<b>To:</b> {gc_display}", to_style))
+        story.append(Paragraph(f"<b>Project:</b> {estimate.name or 'N/A'}", to_style))
+        story.append(Spacer(1, 0.06 * inch))
+    elif template == "T-004E":
+        story.append(Paragraph("COMMERCIAL ACOUSTICS", header_style))
+        story.append(
+            Paragraph(
+                "Sound Masking &amp; Acoustical Systems | Tampa, FL | 888.815.9691",
+                subheader_style,
+            )
+        )
+        story.append(Spacer(1, 0.1 * inch))
+    else:
+        # T-004B default
+        story.append(Paragraph("COMMERCIAL ACOUSTICS", header_style))
+        story.append(Paragraph("Tampa, FL", subheader_style))
+        story.append(Spacer(1, 0.1 * inch))
 
     # Divider line via single-cell table
     story.append(
@@ -894,7 +947,26 @@ def _build_quote_pdf(estimate: Estimate, quote_number: str, template: str) -> by
     story.append(totals_table)
     story.append(Spacer(1, 0.3 * inch))
 
-    # ---- Footer ----
+    # ---- Template-specific Terms & Conditions ----
+    _append_terms(
+        story,
+        template,
+        grand_total,
+        clause_heading_style,
+        clause_body_style,
+        clause_sub_style,
+        colors,
+        inch,
+        Table,
+        TableStyle,
+        Paragraph,
+        Spacer,
+        ParagraphStyle,
+        normal,
+    )
+
+    # ---- Signature block ----
+    story.append(Spacer(1, 0.2 * inch))
     story.append(
         Table(
             [[""]],
@@ -909,17 +981,8 @@ def _build_quote_pdf(estimate: Estimate, quote_number: str, template: str) -> by
             ),
         )
     )
-    story.append(Spacer(1, 0.1 * inch))
-    story.append(Paragraph("This quote is valid for 30 days from the date above.", footer_style))
-    story.append(
-        Paragraph(
-            "Pricing is subject to change based on final material quantities and field conditions.",
-            footer_style,
-        )
-    )
-    story.append(Spacer(1, 0.3 * inch))
+    story.append(Spacer(1, 0.15 * inch))
 
-    # ---- Signature block ----
     sig_label = ParagraphStyle(
         "sig_label",
         parent=normal,
@@ -927,19 +990,42 @@ def _build_quote_pdf(estimate: Estimate, quote_number: str, template: str) -> by
         fontName="Helvetica",
         textColor=colors.HexColor("#555555"),
     )
+    sig_value_style = ParagraphStyle(
+        "sig_value",
+        parent=normal,
+        fontSize=8,
+        fontName="Helvetica",
+        textColor=colors.HexColor("#111111"),
+    )
     sig_data = [
-        [Paragraph("Authorized Signature", sig_label), Paragraph("Date", sig_label)],
-        ["_" * 42, "_" * 20],
-        [Paragraph("Commercial Acoustics Representative", sig_label), ""],
+        [
+            Paragraph("Accepted By:", sig_label),
+            Paragraph("_" * 34, sig_value_style),
+            Paragraph("Date:", sig_label),
+            Paragraph("_" * 16, sig_value_style),
+        ],
+        [
+            Paragraph("Name/Title:", sig_label),
+            Paragraph("_" * 34, sig_value_style),
+            "",
+            "",
+        ],
+        [
+            Paragraph("Commercial Acoustics:", sig_label),
+            Paragraph("_" * 34, sig_value_style),
+            Paragraph("Date:", sig_label),
+            Paragraph("_" * 16, sig_value_style),
+        ],
     ]
-    sig_table = Table(sig_data, colWidths=[4.5 * inch, 2.0 * inch])
+    sig_table = Table(sig_data, colWidths=[1.4 * inch, 2.8 * inch, 0.6 * inch, 1.7 * inch])
     sig_table.setStyle(
         TableStyle(
             [
-                ("TOPPADDING", (0, 0), (-1, -1), 4),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
                 ("LEFTPADDING", (0, 0), (-1, -1), 0),
-                ("FONTSIZE", (0, 0), (-1, -1), 9),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                ("VALIGN", (0, 0), (-1, -1), "BOTTOM"),
             ]
         )
     )
@@ -947,3 +1033,353 @@ def _build_quote_pdf(estimate: Estimate, quote_number: str, template: str) -> by
 
     doc.build(story)
     return buf.getvalue()
+
+
+def _append_terms(  # noqa: PLR0913
+    story: list,
+    template: str,
+    grand_total: object,
+    heading_style: object,
+    body_style: object,
+    sub_style: object,
+    colors: object,
+    inch: object,
+    Table: object,  # noqa: N803
+    TableStyle: object,  # noqa: N803
+    Paragraph: object,  # noqa: N803
+    Spacer: object,  # noqa: N803
+    ParagraphStyle: object,  # noqa: N803
+    normal: object,
+) -> None:
+    """Append template-specific Terms & Conditions clauses to the story list."""
+
+    def _clause(heading: str, body: str) -> None:
+        story.append(Paragraph(heading, heading_style))
+        story.append(Paragraph(body, body_style))
+        story.append(Spacer(1, 0.1 * inch))
+
+    def _clause_with_subs(heading: str, intro: str, subs: list) -> None:
+        story.append(Paragraph(heading, heading_style))
+        if intro:
+            story.append(Paragraph(intro, body_style))
+        for sub in subs:
+            story.append(Paragraph(sub, sub_style))
+        story.append(Spacer(1, 0.1 * inch))
+
+    section_title_style = ParagraphStyle(
+        "section_title",
+        parent=normal,
+        fontSize=10,
+        fontName="Helvetica-Bold",
+        textColor=colors.HexColor("#1a1a2e"),
+        spaceAfter=6,
+        spaceBefore=4,
+    )
+    story.append(Paragraph("Terms of Proposal", section_title_style))
+    story.append(
+        Table(
+            [[""]],
+            colWidths=[6.5 * inch],
+            rowHeights=[1],
+            style=TableStyle(
+                [
+                    ("LINEBELOW", (0, 0), (-1, -1), 0.5, colors.HexColor("#1a1a2e")),
+                    ("TOPPADDING", (0, 0), (-1, -1), 0),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+                ]
+            ),
+        )
+    )
+    story.append(Spacer(1, 0.1 * inch))
+
+    if template == "T-004A":
+        _append_terms_t004a(_clause, _clause_with_subs, grand_total)
+    elif template == "T-004E":
+        _append_terms_t004e(_clause, _clause_with_subs)
+    else:
+        # T-004B and any unknown template
+        _append_terms_t004b(_clause, _clause_with_subs)
+
+
+def _append_terms_t004b(_clause: object, _clause_with_subs: object) -> None:
+    """T-004B: Acoustic Panel Fab & Install — standard install terms."""
+    _clause(
+        "1. Quote Validity & Payment",
+        "Quote valid for 30 days. Credit Card payments will require a 3% processing fee to be paid "
+        "by the client. Billing is milestone-based per the schedule of values agreed upon at "
+        "contract execution. All credit terms for Net 30 accounts are subject to approval prior to "
+        "the order being released into production.",
+    )
+    _clause(
+        "2. Lead Time & Schedule",
+        "1–2 week lead-time. 1–2 week install duration. Lead time may vary by 1–2 weeks in extreme cases.",
+    )
+    _clause(
+        "3. Material Warranty",
+        "A 1-year limited warranty applies to all material. Material warranty is limited to the "
+        "price of Commercial Acoustics materials included in this proposal.",
+    )
+    _clause_with_subs(
+        "4. Installation Requirements",
+        "The following conditions apply to all installation work:",
+        [
+            "a. A Hard Date for initial mobilization shall be set in writing no less than 2 weeks "
+            "in advance. Client certifies at this time that the site is ready to receive the system "
+            "installation. If the site is not ready upon arrival, the client may be subject to a "
+            "rescheduling fee.",
+            "b. Go-Backs, Punch Lists, or Change Order items shall require a minimum 72-hour notification, in writing.",
+            "c. Installation duration is an estimate only and is heavily dependent on site "
+            "conditions. No authority to reduce scope of work by supplementing with external labor "
+            "shall be granted without prior written approval by Commercial Acoustics.",
+            "d. Room will be clear and broom-clean prior to arrival. Finish products shall not be "
+            "exposed to areas that are not sufficiently clean and dust-free.",
+            "e. Assumes permits and inspections are complete prior to installation team arrival.",
+            "f. If ceiling installation, assumes that ceiling is constructed of gypsum or corrugated "
+            "metal. If Client or Contractor is aware of deficient ceiling substrate or material, "
+            "Client or Contractor shall disclose this known deficiency.",
+            "g. If after-hours or overnight installation is required, this will be subject to a "
+            "$500/day after-hours fee.",
+            "h. If no layout is provided by client, best practices shall be utilized to ensure equal "
+            "spacing between panels. All obstructions, protrusions, and cut-outs must be disclosed "
+            "prior to installation. Custom-cutting panels around undocumented obstructions will "
+            "incur a Change Order fee.",
+        ],
+    )
+    _clause(
+        "5. Acoustic Panel Specifications",
+        "Includes Guilford of Maine acoustically-transparent fabric. Contact salesperson for fabric "
+        "swatches or additional fabric options. First Piece Panels off the production line are "
+        "available for client approval prior to delivery. Custom-made products such as acoustic "
+        "fabric panels are made to specifications and are not subject to return under any conditions.",
+    )
+    _clause(
+        "6. Sales Tax",
+        "If sales tax exempt, the purchaser must have a valid Sales Tax Certificate on file with "
+        "Commercial Acoustics at time of order. Payment of local and state taxes are not included "
+        "in this quote if outside of the states of FL and LA, and are the responsibility of the "
+        "purchaser.",
+    )
+    _clause(
+        "7. Insurance",
+        "This quote includes General Liability coverage of $2,000,000 and Workers Compensation "
+        "coverage of $1,000,000. Does not include Waivers of Subrogation (WoS), Additional Insured "
+        "(AI), or Primary Non-Contributory (PNC) endorsements. Additional insurance requirements, "
+        "endorsements, or waivers may require an additional fee. If a sample Certificate of "
+        "Insurance (COI) is available, please provide during the bidding process.",
+    )
+    _clause(
+        "8. Retainage",
+        "Price in proposal assumes no retainage in contract. If retainage is required, additional "
+        "financing fees may be incurred.",
+    )
+    _clause(
+        "9. Client Representative & Acceptance",
+        "Client shall have a representative on-site with authority to approve final quality of "
+        "installation on the last day of installation and at completion of regular intervals. If no "
+        "representative is available or does not have sufficient authority, a Go-Back or Change "
+        "Order may be submitted to client if additional mobilization is required.",
+    )
+
+
+def _append_terms_t004a(_clause: object, _clause_with_subs: object, grand_total: object) -> None:
+    """T-004A: General quote template for larger GC/commercial projects — 14 clauses."""
+    _clause(
+        "1. Quote Validity & Payment Terms",
+        "Quote valid for 30 days. A 50% Down Payment is due prior to commencement of work. "
+        "Remainder of payment is due 15 days from installation completion. A service charge of "
+        "1.5% per month (18% per year) will apply to all delinquent invoices. Credit Card payments "
+        "will require a 3% processing fee to be paid by the client. All credit terms for Net 30 "
+        "accounts are subject to approval prior to the order being released into production.",
+    )
+    _clause(
+        "2. Lead Time & Schedule",
+        "3-week lead-time. 1–2 week install duration. Lead time may vary by 1–2 weeks in extreme cases.",
+    )
+    _clause(
+        "3. Material Warranty",
+        "A 1-year limited warranty applies to all material. Material warranty is limited to the "
+        "price of Commercial Acoustics materials included in this proposal.",
+    )
+    _clause_with_subs(
+        "4. Installation Requirements",
+        "The following conditions apply to all installation work:",
+        [
+            "a. A Hard Date for initial mobilization shall be set in writing no less than 2 weeks "
+            "in advance. Client certifies at this time that the site is ready to receive the system "
+            "installation. If the site is not ready upon arrival, the client may be subject to a "
+            "rescheduling fee.",
+            "b. Go-Backs, Punch Lists, or Change Order items shall require a minimum 72-hour notification, in writing.",
+            "c. Installation duration is an estimate only and is heavily dependent on site "
+            "conditions. No authority to reduce scope of work by supplementing with external labor "
+            "shall be granted without prior written approval by Commercial Acoustics.",
+            "d. Room will be clear and broom-clean prior to arrival. Finish products shall not be "
+            "exposed to areas that are not sufficiently clean and dust-free.",
+            "e. Assumes permits and inspections are complete prior to installation team arrival.",
+            "f. If ceiling installation, assumes that ceiling is constructed of gypsum or corrugated "
+            "metal. If Client or Contractor is aware of deficient ceiling substrate or material, "
+            "Client or Contractor shall disclose this known deficiency.",
+            "g. If after-hours or overnight installation is required, this will be subject to a "
+            "$500/day after-hours fee.",
+            "h. If applicable, the client shall approve a completed first piece prior to "
+            "commencement of installation. This shall serve as the basis of future quality standard "
+            "throughout the rest of the project.",
+            "i. If no layout is provided by client, best practices shall be utilized to ensure "
+            "equal spacing between panels. All obstructions, protrusions, and cut-outs must be "
+            "disclosed prior to installation. Custom-cutting panels around undocumented obstructions "
+            "will incur a Change Order fee.",
+        ],
+    )
+    _clause(
+        "5. Acoustic Panel Specifications",
+        "Includes Guilford of Maine acoustically-transparent fabric. Contact salesperson for fabric "
+        "swatches or additional fabric options. First Piece Panels off the production line are "
+        "available for client approval prior to delivery. Custom-made products such as acoustic "
+        "fabric panels are made to specifications and are not subject to return under any conditions.",
+    )
+    _clause(
+        "6. Sales Tax",
+        "If sales tax exempt, the purchaser must have a valid Sales Tax Certificate on file with "
+        "Commercial Acoustics at time of order. Payment of local and state taxes are not included "
+        "in this quote if outside of the states of FL and LA, and are the responsibility of the "
+        "purchaser.",
+    )
+    _clause(
+        "7. Insurance Requirements",
+        "This quote includes General Liability coverage of $2,000,000 and Workers Compensation "
+        "coverage of $1,000,000. Does not include Waivers of Subrogation (WoS), Additional Insured "
+        "(AI), or Primary Non-Contributory (PNC) endorsements. Additional insurance requirements, "
+        "endorsements, or waivers may require an additional fee. If a sample Certificate of "
+        "Insurance (COI) is available, please provide during the bidding process.",
+    )
+    _clause(
+        "8. Retainage",
+        "Price in proposal assumes no retainage in contract. If retainage is required, additional "
+        "financing fees may be incurred.",
+    )
+    bond_cost = float(grand_total) * 0.03
+    _clause(
+        "9. Payment & Performance Bond",
+        f"If a Payment and Performance (P&amp;P) Bond is required by the Owner or GC, a bond fee "
+        f"of 3% of the total contract value will be added to this proposal. At the current contract "
+        f"value, the estimated bond cost would be ${bond_cost:,.2f}. Bond requirement must be "
+        f"disclosed at time of subcontract execution.",
+    )
+    _clause(
+        "10. Lien Waiver",
+        "Conditional lien waivers will be provided upon receipt of payment for each billing period. "
+        "Unconditional lien waivers will be provided upon receipt of final payment in full. "
+        "Commercial Acoustics reserves all rights under applicable state lien law until payment "
+        "is received in full.",
+    )
+    _clause(
+        "11. Subcontract Terms",
+        "If this Proposal is adopted as a portion of a Subcontract or Scope of Work, these Terms "
+        "and Conditions shall not be over-ridden or superseded by the Terms and Conditions of the "
+        "Subcontract, and shall remain wholly in effect.",
+    )
+    _clause(
+        "12. Client Representative & Acceptance",
+        "Client shall have a representative on-site with authority to approve final quality of "
+        "installation on the last day of installation and at completion of regular intervals. If no "
+        "representative is available or does not have sufficient authority, a Go-Back or Change "
+        "Order may be submitted to client if additional mobilization is required.",
+    )
+    _clause(
+        "13. Non-Interference",
+        "CONTRACTOR agrees to refrain from any and all interference in the progress of "
+        "SUBCONTRACTOR's performance of the work. CONTRACTOR shall be liable to SUBCONTRACTOR for "
+        "any and all damages, expenses, and losses incurred as a result of such delay, including "
+        "any liquidated damages (LDs) assessed against SUBCONTRACTOR, all incidental and "
+        "consequential damages, and costs for continued Project supervision, job overhead, "
+        "insurance, Project facilities, and other costs.",
+    )
+    _clause(
+        "14. Scope Integrity",
+        "No authority to reduce scope of work by supplementing with external labor shall be "
+        "granted without prior written approval by Commercial Acoustics. Any scope reductions or "
+        "deletions requested after contract execution will be subject to a formal Change Order "
+        "process.",
+    )
+
+
+def _append_terms_t004e(_clause: object, _clause_with_subs: object) -> None:
+    """T-004E: Sound Masking quote template — Lencore/Vektor SM-specific clauses."""
+    _clause(
+        "1. Quote Validity & Payment Terms",
+        "Quote valid for 30 days. A 50% Deposit is required prior to order placement. Remainder of "
+        "payment is due 15 days from completion of installation. A service charge of 1.5% per "
+        "month (18% per year) will apply to all delinquent invoices. Credit Card payments will "
+        "require a 3% processing fee to be paid by the client.",
+    )
+    _clause(
+        "2. Lead Time & Schedule",
+        "3–6 weeks lead-time for sound masking equipment. Lead time may vary by 1–2 weeks in "
+        "extreme cases. Installation scheduling to be coordinated with Contractor no less than "
+        "2 weeks prior to mobilization.",
+    )
+    _clause(
+        "3. Sound Masking System Scope",
+        "Scope includes furnishing and installing a Lencore or Vektor sound masking system per "
+        "plans and specifications. Includes all emitters, controllers, cabling, and hardware "
+        "required for a complete and operational system. System is designed to provide broadband "
+        "masking coverage across the designated coverage area per the approved layout.",
+    )
+    _clause(
+        "4. System Commissioning",
+        "Sound masking systems require a dedicated commissioning/startup visit following "
+        "installation. During commissioning, the system will be tuned and balanced to achieve "
+        "target masking levels per ASTM E1130 or project-specified criteria. Commissioning is "
+        "included in this proposal unless otherwise noted. Any additional tuning visits requested "
+        "after commissioning is complete will be subject to a separate service call fee.",
+    )
+    _clause(
+        "5. Material & Equipment Warranty",
+        "A 1-year limited warranty applies to all material and equipment. Manufacturer's warranty "
+        "terms for Lencore/Vektor equipment apply and are available upon request. Material warranty "
+        "is limited to the price of Commercial Acoustics materials and equipment included in this "
+        "proposal.",
+    )
+    _clause_with_subs(
+        "6. Installation Requirements",
+        "The following conditions apply to all sound masking installation work:",
+        [
+            "a. A Hard Date for initial mobilization shall be set in writing no less than 2 weeks "
+            "in advance. Client certifies that the site is ready, including above-ceiling access "
+            "and completed overhead MEP rough-in.",
+            "b. Go-Backs, Punch Lists, or Change Order items shall require a minimum 72-hour notification, in writing.",
+            "c. Room will be clear and broom-clean prior to arrival. System components shall not be "
+            "exposed to areas that are not sufficiently clean and dust-free.",
+            "d. Assumes permits and inspections are complete prior to installation team arrival.",
+            "e. If ceiling installation, assumes that ceiling grid is installed and accessible. "
+            "Emitter placement will follow the approved layout drawing.",
+            "f. If after-hours or overnight installation is required, this will be subject to a "
+            "$500/day after-hours fee.",
+        ],
+    )
+    _clause(
+        "7. Acoustic Ceiling Tile (ACT) — If Applicable",
+        "If ACT is included in this proposal, scope includes furnishing and installing acoustical "
+        "ceiling tile per plans and specifications. Includes Guilford of Maine acoustically-"
+        "transparent fabric on any fabric-wrapped panels. Custom-made products are not subject to "
+        "return under any conditions.",
+    )
+    _clause(
+        "8. Sales Tax",
+        "If sales tax exempt, the purchaser must have a valid Sales Tax Certificate on file with "
+        "Commercial Acoustics at time of order. Payment of local and state taxes are not included "
+        "in this quote if outside of the states of FL and LA, and are the responsibility of the "
+        "purchaser.",
+    )
+    _clause(
+        "9. Insurance",
+        "This quote includes General Liability coverage of $2,000,000 and Workers Compensation "
+        "coverage of $1,000,000. Does not include Waivers of Subrogation (WoS), Additional Insured "
+        "(AI), or Primary Non-Contributory (PNC) endorsements. Additional insurance requirements, "
+        "endorsements, or waivers may require an additional fee.",
+    )
+    _clause(
+        "10. Subcontract Terms",
+        "If this Proposal is adopted as a portion of a Subcontract or Scope of Work, these Terms "
+        "and Conditions shall not be over-ridden or superseded by the Terms and Conditions of the "
+        "Subcontract, and shall remain wholly in effect.",
+    )

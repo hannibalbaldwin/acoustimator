@@ -8,6 +8,7 @@ import type {
   ComparableProject,
   ConfidenceLevel,
   VendorPriceSummary,
+  CatalogProduct,
 } from './types'
 
 // ── API wire types ────────────────────────────────────────────────────────────
@@ -23,6 +24,7 @@ interface ApiScopeResponse {
   total: number | null
   confidence_score: number | null
   manually_adjusted: boolean
+  unknown_product?: boolean
 }
 
 interface ApiComparableProjectResponse {
@@ -97,6 +99,7 @@ function mapScope(raw: ApiScopeResponse): ScopeResponse {
     confidence_level: deriveConfidenceLevel(raw.confidence_score),
     is_ai_suggested: false,
     is_accepted: raw.manually_adjusted,
+    unknown_product: raw.unknown_product ?? false,
   }
 }
 
@@ -329,6 +332,25 @@ export interface ModelStatus {
 
 export async function getModelStatus(): Promise<ModelStatus> {
   return apiFetch<ModelStatus>('/api/stats/model-status')
+}
+
+export async function getProducts(): Promise<CatalogProduct[]> {
+  return apiFetch<CatalogProduct[]>('/api/products')
+}
+
+export interface AddProductRequest {
+  name: string
+  canonical_name: string
+  category: string
+  aliases: string[]
+}
+
+export async function addProduct(data: AddProductRequest): Promise<CatalogProduct> {
+  return apiFetch<CatalogProduct>('/api/products', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
 }
 
 export async function generateQuote(

@@ -1,4 +1,5 @@
 import { formatCurrency } from '@/lib/utils'
+import { useTheme } from '@/components/ThemeProvider'
 import { ConfidenceBadge } from './ConfidenceBadge'
 import { ScopeTypeBadge } from './ScopeTypeBadge'
 import type { EstimateResponse } from '@/lib/types'
@@ -15,6 +16,8 @@ const STATUS_STYLES: Record<string, { color: string; bg: string; border: string 
 }
 
 export function EstimateSummary({ estimate }: EstimateSummaryProps) {
+  const { theme } = useTheme()
+  const isLight = theme === 'light'
   const st = STATUS_STYLES[estimate.status] ?? STATUS_STYLES.draft
   const acceptedScopes = estimate.scopes.filter((s) => s.is_accepted).length
   const totalSF = estimate.scopes.reduce((sum, s) => sum + (s.area_sf ?? 0), 0)
@@ -24,8 +27,8 @@ export function EstimateSummary({ estimate }: EstimateSummaryProps) {
     <div
       className="rounded-[8px] p-5"
       style={{
-        background: '#131822',
-        border: '1px solid rgba(255,255,255,0.08)',
+        background: isLight ? '#ffffff' : '#131822',
+        border: `1px solid ${isLight ? 'rgba(0,0,0,0.09)' : 'rgba(255,255,255,0.08)'}`,
       }}
     >
       {/* Top row: project name + status */}
@@ -33,12 +36,12 @@ export function EstimateSummary({ estimate }: EstimateSummaryProps) {
         <div>
           <h1
             className="text-[18px] font-semibold leading-tight"
-            style={{ color: '#d8e4f5' }}
+            style={{ color: isLight ? '#1a2335' : '#d8e4f5' }}
           >
             {estimate.project_name}
           </h1>
           {estimate.gc_name && (
-            <p className="text-[12px] mt-0.5" style={{ color: '#3a4f6a' }}>
+            <p className="text-[12px] mt-0.5" style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}>
               {estimate.gc_name}
             </p>
           )}
@@ -57,12 +60,12 @@ export function EstimateSummary({ estimate }: EstimateSummaryProps) {
       {/* Stat row */}
       <div
         className="grid grid-cols-4 gap-3 pt-4"
-        style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
+        style={{ borderTop: `1px solid ${isLight ? 'rgba(0,0,0,0.07)' : 'rgba(255,255,255,0.06)'}` }}
       >
         <div>
           <p
             className="text-[10px] font-semibold uppercase tracking-[0.09em] mb-1"
-            style={{ color: '#3a4f6a' }}
+            style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}
           >
             Total Cost
           </p>
@@ -70,7 +73,7 @@ export function EstimateSummary({ estimate }: EstimateSummaryProps) {
             className="text-[20px] leading-none font-semibold tabular-nums"
             style={{
               fontFamily: 'var(--font-jetbrains-mono), monospace',
-              color: '#a1d67c',
+              color: isLight ? '#3d7010' : '#a1d67c',
               letterSpacing: '-0.03em',
             }}
           >
@@ -81,7 +84,7 @@ export function EstimateSummary({ estimate }: EstimateSummaryProps) {
         <div>
           <p
             className="text-[10px] font-semibold uppercase tracking-[0.09em] mb-1"
-            style={{ color: '#3a4f6a' }}
+            style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}
           >
             Total SF
           </p>
@@ -89,7 +92,7 @@ export function EstimateSummary({ estimate }: EstimateSummaryProps) {
             className="text-[20px] leading-none font-semibold tabular-nums"
             style={{
               fontFamily: 'var(--font-jetbrains-mono), monospace',
-              color: '#d8e4f5',
+              color: isLight ? '#1a2335' : '#d8e4f5',
               letterSpacing: '-0.03em',
             }}
           >
@@ -100,7 +103,7 @@ export function EstimateSummary({ estimate }: EstimateSummaryProps) {
         <div>
           <p
             className="text-[10px] font-semibold uppercase tracking-[0.09em] mb-1"
-            style={{ color: '#3a4f6a' }}
+            style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}
           >
             Scope Lines
           </p>
@@ -108,12 +111,12 @@ export function EstimateSummary({ estimate }: EstimateSummaryProps) {
             className="text-[20px] leading-none font-semibold tabular-nums"
             style={{
               fontFamily: 'var(--font-jetbrains-mono), monospace',
-              color: '#d8e4f5',
+              color: isLight ? '#1a2335' : '#d8e4f5',
               letterSpacing: '-0.03em',
             }}
           >
             {acceptedScopes}
-            <span className="text-[13px] ml-1" style={{ color: '#3a4f6a' }}>
+            <span className="text-[13px] ml-1" style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}>
               / {estimate.scopes.length}
             </span>
           </p>
@@ -122,7 +125,7 @@ export function EstimateSummary({ estimate }: EstimateSummaryProps) {
         <div>
           <p
             className="text-[10px] font-semibold uppercase tracking-[0.09em] mb-1.5"
-            style={{ color: '#3a4f6a' }}
+            style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}
           >
             Scope Types
           </p>

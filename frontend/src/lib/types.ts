@@ -15,6 +15,14 @@ export interface ScopeResponse {
   confidence_level: ConfidenceLevel
   is_ai_suggested: boolean
   is_accepted: boolean
+  unknown_product?: boolean
+}
+
+export interface CatalogProduct {
+  name: string
+  canonical_name: string
+  category: string
+  alias_count: number
 }
 
 export interface ComparableProject {

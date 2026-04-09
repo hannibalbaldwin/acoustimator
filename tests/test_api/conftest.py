@@ -67,6 +67,9 @@ def make_estimate(
     est.created_at = datetime.now(UTC)
     est.updated_at = datetime.now(UTC)
     est.estimate_scopes = scopes or []
+    est.actual_total_cost = None
+    est.actual_cost_date = None
+    est.accuracy_note = None
     return est
 
 

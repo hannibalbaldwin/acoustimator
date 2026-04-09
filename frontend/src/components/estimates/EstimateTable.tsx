@@ -21,9 +21,10 @@ interface RowProps {
   onAccept: (id: string, accepted: boolean) => void
   onSave: (id: string, edits: EditState) => void
   onDelete: (id: string) => void
+  onAddToCatalog?: (scope: ScopeResponse) => void
 }
 
-function ScopeRow({ scope, isLight, onAccept, onSave, onDelete }: RowProps) {
+function ScopeRow({ scope, isLight, onAccept, onSave, onDelete, onAddToCatalog }: RowProps) {
   const [editing, setEditing] = useState(false)
   const [edits, setEdits] = useState<EditState>({
     product_name: scope.product_name ?? '',
@@ -118,14 +119,30 @@ function ScopeRow({ scope, isLight, onAccept, onSave, onDelete }: RowProps) {
             className={cn('tabular-nums')}
           />
         ) : (
-          <span
-            className="text-[12px] truncate block cursor-pointer transition-colors"
-            style={{ color: scope.product_name ? (isLight ? '#0f1923' : '#d8e4f5') : (isLight ? '#7890aa' : '#3a4f6a') }}
-            onClick={() => setEditing(true)}
-            title={scope.product_name ?? undefined}
-          >
-            {scope.product_name ?? <em style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}>— click to set —</em>}
-          </span>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span
+              className="text-[12px] truncate cursor-pointer transition-colors"
+              style={{ color: scope.product_name ? (isLight ? '#0f1923' : '#d8e4f5') : (isLight ? '#7890aa' : '#3a4f6a') }}
+              onClick={() => setEditing(true)}
+              title={scope.product_name ?? undefined}
+            >
+              {scope.product_name ?? <em style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}>— click to set —</em>}
+            </span>
+            {scope.unknown_product && scope.product_name && (
+              <span
+                className="flex-shrink-0 text-[10px] font-semibold px-1 py-0.5 rounded cursor-help"
+                style={{
+                  background: 'rgba(245,158,11,0.1)',
+                  color: '#f59e0b',
+                  border: '1px solid rgba(245,158,11,0.3)',
+                  lineHeight: 1,
+                }}
+                title="Product not in catalog — verify pricing"
+              >
+                ⚠
+              </span>
+            )}
+          </div>
         )}
       </td>
 
@@ -285,6 +302,20 @@ function ScopeRow({ scope, isLight, onAccept, onSave, onDelete }: RowProps) {
               >
                 {scope.is_accepted ? 'Unaccept' : 'Accept'}
               </button>
+              {scope.unknown_product && scope.product_name && onAddToCatalog && (
+                <button
+                  onClick={() => onAddToCatalog(scope)}
+                  className="text-[11px] px-2 py-0.5 rounded-[4px] font-medium transition-all"
+                  style={{
+                    background: 'rgba(245,158,11,0.1)',
+                    color: '#f59e0b',
+                    border: '1px solid rgba(245,158,11,0.25)',
+                  }}
+                  title="Add this product to catalog"
+                >
+                  + Catalog
+                </button>
+              )}
               <button
                 onClick={() => onDelete(scope.id)}
                 className="text-[11px] px-2 py-0.5 rounded-[4px] font-medium transition-all"
@@ -311,11 +342,12 @@ interface EstimateTableProps {
   onScopesChange?: (scopes: ScopeResponse[]) => void
   onScopeUpdate?: (scopeId: string, edits: EditState) => void
   onScopeDelete?: (scopeId: string) => void
+  onAddToCatalog?: (scope: ScopeResponse) => void
 }
 
 const BLANK_SCOPE_TYPES: ScopeType[] = ['ACT', 'AWP', 'FW', 'SM', 'WW', 'Baffles', 'RPG', 'Other']
 
-export function EstimateTable({ scopes, isLight, onScopesChange, onScopeUpdate, onScopeDelete }: EstimateTableProps) {
+export function EstimateTable({ scopes, isLight, onScopesChange, onScopeUpdate, onScopeDelete, onAddToCatalog }: EstimateTableProps) {
   const [localScopes, setLocalScopes] = useState<ScopeResponse[]>(scopes)
 
   const handleAccept = (id: string, accepted: boolean) => {
@@ -430,6 +462,7 @@ export function EstimateTable({ scopes, isLight, onScopesChange, onScopeUpdate, 
                 onAccept={handleAccept}
                 onSave={handleSave}
                 onDelete={handleDelete}
+                onAddToCatalog={onAddToCatalog}
               />
             ))}
           </tbody>

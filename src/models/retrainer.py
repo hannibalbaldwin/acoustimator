@@ -366,6 +366,12 @@ class ModelRetrainer:
         model_file = self.models_dir / "labor_model.joblib"
         old_mape = self._get_current_mape(manifest, "labor_model", "cv_mape_mean")
 
+        # The training CSV stores man_days_per_sf (not raw man_days).
+        # Reconstruct man_days = man_days_per_sf * square_footage when possible;
+        # fall back to filtering rows that have both columns > 0.
+        if "man_days" not in df.columns and "man_days_per_sf" in df.columns:
+            df = df.copy()
+            df["man_days"] = df["man_days_per_sf"] * df["square_footage"]
         records = df[df["man_days"].notna() & (df["man_days"] > 0)].to_dict("records")
 
         if len(records) < 5:

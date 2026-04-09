@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.middleware import ApiKeyMiddleware
 from src.api.routes import estimates as estimates_router
+from src.api.routes import products as products_router
 from src.api.routes import projects as projects_router
 from src.api.routes import stats as stats_router
 from src.api.routes import vendors as vendors_router
@@ -53,6 +54,7 @@ app.add_middleware(ApiKeyMiddleware)
 # ---------------------------------------------------------------------------
 
 app.include_router(estimates_router.router)
+app.include_router(products_router.router)
 app.include_router(projects_router.router)
 app.include_router(stats_router.router)
 app.include_router(vendors_router.router)
