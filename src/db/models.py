@@ -337,6 +337,7 @@ class Estimate(Base):
 
     # Relationships
     estimate_scopes: Mapped[list["EstimateScope"]] = relationship(back_populates="estimate", cascade="all, delete")
+    quotes: Mapped[list["Quote"]] = relationship(back_populates="estimate", cascade="all, delete")
 
 
 class EstimateScope(Base):
@@ -418,3 +419,18 @@ class ExtractionRun(Base):
 
     # Relationships
     project: Mapped[Optional["Project"]] = relationship(back_populates="extraction_runs")
+
+
+class Quote(Base):
+    __tablename__ = "quotes"
+
+    id: Mapped[UUID] = pk_uuid()
+    estimate_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("estimates.id", ondelete="CASCADE"), nullable=False
+    )
+    quote_number: Mapped[str] = mapped_column(Text, nullable=False, unique=True)  # e.g. CA-2026-0001
+    template: Mapped[str] = mapped_column(Text, nullable=False)  # T-004A, T-004B, T-004E
+    generated_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default=text("CURRENT_TIMESTAMP"))
+
+    # Relationships
+    estimate: Mapped["Estimate"] = relationship(back_populates="quotes")

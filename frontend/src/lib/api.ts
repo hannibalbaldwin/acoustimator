@@ -227,3 +227,29 @@ export async function listProjects(params?: {
 export async function getCostTrends(): Promise<TrendDataPoint[]> {
   return apiFetch<TrendDataPoint[]>('/api/stats/cost-trends')
 }
+
+export async function generateQuote(
+  estimateId: string,
+  template: 'T-004A' | 'T-004B' | 'T-004E' = 'T-004B'
+): Promise<void> {
+  const res = await fetch(`${BASE}/api/estimates/${estimateId}/quote`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ template }),
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`Quote generation failed: ${text}`)
+  }
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  const disposition = res.headers.get('Content-Disposition') ?? ''
+  const match = disposition.match(/filename="?([^"]+)"?/)
+  a.download = match ? match[1] : `quote-${estimateId}.pdf`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
