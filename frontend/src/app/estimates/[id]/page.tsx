@@ -9,6 +9,7 @@ import { formatCurrency } from '@/lib/utils'
 import { getEstimate, updateScope, exportEstimate, generateQuote, deleteScope, recordActual, addProduct } from '@/lib/api'
 import type { EstimateResponse, ScopeResponse, UpdateScopeRequest } from '@/lib/types'
 import { useTheme } from '@/components/ThemeProvider'
+import { FilterSelect } from '@/components/ui/FilterSelect'
 
 export default function EstimateDetailPage() {
   const params = useParams<{ id: string }>()
@@ -737,20 +738,12 @@ export default function EstimateDetailPage() {
               >
                 Category
               </label>
-              <select
+              <FilterSelect
                 value={catalogCategory}
-                onChange={(e) => setCatalogCategory(e.target.value)}
-                className="w-full text-[13px] rounded-[6px] px-3 py-2 focus:outline-none"
-                style={{
-                  background: isLight ? '#f5f7fa' : '#0e1219',
-                  border: `1px solid ${isLight ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.1)'}`,
-                  color: isLight ? '#0f1923' : '#d8e4f5',
-                }}
-              >
-                {['ACT', 'AWP', 'FW', 'WW', 'SM', 'Baffles', 'RPG', 'Other'].map((cat) => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
+                onChange={setCatalogCategory}
+                options={['ACT', 'AP', 'AWP', 'FW', 'WW', 'SM', 'Baffles', 'RPG', 'Other']}
+                className="w-full"
+              />
             </div>
 
             {/* Aliases */}

@@ -43,7 +43,9 @@ export function FilterSelect({ value, onChange, options, className }: FilterSele
         style={{
           display: 'flex',
           alignItems: 'center',
+          justifyContent: 'space-between',
           gap: 6,
+          width: '100%',
           background: bg,
           border: `1px solid ${border}`,
           borderRadius: 6,
@@ -68,6 +70,7 @@ export function FilterSelect({ value, onChange, options, className }: FilterSele
             position: 'absolute',
             top: 'calc(100% + 4px)',
             left: 0,
+            right: 0,
             zIndex: 50,
             background: dropdownBg,
             border: `1px solid ${border}`,

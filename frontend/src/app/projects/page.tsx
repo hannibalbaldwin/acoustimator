@@ -9,8 +9,8 @@ import { listProjects, getProjectGcNames } from '@/lib/api'
 import type { ProjectResponse, ScopeType } from '@/lib/types'
 import { useTheme } from '@/components/ThemeProvider'
 
-const ALL_SCOPES = ['All Scopes', 'ACT', 'AWP', 'FW', 'SM', 'WW', 'Baffles', 'RPG']
-const ALL_YEARS = ['All Years', '2026', '2025', '2024', '2023', '2022', '2021']
+const ALL_SCOPES = ['All Scopes', 'ACT', 'AP', 'AWP', 'FW', 'SM', 'WW', 'Baffles', 'RPG']
+const ALL_YEARS = ['All Years', '2026', '2025', '2024']
 const PAGE_SIZE = 50
 
 export default function ProjectsPage() {

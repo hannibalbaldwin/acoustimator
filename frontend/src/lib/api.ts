@@ -398,7 +398,7 @@ export async function generateQuote(
 ): Promise<void> {
   const res = await fetch(`${BASE}/api/estimates/${estimateId}/quote`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: apiHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ template }),
   })
   if (!res.ok) {
