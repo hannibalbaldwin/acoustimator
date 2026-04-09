@@ -85,7 +85,7 @@ const TOGGLE_LABELS: { key: Granularity; label: string }[] = [
 export function CostTrendChart() {
   const { theme } = useTheme()
   const isLight = theme === 'light'
-  const [granularity, setGranularity] = useState<Granularity>('year')
+  const [granularity, setGranularity] = useState<Granularity>('quarter')
   const [data, setData] = useState<TrendDataPoint[]>([])
   const [loading, setLoading] = useState(true)
 
