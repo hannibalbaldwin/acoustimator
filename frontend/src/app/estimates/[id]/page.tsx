@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { EstimateSummary } from '@/components/estimates/EstimateSummary'
 import { EstimateTable } from '@/components/estimates/EstimateTable'
 import { ComparableProjects } from '@/components/estimates/ComparableProjects'
 import { formatCurrency } from '@/lib/utils'
-import { getEstimate, updateScope, exportEstimate, generateQuote, deleteScope, recordActual, addProduct } from '@/lib/api'
+import { getEstimate, updateScope, exportEstimate, generateQuote, deleteScope, recordActual, addProduct, deleteEstimate } from '@/lib/api'
 import type { EstimateResponse, ScopeResponse, UpdateScopeRequest } from '@/lib/types'
 import { useTheme } from '@/components/ThemeProvider'
 import { FilterSelect } from '@/components/ui/FilterSelect'
@@ -14,6 +14,7 @@ import { FilterSelect } from '@/components/ui/FilterSelect'
 export default function EstimateDetailPage() {
   const params = useParams<{ id: string }>()
   const id = params.id
+  const router = useRouter()
   const { theme } = useTheme()
   const isLight = theme === 'light'
 
@@ -94,6 +95,17 @@ export default function EstimateDetailPage() {
       await deleteScope(estimate.id, scopeId)
     } catch {
       // Fire-and-forget — backend endpoint may not exist yet; don't surface the error
+    }
+  }
+
+  const handleDeleteEstimate = async () => {
+    if (!id) return
+    if (!window.confirm('Delete this estimate?')) return
+    try {
+      await deleteEstimate(id)
+      router.push('/estimates')
+    } catch (err: unknown) {
+      setSaveError(err instanceof Error ? err.message : 'Failed to delete estimate')
     }
   }
 
@@ -210,27 +222,56 @@ export default function EstimateDetailPage() {
     <>
     <div className="pb-24">
       <div className="px-4 py-6 md:px-8 md:py-8">
-        {/* Breadcrumb */}
-        <div
-          className="flex items-center gap-1.5 text-[11px] mb-5"
-          style={{
-            color: isLight ? '#7890aa' : '#3a4f6a',
-            fontFamily: 'var(--font-jetbrains-mono), monospace',
-          }}
-        >
-          <a
-            href="/dashboard"
-            className="transition-colors"
-            style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = isLight ? '#4a6a8a' : '#6b82a0')}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = isLight ? '#7890aa' : '#3a4f6a')}
+        {/* Breadcrumb + delete */}
+        <div className="flex items-center justify-between mb-5">
+          <div
+            className="flex items-center gap-1.5 text-[11px]"
+            style={{
+              color: isLight ? '#7890aa' : '#3a4f6a',
+              fontFamily: 'var(--font-jetbrains-mono), monospace',
+            }}
           >
-            Dashboard
-          </a>
-          <span style={{ color: isLight ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.12)' }}>/</span>
-          <span style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}>Estimates</span>
-          <span style={{ color: isLight ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.12)' }}>/</span>
-          <span style={{ color: isLight ? '#4a6a8a' : '#6b82a0' }}>{estimate.id}</span>
+            <a
+              href="/dashboard"
+              className="transition-colors"
+              style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}
+              onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = isLight ? '#4a6a8a' : '#6b82a0')}
+              onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = isLight ? '#7890aa' : '#3a4f6a')}
+            >
+              Dashboard
+            </a>
+            <span style={{ color: isLight ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.12)' }}>/</span>
+            <span style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}>Estimates</span>
+            <span style={{ color: isLight ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.12)' }}>/</span>
+            <span style={{ color: isLight ? '#4a6a8a' : '#6b82a0' }}>{estimate.id}</span>
+          </div>
+          <button
+            onClick={handleDeleteEstimate}
+            className="flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded-[6px] transition-all"
+            style={{
+              background: isLight ? 'rgba(239,68,68,0.07)' : 'rgba(239,68,68,0.08)',
+              border: `1px solid ${isLight ? 'rgba(239,68,68,0.2)' : 'rgba(239,68,68,0.18)'}`,
+              color: isLight ? '#dc2626' : '#f87171',
+            }}
+            onMouseEnter={(e) => {
+              const el = e.currentTarget as HTMLButtonElement
+              el.style.background = isLight ? 'rgba(239,68,68,0.13)' : 'rgba(239,68,68,0.14)'
+              el.style.borderColor = isLight ? 'rgba(239,68,68,0.35)' : 'rgba(239,68,68,0.3)'
+            }}
+            onMouseLeave={(e) => {
+              const el = e.currentTarget as HTMLButtonElement
+              el.style.background = isLight ? 'rgba(239,68,68,0.07)' : 'rgba(239,68,68,0.08)'
+              el.style.borderColor = isLight ? 'rgba(239,68,68,0.2)' : 'rgba(239,68,68,0.18)'
+            }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+              <path d="M10 11v6M14 11v6" />
+              <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+            </svg>
+            Delete
+          </button>
         </div>
 
         {/* Unknown-product banner */}
@@ -270,7 +311,7 @@ export default function EstimateDetailPage() {
         {/* Main grid */}
         <div className="flex flex-col md:flex-row gap-5">
           {/* Table */}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 space-y-3">
             <EstimateTable
               scopes={estimate.scopes}
               isLight={isLight}
@@ -279,6 +320,25 @@ export default function EstimateDetailPage() {
               onScopeDelete={handleScopeDelete}
               onAddToCatalog={handleOpenCatalogModal}
             />
+            {estimate.unknown_products && estimate.unknown_products.length > 0 && (
+              <div
+                className="rounded-[8px] px-4 py-3 flex items-start gap-2.5"
+                style={{
+                  background: 'rgba(245,158,11,0.08)',
+                  border: '1px solid rgba(245,158,11,0.28)',
+                }}
+              >
+                <span style={{ color: '#f59e0b', fontSize: '15px', lineHeight: '1.4', flexShrink: 0 }}>⚠</span>
+                <div>
+                  <span className="text-[13px] font-medium" style={{ color: '#f59e0b' }}>
+                    Unknown products — these items aren&apos;t in the catalog and may affect pricing accuracy:
+                  </span>
+                  <span className="text-[13px] ml-1" style={{ color: '#d97706' }}>
+                    {estimate.unknown_products.join(', ')}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Sidebar */}

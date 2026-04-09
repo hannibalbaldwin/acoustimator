@@ -99,6 +99,7 @@ class EstimateResponse(BaseModel):
     actual_cost_date: date | None = None
     accuracy_note: str | None = None
     variance_pct: float | None = None  # (actual - estimated) / actual * 100
+    unknown_products: list[str] = []
 
     @classmethod
     def from_orm(cls, estimate: object, scopes: list[object] | None = None) -> EstimateResponse:

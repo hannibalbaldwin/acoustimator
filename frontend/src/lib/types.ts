@@ -56,6 +56,8 @@ export interface EstimateResponse {
   actual_cost_date?: string | null
   accuracy_note?: string | null
   variance_pct?: number | null
+  // Phase 7.4: unknown product flagging
+  unknown_products?: string[]
 }
 
 export interface ProjectScopeSummary {

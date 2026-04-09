@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { EstimateBoard } from '@/components/estimates/EstimateBoard'
 import { ConfidenceBadge } from '@/components/estimates/ConfidenceBadge'
 import { ScopeTypeBadge } from '@/components/estimates/ScopeTypeBadge'
-import { listEstimates, type EstimateListItem } from '@/lib/api'
+import { listEstimates, deleteEstimate, type EstimateListItem } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
 import type { ScopeType } from '@/lib/types'
 import { useTheme } from '@/components/ThemeProvider'
@@ -40,6 +40,16 @@ export default function EstimatesPage() {
   const [error, setError] = useState<string | null>(null)
   const [view, setView] = useState<'table' | 'board'>('board')
   const [statusFilter, setStatusFilter] = useState<string>('All')
+
+  const handleDeleteEstimate = async (id: string) => {
+    if (!window.confirm('Delete this estimate?')) return
+    try {
+      await deleteEstimate(id)
+      setEstimates((prev) => prev.filter((e) => e.id !== id))
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to delete estimate')
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -263,13 +273,36 @@ export default function EstimatesPage() {
                           {est.created_at.slice(0, 10)}
                         </td>
                         <td className="px-4 py-2.5">
-                          <Link
-                            href={`/estimates/${est.id}`}
-                            className="text-[12px] font-medium opacity-0 group-hover:opacity-100 transition-opacity"
-                            style={{ color: isLight ? '#4a8a10' : '#a1d67c' }}
-                          >
-                            Review →
-                          </Link>
+                          <div className="flex items-center gap-3 justify-end">
+                            <Link
+                              href={`/estimates/${est.id}`}
+                              className="text-[12px] font-medium opacity-0 group-hover:opacity-100 transition-opacity"
+                              style={{ color: isLight ? '#4a8a10' : '#a1d67c' }}
+                            >
+                              Review →
+                            </Link>
+                            <button
+                              onClick={(e) => { e.preventDefault(); handleDeleteEstimate(est.id) }}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded p-1"
+                              title="Delete estimate"
+                              onMouseEnter={(e) => {
+                                const el = e.currentTarget as HTMLButtonElement
+                                el.style.color = '#ef4444'
+                              }}
+                              onMouseLeave={(e) => {
+                                const el = e.currentTarget as HTMLButtonElement
+                                el.style.color = isLight ? '#7890aa' : '#3a4f6a'
+                              }}
+                              style={{ color: isLight ? '#7890aa' : '#3a4f6a', background: 'transparent', border: 'none', cursor: 'pointer' }}
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="3 6 5 6 21 6" />
+                                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                                <path d="M10 11v6M14 11v6" />
+                                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                              </svg>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     )
