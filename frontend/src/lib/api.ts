@@ -388,6 +388,17 @@ export async function createAdminUser(data: {
   })
 }
 
+export async function updateAdminUser(
+  userId: string,
+  data: { name?: string; role?: string; password?: string }
+): Promise<AdminUser> {
+  return apiFetch<AdminUser>(`/api/admin/users/${userId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+}
+
 export async function deleteAdminUser(userId: string): Promise<void> {
   return apiFetch<void>(`/api/admin/users/${userId}`, { method: 'DELETE' })
 }
