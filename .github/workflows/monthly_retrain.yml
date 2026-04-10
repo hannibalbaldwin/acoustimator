@@ -1,0 +1,106 @@
+name: Monthly Model Retrain
+
+on:
+  schedule:
+    # First Sunday of every month at 02:00 UTC
+    - cron: '0 2 1-7 * 0'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Skip the should_retrain check and retrain unconditionally'
+        type: boolean
+        default: false
+      dry_run:
+        description: 'Compute new MAPE but do NOT overwrite .joblib files'
+        type: boolean
+        default: false
+      threshold:
+        description: 'Minimum new projects with actuals since last retrain'
+        type: string
+        default: '5'
+
+jobs:
+  retrain:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Build retrain command flags
+        id: flags
+        run: |
+          FLAGS=""
+          if [ "${{ inputs.force }}" = "true" ]; then
+            FLAGS="$FLAGS --force"
+          fi
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            FLAGS="$FLAGS --dry-run"
+          fi
+          THRESHOLD="${{ inputs.threshold }}"
+          FLAGS="$FLAGS --threshold ${THRESHOLD:-5}"
+          echo "flags=$FLAGS" >> "$GITHUB_OUTPUT"
+
+      - name: Run model retraining
+        id: retrain
+        run: |
+          uv run python scripts/retrain_models.py ${{ steps.flags.outputs.flags }}
+
+      - name: Upload model artifacts
+        if: ${{ inputs.dry_run != true }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-artifacts
+          path: data/models/
+          retention-days: 30
+
+      - name: Notify Slack
+        if: always()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            OUTCOME="success"
+            COLOR="good"
+            ICON=":white_check_mark:"
+          else
+            OUTCOME="failure"
+            COLOR="danger"
+            ICON=":x:"
+          fi
+
+          DRY_RUN_NOTE=""
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            DRY_RUN_NOTE=" (dry-run)"
+          fi
+
+          curl -s -X POST "$SLACK_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"text\": \"${ICON} *Acoustimator monthly retrain ${OUTCOME}${DRY_RUN_NOTE}*\",
+              \"attachments\": [
+                {
+                  \"color\": \"${COLOR}\",
+                  \"fields\": [
+                    {\"title\": \"Workflow\", \"value\": \"${{ github.workflow }}\", \"short\": true},
+                    {\"title\": \"Run\", \"value\": \"<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|#${{ github.run_number }}>\", \"short\": true},
+                    {\"title\": \"Trigger\", \"value\": \"${{ github.event_name }}\", \"short\": true},
+                    {\"title\": \"Status\", \"value\": \"${OUTCOME}\", \"short\": true}
+                  ]
+                }
+              ]
+            }"
