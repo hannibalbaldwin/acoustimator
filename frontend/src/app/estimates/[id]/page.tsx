@@ -508,6 +508,7 @@ export default function EstimateDetailPage() {
           {/* Table */}
           <div className="flex-1 min-w-0 space-y-3">
             <EstimateTable
+              estimateId={estimate.id}
               scopes={estimate.scopes}
               isLight={isLight}
               onScopesChange={handleScopesChange}

@@ -9,6 +9,7 @@ import { useTheme } from '@/components/ThemeProvider'
 import { ScopeTypeBadge } from '@/components/estimates/ScopeTypeBadge'
 import { formatCurrency, formatCurrencyFull, formatSF } from '@/lib/utils'
 import type { ScopeType } from '@/lib/types'
+import { WaveformLoader } from '@/components/ui/WaveformLoader'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -154,10 +155,7 @@ export default function ProjectDetailPage() {
         style={{ background: pageBg }}
       >
         <div className="flex flex-col items-center gap-3">
-          <div
-            className="w-6 h-6 border-2 rounded-full animate-spin"
-            style={{ borderColor: `${caGreen} transparent transparent transparent` }}
-          />
+          <WaveformLoader variant="block" className="w-48" />
           <p className="text-[13px]" style={{ color: textMuted }}>
             Loading project…
           </p>

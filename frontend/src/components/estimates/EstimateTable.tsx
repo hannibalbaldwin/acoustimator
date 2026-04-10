@@ -6,6 +6,7 @@ import { formatCurrency, formatPct, cn } from '@/lib/utils'
 import { ScopeTypeBadge } from './ScopeTypeBadge'
 import { ConfidenceBadge } from './ConfidenceBadge'
 import { FilterSelect } from '@/components/ui/FilterSelect'
+import { updateScope } from '@/lib/api'
 
 interface EditState {
   product_name: string
@@ -326,6 +327,7 @@ function ScopeRow({ scope, isLight, onAccept, onSave, onDelete, onAddToCatalog }
 }
 
 interface EstimateTableProps {
+  estimateId: string
   scopes: ScopeResponse[]
   isLight?: boolean
   onScopesChange?: (scopes: ScopeResponse[]) => void
@@ -336,13 +338,22 @@ interface EstimateTableProps {
 
 const BLANK_SCOPE_TYPES: ScopeType[] = ['ACT', 'AWP', 'FW', 'SM', 'WW', 'Baffles', 'RPG', 'Other']
 
-export function EstimateTable({ scopes, isLight, onScopesChange, onScopeUpdate, onScopeDelete, onAddToCatalog }: EstimateTableProps) {
+export function EstimateTable({ estimateId, scopes, isLight, onScopesChange, onScopeUpdate, onScopeDelete, onAddToCatalog }: EstimateTableProps) {
   const [localScopes, setLocalScopes] = useState<ScopeResponse[]>(scopes)
 
-  const handleAccept = (id: string, accepted: boolean) => {
+  const handleAccept = async (id: string, accepted: boolean) => {
+    // Optimistic update
     const updated = localScopes.map((s) => (s.id === id ? { ...s, is_accepted: accepted } : s))
     setLocalScopes(updated)
     onScopesChange?.(updated)
+    // Persist to backend — is_accepted maps to manually_adjusted on the scope
+    try {
+      await updateScope(estimateId, id, { is_accepted: accepted })
+    } catch {
+      // Revert on failure
+      setLocalScopes(localScopes)
+      onScopesChange?.(localScopes)
+    }
   }
 
   const handleSave = (id: string, edits: EditState) => {

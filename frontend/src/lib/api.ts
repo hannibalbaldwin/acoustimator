@@ -215,6 +215,7 @@ export async function updateScope(
 
 export async function exportEstimate(id: string): Promise<void> {
   const res = await fetch(`${BASE}/api/estimates/${id}/export`, {
+    method: 'POST',
     headers: apiHeaders(),
   })
   if (!res.ok) {

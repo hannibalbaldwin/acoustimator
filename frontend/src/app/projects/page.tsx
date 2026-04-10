@@ -261,8 +261,13 @@ export default function ProjectsPage() {
       )}
 
       {/* Table */}
+      {loading && projects.length > 0 && (
+        <div className="flex justify-center mb-3">
+          <WaveformLoader variant="inline" />
+        </div>
+      )}
       <div
-        className={`rounded-[8px] overflow-x-auto ${loading ? 'opacity-50 pointer-events-none' : ''}`}
+        className={`rounded-[8px] overflow-x-auto ${loading ? 'opacity-40 pointer-events-none' : ''}`}
         style={{ background: tableBg, border: `1px solid ${tableBorderOuter}` }}
       >
         <table className="w-full text-[13px]">
