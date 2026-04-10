@@ -21,8 +21,8 @@ class ApiKeyMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
 
-        # Skip non-API routes and exempt paths
-        if not path.startswith("/api/") or path in _EXEMPT_PATHS:
+        # Skip non-API routes, exempt paths, and CORS preflight requests
+        if not path.startswith("/api/") or path in _EXEMPT_PATHS or request.method == "OPTIONS":
             return await call_next(request)
 
         api_key = os.getenv("ACOUSTIMATOR_API_KEY")

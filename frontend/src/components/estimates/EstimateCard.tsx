@@ -37,6 +37,7 @@ export function EstimateCard({
   onStatusChange,
 }: EstimateCardProps) {
   const [hovered, setHovered] = useState(false)
+  const [btnHovered, setBtnHovered] = useState<'prev' | 'next' | null>(null)
   const { theme } = useTheme()
   const isLight = theme === 'light'
 
@@ -214,13 +215,15 @@ export function EstimateCard({
                 if (prevStatus) onStatusChange(id, prevStatus)
               }}
               onMouseDown={(e) => e.stopPropagation()}
+              onMouseEnter={() => hasPrev && setBtnHovered('prev')}
+              onMouseLeave={() => setBtnHovered(null)}
               style={{
                 width: '20px',
                 height: '20px',
                 borderRadius: '4px',
-                border: `1px solid ${chevronColor}`,
-                background: 'transparent',
-                color: chevronColor,
+                border: `1px solid ${btnHovered === 'prev' && hasPrev ? 'rgba(161,214,124,0.6)' : chevronColor}`,
+                background: btnHovered === 'prev' && hasPrev ? 'rgba(161,214,124,0.12)' : 'transparent',
+                color: btnHovered === 'prev' && hasPrev ? '#a1d67c' : chevronColor,
                 fontSize: '12px',
                 cursor: hasPrev ? 'pointer' : 'not-allowed',
                 display: 'flex',
@@ -229,6 +232,7 @@ export function EstimateCard({
                 padding: 0,
                 opacity: hasPrev ? 1 : 0.3,
                 lineHeight: 1,
+                transition: 'background 0.1s, border-color 0.1s, color 0.1s',
               }}
             >
               ←
@@ -242,13 +246,15 @@ export function EstimateCard({
                 if (nextStatus) onStatusChange(id, nextStatus)
               }}
               onMouseDown={(e) => e.stopPropagation()}
+              onMouseEnter={() => hasNext && setBtnHovered('next')}
+              onMouseLeave={() => setBtnHovered(null)}
               style={{
                 width: '20px',
                 height: '20px',
                 borderRadius: '4px',
-                border: `1px solid ${chevronColor}`,
-                background: 'transparent',
-                color: chevronColor,
+                border: `1px solid ${btnHovered === 'next' && hasNext ? 'rgba(161,214,124,0.6)' : chevronColor}`,
+                background: btnHovered === 'next' && hasNext ? 'rgba(161,214,124,0.12)' : 'transparent',
+                color: btnHovered === 'next' && hasNext ? '#a1d67c' : chevronColor,
                 fontSize: '12px',
                 cursor: hasNext ? 'pointer' : 'not-allowed',
                 display: 'flex',
@@ -257,6 +263,7 @@ export function EstimateCard({
                 padding: 0,
                 opacity: hasNext ? 1 : 0.3,
                 lineHeight: 1,
+                transition: 'background 0.1s, border-color 0.1s, color 0.1s',
               }}
             >
               →

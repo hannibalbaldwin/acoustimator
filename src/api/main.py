@@ -41,6 +41,11 @@ app = FastAPI(
 # CORS
 # ---------------------------------------------------------------------------
 
+# ApiKeyMiddleware must be added BEFORE CORSMiddleware so that CORS is the
+# outermost layer (runs first/last). If the API key check fails and returns a
+# 401/500, CORS headers are still present in the response.
+app.add_middleware(ApiKeyMiddleware)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins.split(","),
@@ -48,8 +53,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-app.add_middleware(ApiKeyMiddleware)
 
 # ---------------------------------------------------------------------------
 # Routers
