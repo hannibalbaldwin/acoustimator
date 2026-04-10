@@ -1,4 +1,5 @@
-"""Admin routes for user management (Phase 6.6) and model retraining (Phase 7.2)."""
+"""Admin routes for user management (Phase 6.6), model retraining (Phase 7.2),
+and project-type classification (Phase 7.x)."""
 
 from __future__ import annotations
 
@@ -18,6 +19,8 @@ from src.api.auth import require_admin
 from src.api.dependencies import get_db
 from src.api.schemas.admin import (
     CreateUserRequest,
+    PopulateProjectTypesRequest,
+    PopulateProjectTypesResponse,
     RetrainRequest,
     RetrainResponse,
     UpdateUserRequest,
@@ -31,6 +34,7 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 _ROOT = Path(__file__).resolve().parent.parent.parent.parent
 _RETRAIN_SCRIPT = _ROOT / "scripts" / "retrain_models.py"
+_POPULATE_TYPES_SCRIPT = _ROOT / "scripts" / "populate_project_types.py"
 
 
 def _hash_password(password: str) -> str:
@@ -247,4 +251,83 @@ async def trigger_retrain(
         status="retraining_started",
         message=f"Retraining started in background ({' '.join(flags)}). "
         "Check GET /api/stats/model-status for results.",
+    )
+
+
+# ---------------------------------------------------------------------------
+# POST /api/admin/populate-project-types  (Phase 7.x)
+# ---------------------------------------------------------------------------
+# Runs scripts/populate_project_types.py as a subprocess background task.
+# Only updates projects where project_type IS NULL, so it is safe to call
+# multiple times (subsequent calls are no-ops once all rows are classified).
+
+
+def _run_populate_types_subprocess(dry_run: bool) -> None:
+    """Run scripts/populate_project_types.py in a subprocess (background task body).
+
+    Called from a FastAPI BackgroundTask — errors are logged, not raised.
+    """
+    cmd = [sys.executable, str(_POPULATE_TYPES_SCRIPT)]
+    if dry_run:
+        cmd.append("--dry-run")
+
+    logger.info("Starting populate-project-types subprocess: %s", " ".join(cmd))
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=120,  # classification is fast — 2 min hard cap
+            cwd=str(_ROOT),
+        )
+        if result.returncode == 0:
+            logger.info("populate-project-types subprocess finished successfully:\n%s", result.stdout[-3000:])
+        else:
+            logger.warning(
+                "populate-project-types subprocess exited with code %d\nstdout:\n%s\nstderr:\n%s",
+                result.returncode,
+                result.stdout[-2000:],
+                result.stderr[-2000:],
+            )
+    except subprocess.TimeoutExpired:
+        logger.error("populate-project-types subprocess timed out after 120 s")
+    except Exception as exc:
+        logger.exception("populate-project-types subprocess raised an unexpected error: %s", exc)
+
+
+@router.post(
+    "/populate-project-types",
+    response_model=PopulateProjectTypesResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def populate_project_types(
+    body: PopulateProjectTypesRequest,
+    background_tasks: BackgroundTasks,
+    _admin: dict = Depends(require_admin),
+) -> PopulateProjectTypesResponse:
+    """Classify and populate project_type for all projects where it is NULL (admin only).
+
+    Launches ``scripts/populate_project_types.py`` as a subprocess so the
+    endpoint returns immediately with HTTP 202.  The classification uses
+    keyword heuristics from ``scripts/classify_project_types.py`` and only
+    touches rows where ``project_type IS NULL``, making it safe to run
+    multiple times.
+
+    Request body (all optional):
+
+    - **dry_run** — classify and log without writing any DB changes (default: false)
+    """
+    logger.info(
+        "Admin '%s' triggered populate-project-types: dry_run=%s",
+        _admin.get("email", _admin.get("sub", "?")),
+        body.dry_run,
+    )
+
+    background_tasks.add_task(_run_populate_types_subprocess, dry_run=body.dry_run)
+
+    flag_str = "--dry-run" if body.dry_run else "live (writes to DB)"
+    return PopulateProjectTypesResponse(
+        status="classification_started",
+        message=f"Project-type classification started in background ({flag_str}). "
+        "Check server logs for the per-type summary when complete.",
     )

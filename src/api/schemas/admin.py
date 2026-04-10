@@ -52,3 +52,25 @@ class RetrainResponse(BaseModel):
 
     message: str
     """Human-readable description of what was scheduled."""
+
+
+# ---------------------------------------------------------------------------
+# Project-type population schemas (Phase 7.x)
+# ---------------------------------------------------------------------------
+
+
+class PopulateProjectTypesRequest(BaseModel):
+    """Optional parameters for POST /api/admin/populate-project-types."""
+
+    dry_run: bool = False
+    """Classify and log without writing any changes to the DB."""
+
+
+class PopulateProjectTypesResponse(BaseModel):
+    """Immediate acknowledgement returned by POST /api/admin/populate-project-types."""
+
+    status: str
+    """Always 'classification_started' when a background task was queued."""
+
+    message: str
+    """Human-readable description of what was scheduled."""
