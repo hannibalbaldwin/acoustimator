@@ -376,6 +376,9 @@ export async function addProduct(data: AddProductRequest): Promise<CatalogProduc
   })
 }
 
+/** Alias for addProduct — used by CatalogEntryModal (Phase 7.4). */
+export const createProduct = addProduct
+
 // ── Admin User Management ─────────────────────────────────────────────────────
 
 export interface AdminUser {
