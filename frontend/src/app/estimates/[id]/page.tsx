@@ -43,6 +43,10 @@ export default function EstimateDetailPage() {
   const [statusChanging, setStatusChanging] = useState(false)
   const [statusError, setStatusError] = useState<string | null>(null)
 
+  // Delete confirmation modal
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+
   // Estimate notes — local state synced from estimate, debounce-saved on change
   const [notes, setNotes] = useState('')
   const notesSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -116,12 +120,15 @@ export default function EstimateDetailPage() {
 
   const handleDeleteEstimate = async () => {
     if (!id) return
-    if (!window.confirm('Delete this estimate?')) return
+    setDeleteLoading(true)
     try {
       await deleteEstimate(id)
       router.push('/estimates')
     } catch (err: unknown) {
       setSaveError(err instanceof Error ? err.message : 'Failed to delete estimate')
+      setDeleteModalOpen(false)
+    } finally {
+      setDeleteLoading(false)
     }
   }
 
@@ -233,7 +240,7 @@ export default function EstimateDetailPage() {
             <span style={{ color: isLight ? '#4a6a8a' : '#6b82a0' }}>{estimate.id}</span>
           </div>
           <button
-            onClick={handleDeleteEstimate}
+            onClick={() => setDeleteModalOpen(true)}
             className="flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded-[6px] transition-all"
             style={{
               background: isLight ? 'rgba(239,68,68,0.07)' : 'rgba(239,68,68,0.08)',
@@ -926,6 +933,78 @@ export default function EstimateDetailPage() {
         onSaved={handleCatalogSaved}
         isLight={isLight}
       />
+
+      {/* Delete confirmation modal */}
+      {deleteModalOpen && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 200,
+            background: 'rgba(0,0,0,0.55)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+          onClick={() => !deleteLoading && setDeleteModalOpen(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: isLight ? '#ffffff' : '#131822',
+              border: `1px solid ${isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'}`,
+              borderRadius: '12px',
+              padding: '28px 28px 24px',
+              width: '380px',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
+            }}
+          >
+            {/* Icon */}
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+              <div style={{
+                width: '44px', height: '44px', borderRadius: '50%',
+                background: 'rgba(239,68,68,0.1)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="3 6 5 6 21 6" />
+                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                  <path d="M10 11v6M14 11v6" />
+                  <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                </svg>
+              </div>
+            </div>
+            <h2 style={{ fontSize: '16px', fontWeight: 600, color: isLight ? '#0f1923' : '#d8e4f5', textAlign: 'center', margin: '0 0 8px' }}>
+              Delete estimate?
+            </h2>
+            <p style={{ fontSize: '13px', color: isLight ? '#7890aa' : '#3a4f6a', textAlign: 'center', margin: '0 0 24px', lineHeight: 1.5 }}>
+              <strong style={{ color: isLight ? '#4a6a8a' : '#6b82a0' }}>{estimate?.project_name}</strong> will be permanently deleted along with all its scope lines. This cannot be undone.
+            </p>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                onClick={() => setDeleteModalOpen(false)}
+                disabled={deleteLoading}
+                style={{
+                  flex: 1, padding: '9px', borderRadius: '8px', fontSize: '13px', fontWeight: 500,
+                  background: isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)',
+                  border: `1px solid ${isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'}`,
+                  color: isLight ? '#4a5e7a' : '#6b82a0', cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteEstimate}
+                disabled={deleteLoading}
+                style={{
+                  flex: 1, padding: '9px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
+                  background: 'rgba(239,68,68,0.85)', border: '1px solid rgba(239,68,68,0.5)',
+                  color: '#fff', cursor: deleteLoading ? 'not-allowed' : 'pointer',
+                  opacity: deleteLoading ? 0.7 : 1,
+                }}
+              >
+                {deleteLoading ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
