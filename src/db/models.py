@@ -345,6 +345,9 @@ class Estimate(Base):
     notes_thread: Mapped[list["EstimateNote"]] = relationship(
         back_populates="estimate", cascade="all, delete", order_by="EstimateNote.created_at"
     )
+    additional_items: Mapped[list["EstimateAdditionalItem"]] = relationship(
+        back_populates="estimate", cascade="all, delete", order_by="EstimateAdditionalItem.created_at"
+    )
 
 
 class EstimateScope(Base):
@@ -469,3 +472,22 @@ class EstimateNote(Base):
 
     # Relationships
     estimate: Mapped["Estimate"] = relationship(back_populates="notes_thread")
+
+
+class EstimateAdditionalItem(Base):
+    __tablename__ = "estimate_additional_items"
+
+    id: Mapped[UUID] = pk_uuid()
+    estimate_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("estimates.id", ondelete="CASCADE"), nullable=False
+    )
+    item_type: Mapped[str] = mapped_column(String, nullable=False)  # lift_rental, travel_per_diem, etc.
+    description: Mapped[str | None] = mapped_column(Text)
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, server_default=text("0"))
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default=text("CURRENT_TIMESTAMP"))
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMPTZ, server_default=text("CURRENT_TIMESTAMP"), onupdate=text("CURRENT_TIMESTAMP")
+    )
+
+    # Relationship back to estimate
+    estimate: Mapped["Estimate"] = relationship(back_populates="additional_items")

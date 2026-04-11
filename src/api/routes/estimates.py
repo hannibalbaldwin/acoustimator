@@ -541,6 +541,11 @@ async def update_scope(
     if body.is_accepted is not None:
         scope.manually_adjusted = body.is_accepted
 
+    # Recompute labor_price when man_days changes
+    if body.labor_days is not None:
+        daily_rate = scope.daily_labor_rate or Decimal("725")
+        scope.labor_price = scope.man_days * daily_rate
+
     # Recompute scope total: material_cost * (1 + markup_pct) + labor_price
     material_cost = scope.material_cost or Decimal(0)
     if body.material_cost_per_sf is not None and scope.square_footage:
