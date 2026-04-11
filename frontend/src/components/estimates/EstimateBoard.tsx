@@ -47,7 +47,8 @@ function getDropBlockReason(
   if (targetColumn === 'reviewed') {
     if (!estimate.has_scope_with_sf) return 'Needs a scope with SF > 0'
   }
-  if (targetColumn === 'finalized') {
+  // Finalized AND Exported both require accepted scope + GC name (can't skip Finalized)
+  if (targetColumn === 'finalized' || targetColumn === 'exported') {
     if (!estimate.has_accepted_scope) return 'Accept at least one scope first'
     if (!estimate.gc_name) return 'GC name required'
   }

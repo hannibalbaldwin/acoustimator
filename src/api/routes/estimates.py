@@ -469,7 +469,8 @@ async def update_estimate_status(
                     detail="At least one scope must have area (SF > 0) before marking as Reviewed.",
                 )
 
-        elif new_status == EstimateStatus.FINALIZED:
+        elif new_status in (EstimateStatus.FINALIZED, EstimateStatus.EXPORTED):
+            # EXPORTED inherits all FINALIZED requirements — you can't skip Finalized
             if not scopes:
                 raise HTTPException(status_code=422, detail="Add at least one scope before finalizing.")
             if not any(getattr(s, "manually_adjusted", None) for s in scopes):
@@ -479,8 +480,6 @@ async def update_estimate_status(
                     status_code=422,
                     detail="GC name is required before finalizing (needed for quote generation).",
                 )
-
-        # EXPORTED: no additional rules beyond FINALIZED
 
     if new_status == current:
         return await _build_response(estimate, db)
