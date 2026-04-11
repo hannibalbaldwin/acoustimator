@@ -9,6 +9,7 @@ import type {
   ConfidenceLevel,
   VendorPriceSummary,
   CatalogProduct,
+  AdditionalItem,
 } from './types'
 
 // ── API wire types ────────────────────────────────────────────────────────────
@@ -21,6 +22,8 @@ interface ApiScopeResponse {
   material_cost: number | null
   markup_pct: number | null
   man_days: number | null
+  labor_price: number | null
+  daily_labor_rate: number | null
   total: number | null
   confidence_score: number | null
   manually_adjusted: boolean
@@ -98,6 +101,8 @@ function mapScope(raw: ApiScopeResponse): ScopeResponse {
     material_cost_per_sf,
     markup_pct: raw.markup_pct,
     labor_days: raw.man_days,
+    labor_price: raw.labor_price,
+    daily_labor_rate: raw.daily_labor_rate,
     total_cost: raw.total,
     confidence_score: raw.confidence_score,
     confidence_level: deriveConfidenceLevel(raw.confidence_score),
@@ -481,6 +486,46 @@ export async function updateEstimateNote(
 
 export async function deleteEstimateNote(estimateId: string, noteId: string): Promise<void> {
   const res = await fetch(`${BASE}/api/estimates/${estimateId}/notes/${noteId}`, {
+    method: 'DELETE',
+    headers: apiHeaders(),
+  })
+  if (!res.ok && res.status !== 204) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`API ${res.status}: ${text}`)
+  }
+}
+
+// ── Additional Cost Items ─────────────────────────────────────────────────────
+
+export async function listAdditionalItems(estimateId: string): Promise<AdditionalItem[]> {
+  return apiFetch<AdditionalItem[]>(`/api/estimates/${estimateId}/additional-items`)
+}
+
+export async function createAdditionalItem(
+  estimateId: string,
+  body: { item_type: string; description?: string | null; amount: number }
+): Promise<AdditionalItem> {
+  return apiFetch<AdditionalItem>(`/api/estimates/${estimateId}/additional-items`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+}
+
+export async function updateAdditionalItem(
+  estimateId: string,
+  itemId: string,
+  body: { item_type?: string; description?: string | null; amount?: number }
+): Promise<AdditionalItem> {
+  return apiFetch<AdditionalItem>(`/api/estimates/${estimateId}/additional-items/${itemId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+}
+
+export async function deleteAdditionalItem(estimateId: string, itemId: string): Promise<void> {
+  const res = await fetch(`${BASE}/api/estimates/${estimateId}/additional-items/${itemId}`, {
     method: 'DELETE',
     headers: apiHeaders(),
   })

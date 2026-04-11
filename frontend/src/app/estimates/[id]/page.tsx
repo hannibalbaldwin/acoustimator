@@ -8,6 +8,7 @@ import { ComparableProjects } from '@/components/estimates/ComparableProjects'
 import { formatCurrency } from '@/lib/utils'
 import { getEstimate, updateScope, exportEstimate, generateQuote, deleteScope, recordActual, deleteEstimate, updateEstimateStatus } from '@/lib/api'
 import { NotesThread } from '@/components/estimates/NotesThread'
+import { AdditionalItemsSection } from '@/components/estimates/AdditionalItemsSection'
 import type { EstimateResponse, ScopeResponse, UpdateScopeRequest } from '@/lib/types'
 import { useTheme } from '@/components/ThemeProvider'
 import { CatalogEntryModal } from '@/components/estimates/CatalogEntryModal'
@@ -47,6 +48,9 @@ export default function EstimateDetailPage() {
   // Delete confirmation modal
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
+
+  // Additional items total (for grand total in EstimateTable footer)
+  const [additionalItemsTotal, setAdditionalItemsTotal] = useState(0)
 
 
   const loadEstimate = (estimateId: string) => {
@@ -491,6 +495,12 @@ export default function EstimateDetailPage() {
               onScopeUpdate={handleScopeUpdate}
               onScopeDelete={handleScopeDelete}
               onAddToCatalog={handleOpenCatalogModal}
+              additionalItemsTotal={additionalItemsTotal}
+            />
+            <AdditionalItemsSection
+              estimateId={estimate.id}
+              isLight={isLight}
+              onTotalChange={setAdditionalItemsTotal}
             />
             {estimate.unknown_products && estimate.unknown_products.length > 0 && (
               <div
