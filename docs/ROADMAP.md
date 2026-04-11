@@ -593,6 +593,32 @@ Full CA brand theme + real API wiring (PRs #8, #10):
 - CA brand styling: translucent panel, checkmark on selected, animated caret chevron
 - Closes on outside click via `useRef` + `mousedown` listener
 
+### 6.4.5: Kanban UX Enhancements ✅ COMPLETE
+
+- **Bidirectional drag** — removed forward-only restriction; cards can be moved backward
+- **Pre-validation amber hints** — `has_scope_with_sf` and `has_accepted_scope` flags added to `EstimateListItem` list response; `getDropBlockReason()` evaluates rules client-side during drag (no round-trip); blocked column shows amber tint + `⚠ {reason}` warning pill before user drops
+- **Chevron hover highlight** — ← → nav buttons on `EstimateCard` glow CA green on hover with `btnHovered` state + `transition: background 0.1s`
+- **Status flow enforcement** — Reviewed → Exported drag blocked (must pass through Finalized); `EstimateStatus.EXPORTED` inherits FINALIZED validation rules in backend PATCH
+
+### 6.4.6: Threaded Estimate Notes + Delete Confirmation Modal ✅ COMPLETE
+
+- `estimate_notes` DB table: UUID PK, FK → estimates (CASCADE), author_name, content, created_at, updated_at
+- `src/api/routes/estimate_notes.py` — GET list / POST create (201) / PATCH update / DELETE (204)
+- `NotesThread.tsx` — full threaded comment UI: CA-green author avatar (first initial), relative timestamps, hover-reveal Edit + Delete icon buttons, inline edit textarea, inline delete confirm, Cmd+Enter shortcut
+- Compose box: author name input persisted to `localStorage` as `acoustimator_note_author`
+- `window.confirm` replaced with custom styled delete confirmation modal on estimate detail page
+
+### 6.4.7: ProjectTypeBadge ✅ COMPLETE
+
+- `frontend/src/components/ui/ProjectTypeBadge.tsx` — colored icon pills for all 10 project types (healthcare=red, education=amber, residential=green, worship=purple, office=blue, etc.)
+- Inline SVG icons, `{color}18` background tint, `{color}40` border; graceful fallback for unknown types
+- Displayed in: project detail hero, project info sidebar, projects list table column, estimate comparables
+
+### 6.4.8: WaveformLoader ✅ COMPLETE
+
+- `WaveformLoader.tsx` — SVG stroke-dasharray acoustic wave animation, CA green `#a1d67c`, two variants (inline spinner / full-page block)
+- Replaces all generic spinners throughout the app
+
 ### 6.5: Quote Generation ✅ COMPLETE
 
 - `POST /api/estimates/{id}/quote` — reportlab PDF with `CA-YYYY-NNNN` sequential numbering, T-004A/B/E template support
@@ -631,7 +657,7 @@ Full CA brand theme + real API wiring (PRs #8, #10):
 - `scripts/retrain_models.py` — production retraining with A/B comparison and rollback on regression (>5% MAPE increase keeps old model)
 - `POST /api/admin/retrain` — admin-only endpoint, triggers retraining as background task, returns 202 immediately
 - `GET /api/stats/model-status` — returns `last_retrain_results` per model with old_mape, new_mape, deployed, reason
-- External cron trigger pattern documented (GitHub Actions monthly workflow recommended)
+- **GitHub Actions monthly retrain cron** ✅ — `.github/workflows/monthly_retrain.yml`, cron `'0 2 1-7 * 0'` (first Sunday of month, 2 AM UTC); `workflow_dispatch` with `force`, `dry_run`, `threshold` inputs; uploads model artifacts (30-day retention); Slack notification via curl
 
 ### 7.3: Vendor Price Tracking ✅ COMPLETE (PR #16)
 
@@ -678,10 +704,14 @@ Full CA brand theme + real API wiring (PRs #8, #10):
 | Phase 6.2 | ✅ | Next.js frontend, full API wiring, CA brand theme |
 | Phase 6.3 | ✅ | Dashboard live stat cards, Cost/SF Trends with Year/Quarter/Month granularity toggle |
 | Phase 6.4 | ✅ | Estimate builder, scope type selector, delete scope, comparable projects fix, full light-mode |
+| Phase 6.4.5 | ✅ | Kanban UX: bidirectional drag, amber pre-validation hints, chevron hover, status flow enforcement |
+| Phase 6.4.6 | ✅ | Threaded estimate notes (DB-backed, author/edit/delete), custom delete confirmation modal |
+| Phase 6.4.7 | ✅ | ProjectTypeBadge: colored icon pills for all 10 project types everywhere type is displayed |
+| Phase 6.4.8 | ✅ | WaveformLoader: CA-green acoustic wave SVG animation replaces all generic spinners |
 | Phase 6.5 | ✅ | Quote PDF generated and downloadable; Generate Quote button + template selector wired in UI |
 | Phase 6.6 | ✅ | Auth.js v5, login, route protection, admin panel, sidebar account popup |
 | Phase 7.1 | ✅ | Actual cost recording, MAPE/bias tracking, variance panel on estimate detail (PR #16) |
-| Phase 7.2 | ✅ | Retraining pipeline with A/B comparison + rollback; POST /api/admin/retrain |
+| Phase 7.2 | ✅ | Retraining pipeline with A/B comparison + rollback; POST /api/admin/retrain; GitHub Actions monthly cron |
 | Phase 7.3 | ✅ | Vendor price tracking, Armstrong +28.9% alert, dashboard card (PR #16) |
 | Phase 7.4 | ⚠️ | Unknown product flagging in API + UI; catalog entry workflow not yet built |
 
@@ -690,10 +720,9 @@ Full CA brand theme + real API wiring (PRs #8, #10):
 ## Immediate Next Steps (Priority Order)
 
 1. **Catalog entry UI** — Allow users to promote an unknown product from the estimate detail warning into the products catalog (completes Phase 7.4)
-2. **Neon↔Vercel integration** — Enable preview branch auto-provisioning in Vercel dashboard → Storage → Connect → Neon (one-time UI step)
-3. **Retrain models** — Now that `project_type` is populated for all 124 projects, retrain cost/markup models to incorporate the new signal: `POST /api/admin/retrain` or `python scripts/retrain_models.py --force`
-4. **Test model improvement** — Compare new MAPE scores vs. current (Markup model baseline R²=0.36 should improve with project_type feature)
-5. **GitHub Actions cron** — Add `.github/workflows/monthly_retrain.yml` to call `POST /api/admin/retrain` on a monthly schedule
+2. **Retrain models** — Now that `project_type` is populated for all 124 projects, retrain cost/markup models to incorporate the new signal: `POST /api/admin/retrain` or `python scripts/retrain_models.py --force`
+3. **Test model improvement** — Compare new MAPE scores vs. current (Markup model baseline R²=0.36 should improve with project_type feature)
+4. **Neon↔Vercel integration** — Enable preview branch auto-provisioning in Vercel dashboard → Storage → Connect → Neon (one-time UI step, user action required)
 
 *Previously completed:*
 - ~~Run DB migration~~ → alembic migration 002 applied
@@ -705,6 +734,12 @@ Full CA brand theme + real API wiring (PRs #8, #10):
 - ~~Phase 7.3: Vendor price tracking~~ → PR #16
 - ~~Phase 7.4 (partial)~~ → Unknown product flagging in API + estimate detail UI
 - ~~Production env vars~~ → AUTH_SECRET, NEXTAUTH_URL, ACOUSTIMATOR_API_KEY all set on Vercel
+- ~~GitHub Actions monthly retrain cron~~ → `.github/workflows/monthly_retrain.yml` live
+- ~~Kanban UX improvements~~ → bidirectional drag, amber pre-validation, chevron hover, status flow
+- ~~Estimate notes thread~~ → DB-backed, author/edit/delete, localStorage author name
+- ~~ProjectTypeBadge~~ → colored icon pills everywhere project type is displayed
+- ~~WaveformLoader~~ → CA-green acoustic wave animation replaces all generic spinners
+- ~~CORS fixes~~ → pure ASGI middleware, correct LIFO middleware order
 
 ---
 
