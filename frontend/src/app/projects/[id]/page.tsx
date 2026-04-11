@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { getProject } from '@/lib/api'
@@ -360,7 +360,7 @@ export default function ProjectDetailPage() {
                   {Array.from(grouped.entries()).map(([type, typeScopes]) => {
                     const showGroupHeader = grouped.size > 1 || typeScopes.length > 1
                     return (
-                      <>
+                      <React.Fragment key={type}>
                         {showGroupHeader && (
                           <tr
                             key={`header-${type}`}
@@ -429,7 +429,7 @@ export default function ProjectDetailPage() {
                             </tr>
                           )
                         })}
-                      </>
+                      </React.Fragment>
                     )
                   })}
 

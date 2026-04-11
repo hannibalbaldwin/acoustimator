@@ -432,6 +432,14 @@ export async function updateEstimateStatus(id: string, status: string): Promise<
   return mapEstimate(res)
 }
 
+export async function saveEstimateNotes(id: string, notes: string): Promise<void> {
+  await apiFetch<ApiEstimateResponse>(`/api/estimates/${id}`, {
+    method: 'PATCH',
+    headers: apiHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ notes }),
+  })
+}
+
 export async function generateQuote(
   estimateId: string,
   template: 'T-004A' | 'T-004B' | 'T-004E' = 'T-004B'

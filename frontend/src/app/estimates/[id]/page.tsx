@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { EstimateSummary } from '@/components/estimates/EstimateSummary'
 import { EstimateTable } from '@/components/estimates/EstimateTable'
 import { ComparableProjects } from '@/components/estimates/ComparableProjects'
 import { formatCurrency } from '@/lib/utils'
-import { getEstimate, updateScope, exportEstimate, generateQuote, deleteScope, recordActual, deleteEstimate, updateEstimateStatus } from '@/lib/api'
+import { getEstimate, updateScope, exportEstimate, generateQuote, deleteScope, recordActual, deleteEstimate, updateEstimateStatus, saveEstimateNotes } from '@/lib/api'
 import type { EstimateResponse, ScopeResponse, UpdateScopeRequest } from '@/lib/types'
 import { useTheme } from '@/components/ThemeProvider'
 import { CatalogEntryModal } from '@/components/estimates/CatalogEntryModal'
@@ -43,18 +43,31 @@ export default function EstimateDetailPage() {
   const [statusChanging, setStatusChanging] = useState(false)
   const [statusError, setStatusError] = useState<string | null>(null)
 
+  // Estimate notes — local state synced from estimate, debounce-saved on change
+  const [notes, setNotes] = useState('')
+  const notesSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   const loadEstimate = (estimateId: string) => {
     setLoading(true)
     setError(null)
     getEstimate(estimateId)
       .then((data) => {
         setEstimate(data)
+        setNotes(data.notes ?? '')
         setLoading(false)
       })
       .catch((err: unknown) => {
         setError(err instanceof Error ? err.message : 'Failed to load estimate')
         setLoading(false)
       })
+  }
+
+  const handleNotesChange = (value: string) => {
+    setNotes(value)
+    if (notesSaveTimer.current) clearTimeout(notesSaveTimer.current)
+    notesSaveTimer.current = setTimeout(() => {
+      saveEstimateNotes(id, value).catch(() => {})
+    }, 800)
   }
 
   useEffect(() => {
@@ -525,6 +538,8 @@ export default function EstimateDetailPage() {
               <textarea
                 placeholder="Add notes for this estimate..."
                 rows={4}
+                value={notes}
+                onChange={(e) => handleNotesChange(e.target.value)}
                 className="w-full text-[12px] resize-none rounded-[6px] p-2.5 transition-all focus:outline-none"
                 style={{
                   background: isLight ? '#f5f7fa' : '#0e1219',

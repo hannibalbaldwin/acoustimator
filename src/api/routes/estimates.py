@@ -217,6 +217,7 @@ async def _build_response(estimate: Estimate, db: AsyncSession) -> EstimateRespo
         created_at=estimate.created_at,
         scopes=scope_responses,
         comparable_projects=comparable_projects,
+        notes=estimate.notes,
         actual_total_cost=actual_total_cost,
         actual_cost_date=estimate.actual_cost_date,
         accuracy_note=estimate.accuracy_note,
@@ -440,8 +441,17 @@ async def update_estimate_status(
     body: UpdateEstimateBody,
     db: AsyncSession = Depends(get_db),
 ) -> EstimateResponse:
-    """Update estimate status. Forward transitions are validated; backward transitions are always allowed."""
+    """Update estimate status and/or notes. Forward status transitions are validated."""
     estimate = await _fetch_estimate_or_404(estimate_id, db)
+
+    # Save notes if provided (independent of status change)
+    if body.notes is not None:
+        estimate.notes = body.notes
+
+    if body.status is None:
+        await db.commit()
+        await db.refresh(estimate)
+        return await _build_response(estimate, db)
 
     try:
         new_status = EstimateStatus(body.status)

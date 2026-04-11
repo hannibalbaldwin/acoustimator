@@ -51,6 +51,7 @@ export interface EstimateResponse {
   scopes: ScopeResponse[]
   created_at: string
   comparable_projects: ComparableProject[]
+  notes?: string | null
   // Phase 7.1: actual cost tracking
   actual_total_cost?: number | null
   actual_cost_date?: string | null

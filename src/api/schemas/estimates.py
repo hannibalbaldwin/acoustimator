@@ -95,6 +95,7 @@ class EstimateResponse(BaseModel):
     scopes: list[ScopeResponse] = []
     comparable_projects: list[ComparableProjectResponse] = []
     # Actual cost tracking fields (Phase 7.1)
+    notes: str | None = None
     actual_total_cost: float | None = None
     actual_cost_date: date | None = None
     accuracy_note: str | None = None
@@ -199,6 +200,7 @@ class RecordActualRequest(BaseModel):
 
 
 class UpdateEstimateBody(BaseModel):
-    """Body for PATCH /api/estimates/{id} — update estimate status."""
+    """Body for PATCH /api/estimates/{id} — update status and/or notes."""
 
-    status: str
+    status: str | None = None
+    notes: str | None = None
