@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 
-from fastapi import Request
-from fastapi.responses import JSONResponse
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 logger = logging.getLogger(__name__)
 
@@ -15,28 +14,63 @@ logger = logging.getLogger(__name__)
 _EXEMPT_PATHS = {"/", "/health", "/docs", "/redoc", "/openapi.json"}
 
 
-class ApiKeyMiddleware(BaseHTTPMiddleware):
-    """Require X-API-Key header on all /api/* routes."""
+class ApiKeyMiddleware:
+    """
+    Pure ASGI middleware (no BaseHTTPMiddleware) that requires X-API-Key on
+    all /api/* routes.  Using raw ASGI avoids the Starlette BaseHTTPMiddleware
+    streaming bug where CORS headers are dropped on 500 responses.
+    """
 
-    async def dispatch(self, request: Request, call_next):
-        path = request.url.path
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
 
-        # Skip non-API routes, exempt paths, and CORS preflight requests
-        if not path.startswith("/api/") or path in _EXEMPT_PATHS or request.method == "OPTIONS":
-            return await call_next(request)
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        path: str = scope.get("path", "")
+        method: str = scope.get("method", "")
+
+        # Pass through: non-API paths, exempt paths, OPTIONS preflight
+        if not path.startswith("/api/") or path in _EXEMPT_PATHS or method == "OPTIONS":
+            await self.app(scope, receive, send)
+            return
 
         api_key = os.getenv("ACOUSTIMATOR_API_KEY")
         if not api_key:
-            # If no key configured, allow all (dev mode)
             logger.warning("ACOUSTIMATOR_API_KEY not set — API auth disabled")
-            return await call_next(request)
+            await self.app(scope, receive, send)
+            return
 
-        provided_key = request.headers.get("X-API-Key") or request.query_params.get("api_key")
+        # Extract key from headers
+        headers = dict(scope.get("headers", []))
+        provided_key = (
+            headers.get(b"x-api-key", b"").decode()
+            or _query_param(scope.get("query_string", b""), "api_key")
+        )
 
         if provided_key != api_key:
-            return JSONResponse(
-                status_code=401,
-                content={"detail": "Invalid or missing API key"},
-            )
+            body = json.dumps({"detail": "Invalid or missing API key"}).encode()
+            await send({
+                "type": "http.response.start",
+                "status": 401,
+                "headers": [
+                    (b"content-type", b"application/json"),
+                    (b"content-length", str(len(body)).encode()),
+                ],
+            })
+            await send({"type": "http.response.body", "body": body})
+            return
 
-        return await call_next(request)
+        await self.app(scope, receive, send)
+
+
+def _query_param(query_string: bytes, name: str) -> str:
+    """Extract a single query param value from raw query_string bytes."""
+    for part in query_string.decode(errors="replace").split("&"):
+        if "=" in part:
+            k, _, v = part.partition("=")
+            if k == name:
+                return v
+    return ""
