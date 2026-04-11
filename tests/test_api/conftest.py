@@ -70,6 +70,7 @@ def make_estimate(
     est.actual_total_cost = None
     est.actual_cost_date = None
     est.accuracy_note = None
+    est.notes = None
     return est
 
 
