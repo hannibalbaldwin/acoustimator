@@ -31,18 +31,39 @@ const COLUMNS = [
 const STATUS_ORDER = ['draft', 'reviewed', 'finalized', 'exported'] as const
 const VALID_KEYS = new Set(COLUMNS.map((c) => c.key))
 
+type StatusKey = typeof STATUS_ORDER[number]
+
+/**
+ * Returns null if the move is valid, or a short reason string if it will fail
+ * validation on the backend. Uses the pre-validation flags from the API so the
+ * user sees feedback before they drop.
+ */
+function getDropBlockReason(
+  estimate: EstimateListItem,
+  targetColumn: string,
+): string | null {
+  if (targetColumn === estimate.status) return null
+
+  if (targetColumn === 'reviewed') {
+    if (!estimate.has_scope_with_sf) return 'Needs a scope with SF > 0'
+  }
+  if (targetColumn === 'finalized') {
+    if (!estimate.has_accepted_scope) return 'Accept at least one scope first'
+    if (!estimate.gc_name) return 'GC name required'
+  }
+  return null
+}
+
 export function EstimateBoard({ estimates: initialEstimates, onStatusChange }: EstimateBoardProps) {
   const [localEstimates, setLocalEstimates] = useState<EstimateListItem[]>(initialEstimates)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [overColumnKey, setOverColumnKey] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
 
-  // Sync when parent passes new estimates (e.g. after a re-fetch)
   useEffect(() => {
     setLocalEstimates(initialEstimates)
   }, [initialEstimates])
 
-  // Auto-dismiss toast after 4s
   useEffect(() => {
     if (!toast) return
     const t = setTimeout(() => setToast(null), 4000)
@@ -61,6 +82,11 @@ export function EstimateBoard({ estimates: initialEstimates, onStatusChange }: E
   }
 
   const activeEstimate = activeId ? localEstimates.find((e) => e.id === activeId) ?? null : null
+
+  // Compute block reason for the column currently being hovered during drag
+  const overBlockReason = (activeEstimate && overColumnKey)
+    ? getDropBlockReason(activeEstimate, overColumnKey)
+    : null
 
   function handleDragStart(event: DragStartEvent) {
     setActiveId(event.active.id as string)
@@ -86,11 +112,10 @@ export function EstimateBoard({ estimates: initialEstimates, onStatusChange }: E
     if (!estimate) return
     if (estimate.status === targetColumn) return
 
-    // Enforce forward-only drag (backward is handled by card buttons)
-    const currentIdx = STATUS_ORDER.indexOf(estimate.status as typeof STATUS_ORDER[number])
-    const targetIdx = STATUS_ORDER.indexOf(targetColumn as typeof STATUS_ORDER[number])
-    if (targetIdx < currentIdx) {
-      setToast('Drag forward only — use the ← button on the card to move backward.')
+    // Block if pre-validation says it won't pass
+    const blockReason = getDropBlockReason(estimate, targetColumn)
+    if (blockReason) {
+      setToast(blockReason)
       return
     }
 
@@ -104,9 +129,7 @@ export function EstimateBoard({ estimates: initialEstimates, onStatusChange }: E
       await updateEstimateStatus(draggedId, targetColumn)
       onStatusChange?.(draggedId, targetColumn)
     } catch (err: unknown) {
-      // Revert on error
       setLocalEstimates(previousEstimates)
-      // Extract the 422 message from "API 422: {...}"
       let msg = err instanceof Error ? err.message : 'Failed to update status'
       try {
         const jsonStart = msg.indexOf('{')
@@ -163,6 +186,13 @@ export function EstimateBoard({ estimates: initialEstimates, onStatusChange }: E
         >
           {COLUMNS.map((col) => {
             const items = grouped.get(col.key)!
+            const isOver = overColumnKey === col.key
+            const isSameColumn = activeEstimate?.status === col.key
+            // Show amber when hovering a column that will fail validation
+            const blockReason = isOver && activeEstimate && !isSameColumn
+              ? getDropBlockReason(activeEstimate, col.key)
+              : null
+
             return (
               <BoardColumn
                 key={col.key}
@@ -170,7 +200,9 @@ export function EstimateBoard({ estimates: initialEstimates, onStatusChange }: E
                 name={col.label}
                 count={items.length}
                 accentBorderColor={col.accent}
-                isOver={overColumnKey === col.key}
+                isOver={isOver && !isSameColumn}
+                isBlocked={!!blockReason}
+                blockReason={blockReason ?? undefined}
               >
                 {items.map((est) => (
                   <EstimateCard
@@ -212,7 +244,7 @@ export function EstimateBoard({ estimates: initialEstimates, onStatusChange }: E
         </DragOverlay>
       </DndContext>
 
-      {/* Error toast */}
+      {/* Toast */}
       {toast && (
         <div
           style={{

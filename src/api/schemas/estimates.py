@@ -164,6 +164,10 @@ class EstimateListItem(BaseModel):
     confidence_level: str | None = None
     created_at: datetime
     scope_types: list[str] = []
+    # Pre-validation flags — lets the Kanban board show invalid drop targets
+    # before the card is dropped, without a round-trip to the server.
+    has_scope_with_sf: bool = False   # any scope with area_sf > 0
+    has_accepted_scope: bool = False  # any scope with manually_adjusted = True
 
 
 class CreateEstimateRequest(BaseModel):

@@ -10,10 +10,15 @@ interface BoardColumnProps {
   count: number
   accentBorderColor: string
   isOver: boolean
+  isBlocked?: boolean      // dragging over this column but drop will fail
+  blockReason?: string     // why it's blocked — shown inline
   children: ReactNode
 }
 
-export function BoardColumn({ columnKey, name, count, accentBorderColor, isOver, children }: BoardColumnProps) {
+export function BoardColumn({
+  columnKey, name, count, accentBorderColor,
+  isOver, isBlocked, blockReason, children,
+}: BoardColumnProps) {
   const { theme } = useTheme()
   const isLight = theme === 'light'
 
@@ -25,11 +30,12 @@ export function BoardColumn({ columnKey, name, count, accentBorderColor, isOver,
   const badgeColor = isLight ? '#7890aa' : '#3a4f6a'
   const emptyColor = isLight ? '#7890aa' : '#3a4f6a'
 
+  // Green = valid drop, amber = blocked, transparent = idle
   const columnBg = isOver
-    ? (isLight ? 'rgba(161,214,124,0.06)' : 'rgba(161,214,124,0.06)')
+    ? (isBlocked ? 'rgba(245,158,11,0.07)' : 'rgba(161,214,124,0.06)')
     : 'transparent'
   const columnOutline = isOver
-    ? `1px solid rgba(161,214,124,0.3)`
+    ? (isBlocked ? '1px solid rgba(245,158,11,0.4)' : '1px solid rgba(161,214,124,0.3)')
     : '1px solid transparent'
 
   return (
@@ -98,7 +104,26 @@ export function BoardColumn({ columnKey, name, count, accentBorderColor, isOver,
           padding: '0 4px 4px',
         }}
       >
-        {count === 0 ? (
+        {/* Blocked reason pill — shown while hovering an invalid target */}
+        {isOver && isBlocked && blockReason && (
+          <div
+            style={{
+              margin: '4px 0 2px',
+              padding: '6px 10px',
+              borderRadius: '6px',
+              background: 'rgba(245,158,11,0.12)',
+              border: '1px solid rgba(245,158,11,0.35)',
+              fontSize: '11px',
+              color: '#d97706',
+              textAlign: 'center',
+              lineHeight: 1.4,
+            }}
+          >
+            ⚠ {blockReason}
+          </div>
+        )}
+
+        {count === 0 && !(isOver && isBlocked) ? (
           <div
             style={{
               paddingTop: '32px',

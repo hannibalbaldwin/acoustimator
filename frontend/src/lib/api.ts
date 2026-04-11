@@ -71,6 +71,8 @@ export interface EstimateListItem {
   confidence_level: string | null
   created_at: string
   scope_types: string[]
+  has_scope_with_sf: boolean
+  has_accepted_scope: boolean
 }
 
 // ── Mapping helpers ───────────────────────────────────────────────────────────

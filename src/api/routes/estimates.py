@@ -266,6 +266,11 @@ async def list_estimates(
         scope_types = list(
             dict.fromkeys(str(s.scope_type) for s in (est.estimate_scopes or []) if s.scope_type is not None)
         )
+        scopes = est.estimate_scopes or []
+        has_scope_with_sf = any(
+            (s.square_footage is not None and s.square_footage > 0) for s in scopes
+        )
+        has_accepted_scope = any(getattr(s, "manually_adjusted", False) for s in scopes)
         items.append(
             EstimateListItem(
                 id=est.id,
@@ -276,6 +281,8 @@ async def list_estimates(
                 confidence_level=_confidence_label(confidence_score),
                 created_at=est.created_at,
                 scope_types=scope_types,
+                has_scope_with_sf=has_scope_with_sf,
+                has_accepted_scope=has_accepted_scope,
             )
         )
 
