@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import Link from 'next/link'
 import { formatCurrency, formatCurrencyFull, formatSF } from '@/lib/utils'
 import { ScopeTypeBadge } from '@/components/estimates/ScopeTypeBadge'
+import { ProjectTypeBadge } from '@/components/ui/ProjectTypeBadge'
 import { FilterSelect } from '@/components/ui/FilterSelect'
 import { listProjects, getProjectGcNames } from '@/lib/api'
 import type { ProjectResponse, ScopeType } from '@/lib/types'
@@ -329,12 +330,7 @@ export default function ProjectsPage() {
                   </td>
                   <td className="px-4 py-2.5">
                     {project.project_type ? (
-                      <span
-                        className="text-[10px] px-2 py-0.5 rounded-[4px] font-medium uppercase tracking-wide"
-                        style={{ color: textSecondary, background: isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.06)', border: `1px solid ${isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)'}` }}
-                      >
-                        {project.project_type.replace('_', ' ')}
-                      </span>
+                      <ProjectTypeBadge type={project.project_type} />
                     ) : (
                       <span style={{ color: textMuted, fontSize: '12px' }}>—</span>
                     )}

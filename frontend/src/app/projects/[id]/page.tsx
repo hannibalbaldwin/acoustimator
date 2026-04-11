@@ -7,6 +7,7 @@ import { getProject } from '@/lib/api'
 import type { ProjectResponse, ProjectScopeSummary } from '@/lib/types'
 import { useTheme } from '@/components/ThemeProvider'
 import { ScopeTypeBadge } from '@/components/estimates/ScopeTypeBadge'
+import { ProjectTypeBadge } from '@/components/ui/ProjectTypeBadge'
 import { formatCurrency, formatCurrencyFull, formatSF } from '@/lib/utils'
 import type { ScopeType } from '@/lib/types'
 import { WaveformLoader } from '@/components/ui/WaveformLoader'
@@ -271,9 +272,7 @@ export default function ProjectDetailPage() {
               >
                 {project.name}
               </h1>
-              {project.project_type && (
-                <ScopeTypeBadge type={project.project_type as ScopeType} />
-              )}
+              <ProjectTypeBadge type={project.project_type} />
             </div>
             {project.gc_name && (
               <p className="text-[13px] mb-0.5" style={{ color: textSecondary }}>
@@ -498,7 +497,6 @@ export default function ProjectDetailPage() {
               {[
                 { label: 'Project Name', value: project.name },
                 { label: 'General Contractor', value: project.gc_name },
-                { label: 'Project Type', value: project.project_type },
                 { label: 'Quote Date', value: project.quote_date },
                 { label: 'Address', value: project.address },
                 { label: 'Status', value: project.status },
@@ -513,6 +511,14 @@ export default function ProjectDetailPage() {
                     </span>
                   </div>
                 ) : null
+              )}
+              {project.project_type && (
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[10px] font-medium uppercase tracking-[0.08em]" style={{ color: textMuted }}>
+                    Project Type
+                  </span>
+                  <ProjectTypeBadge type={project.project_type} />
+                </div>
               )}
             </div>
           </div>
