@@ -342,6 +342,9 @@ class Estimate(Base):
     # Relationships
     estimate_scopes: Mapped[list["EstimateScope"]] = relationship(back_populates="estimate", cascade="all, delete")
     quotes: Mapped[list["Quote"]] = relationship(back_populates="estimate", cascade="all, delete")
+    notes_thread: Mapped[list["EstimateNote"]] = relationship(
+        back_populates="estimate", cascade="all, delete", order_by="EstimateNote.created_at"
+    )
 
 
 class EstimateScope(Base):
@@ -450,3 +453,19 @@ class Quote(Base):
 
     # Relationships
     estimate: Mapped["Estimate"] = relationship(back_populates="quotes")
+
+
+class EstimateNote(Base):
+    __tablename__ = "estimate_notes"
+
+    id: Mapped[UUID] = pk_uuid()
+    estimate_id: Mapped[UUID] = mapped_column(
+        ForeignKey("estimates.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    author_name: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'Unknown'"))
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default=text("CURRENT_TIMESTAMP"))
+    updated_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default=text("CURRENT_TIMESTAMP"))
+
+    # Relationships
+    estimate: Mapped["Estimate"] = relationship(back_populates="notes_thread")

@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { EstimateSummary } from '@/components/estimates/EstimateSummary'
 import { EstimateTable } from '@/components/estimates/EstimateTable'
 import { ComparableProjects } from '@/components/estimates/ComparableProjects'
 import { formatCurrency } from '@/lib/utils'
-import { getEstimate, updateScope, exportEstimate, generateQuote, deleteScope, recordActual, deleteEstimate, updateEstimateStatus, saveEstimateNotes } from '@/lib/api'
+import { getEstimate, updateScope, exportEstimate, generateQuote, deleteScope, recordActual, deleteEstimate, updateEstimateStatus } from '@/lib/api'
+import { NotesThread } from '@/components/estimates/NotesThread'
 import type { EstimateResponse, ScopeResponse, UpdateScopeRequest } from '@/lib/types'
 import { useTheme } from '@/components/ThemeProvider'
 import { CatalogEntryModal } from '@/components/estimates/CatalogEntryModal'
@@ -47,9 +48,6 @@ export default function EstimateDetailPage() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
 
-  // Estimate notes — local state synced from estimate, debounce-saved on change
-  const [notes, setNotes] = useState('')
-  const notesSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const loadEstimate = (estimateId: string) => {
     setLoading(true)
@@ -57,21 +55,12 @@ export default function EstimateDetailPage() {
     getEstimate(estimateId)
       .then((data) => {
         setEstimate(data)
-        setNotes(data.notes ?? '')
         setLoading(false)
       })
       .catch((err: unknown) => {
         setError(err instanceof Error ? err.message : 'Failed to load estimate')
         setLoading(false)
       })
-  }
-
-  const handleNotesChange = (value: string) => {
-    setNotes(value)
-    if (notesSaveTimer.current) clearTimeout(notesSaveTimer.current)
-    notesSaveTimer.current = setTimeout(() => {
-      saveEstimateNotes(id, value).catch(() => {})
-    }, 800)
   }
 
   useEffect(() => {
@@ -528,33 +517,8 @@ export default function EstimateDetailPage() {
           <div className="w-full md:w-72 flex-shrink-0 space-y-4">
             <ComparableProjects projects={estimate.comparable_projects} isLight={isLight} />
 
-            {/* Notes card */}
-            <div
-              className="rounded-[8px] p-4"
-              style={{
-                background: isLight ? '#ffffff' : '#131822',
-                border: `1px solid ${isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)'}`,
-              }}
-            >
-              <h3
-                className="text-[10px] font-semibold uppercase tracking-[0.09em] mb-2.5"
-                style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}
-              >
-                Estimate Notes
-              </h3>
-              <textarea
-                placeholder="Add notes for this estimate..."
-                rows={4}
-                value={notes}
-                onChange={(e) => handleNotesChange(e.target.value)}
-                className="w-full text-[12px] resize-none rounded-[6px] p-2.5 transition-all focus:outline-none"
-                style={{
-                  background: isLight ? '#f5f7fa' : '#0e1219',
-                  border: `1px solid ${isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'}`,
-                  color: isLight ? '#0f1923' : '#d8e4f5',
-                }}
-              />
-            </div>
+            {/* Notes thread */}
+            <NotesThread estimateId={estimate.id} isLight={isLight} />
 
             {/* AI hint card */}
             <div

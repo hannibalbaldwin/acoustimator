@@ -440,6 +440,56 @@ export async function saveEstimateNotes(id: string, notes: string): Promise<void
   })
 }
 
+// ── Estimate Notes Thread ─────────────────────────────────────────────────────
+
+export interface EstimateNote {
+  id: string
+  estimate_id: string
+  content: string
+  author_name: string
+  created_at: string
+  updated_at: string
+}
+
+export async function listEstimateNotes(estimateId: string): Promise<EstimateNote[]> {
+  return apiFetch<EstimateNote[]>(`/api/estimates/${estimateId}/notes`)
+}
+
+export async function createEstimateNote(
+  estimateId: string,
+  content: string,
+  authorName: string
+): Promise<EstimateNote> {
+  return apiFetch<EstimateNote>(`/api/estimates/${estimateId}/notes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content, author_name: authorName }),
+  })
+}
+
+export async function updateEstimateNote(
+  estimateId: string,
+  noteId: string,
+  content: string
+): Promise<EstimateNote> {
+  return apiFetch<EstimateNote>(`/api/estimates/${estimateId}/notes/${noteId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content }),
+  })
+}
+
+export async function deleteEstimateNote(estimateId: string, noteId: string): Promise<void> {
+  const res = await fetch(`${BASE}/api/estimates/${estimateId}/notes/${noteId}`, {
+    method: 'DELETE',
+    headers: apiHeaders(),
+  })
+  if (!res.ok && res.status !== 204) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`API ${res.status}: ${text}`)
+  }
+}
+
 export async function generateQuote(
   estimateId: string,
   template: 'T-004A' | 'T-004B' | 'T-004E' = 'T-004B'
