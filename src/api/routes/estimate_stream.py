@@ -1,4 +1,5 @@
 """SSE streaming endpoint for estimate creation progress."""
+
 from __future__ import annotations
 
 import asyncio

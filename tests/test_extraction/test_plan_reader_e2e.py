@@ -42,25 +42,14 @@ def test_seven_pines_jax_extraction(seven_pines_pdf: Path) -> None:
     assert abs(float(result.total_area_sf) - 1595.38) < 5.0, (
         f"total_area_sf {result.total_area_sf} not within 5 SF of 1595.38"
     )
-    assert len(result.scope_suggestions) >= 10, (
-        f"Expected >= 10 scope suggestions, got {len(result.scope_suggestions)}"
-    )
+    assert len(result.scope_suggestions) >= 10, f"Expected >= 10 scope suggestions, got {len(result.scope_suggestions)}"
 
-    area_scopes = [
-        s for s in result.scope_suggestions
-        if s.area_sf is not None and s.area_sf > 0
-    ]
-    assert len(area_scopes) == 3, (
-        f"Expected exactly 3 scopes with area_sf > 0, got {len(area_scopes)}"
-    )
+    area_scopes = [s for s in result.scope_suggestions if s.area_sf is not None and s.area_sf > 0]
+    assert len(area_scopes) == 3, f"Expected exactly 3 scopes with area_sf > 0, got {len(area_scopes)}"
     for s in area_scopes:
-        assert s.scope_type == "AWP", (
-            f"Expected area scope to be AWP type, got {s.scope_type} ({s.scope_tag})"
-        )
+        assert s.scope_type == "AWP", f"Expected area scope to be AWP type, got {s.scope_type} ({s.scope_tag})"
 
-    assert result.vector_rich_pages >= 5, (
-        f"Expected >= 5 vector-rich pages, got {result.vector_rich_pages}"
-    )
+    assert result.vector_rich_pages >= 5, f"Expected >= 5 vector-rich pages, got {result.vector_rich_pages}"
 
 
 @requires_dropbox
@@ -81,9 +70,7 @@ def test_seven_pines_awp_areas_match_known_values(seven_pines_pdf: Path) -> None
         [s for s in result.scope_suggestions if s.area_sf is not None and s.area_sf > 0],
         key=lambda s: float(s.area_sf),
     )
-    assert len(area_scopes) == 3, (
-        f"Expected exactly 3 area scopes, got {len(area_scopes)}"
-    )
+    assert len(area_scopes) == 3, f"Expected exactly 3 area scopes, got {len(area_scopes)}"
 
     expected_sorted = [378.18, 568.87, 648.33]
     for scope, expected in zip(area_scopes, expected_sorted, strict=False):
@@ -115,9 +102,7 @@ def test_brandon_library_extraction(brandon_library_pdf: Path) -> None:
     assert float(result.total_area_sf) > 10_000, (
         f"total_area_sf {result.total_area_sf} unexpectedly low for Brandon Library"
     )
-    assert len(result.scope_suggestions) >= 5, (
-        f"Expected >= 5 scope suggestions, got {len(result.scope_suggestions)}"
-    )
+    assert len(result.scope_suggestions) >= 5, f"Expected >= 5 scope suggestions, got {len(result.scope_suggestions)}"
 
 
 # ===========================================================================
@@ -172,6 +157,5 @@ def test_raster_pdf_without_vision_produces_low_confidence(
     result = read_plan(usf_pdf, use_vision=False)
 
     assert result.extraction_confidence <= 0.6, (
-        f"Expected low extraction_confidence (<= 0.6) for raster PDF without vision, "
-        f"got {result.extraction_confidence}"
+        f"Expected low extraction_confidence (<= 0.6) for raster PDF without vision, got {result.extraction_confidence}"
     )

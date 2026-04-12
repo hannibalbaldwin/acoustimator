@@ -1,13 +1,12 @@
 """Root conftest — shared markers and path fixtures."""
+
 from __future__ import annotations
 
 from pathlib import Path
 
 import pytest
 
-DROPBOX_ROOT = Path(
-    "/Users/hannibalbaldwin/Library/CloudStorage/Dropbox-SiteZeus/Hannibal Baldwin/+ITBs"
-)
+DROPBOX_ROOT = Path("/Users/hannibalbaldwin/Library/CloudStorage/Dropbox-SiteZeus/Hannibal Baldwin/+ITBs")
 DATA_EXTRACTED_PLANS = Path("data/extracted/plans")
 
 # ---------------------------------------------------------------------------

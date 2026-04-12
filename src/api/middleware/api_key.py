@@ -45,21 +45,22 @@ class ApiKeyMiddleware:
 
         # Extract key from headers
         headers = dict(scope.get("headers", []))
-        provided_key = (
-            headers.get(b"x-api-key", b"").decode()
-            or _query_param(scope.get("query_string", b""), "api_key")
+        provided_key = headers.get(b"x-api-key", b"").decode() or _query_param(
+            scope.get("query_string", b""), "api_key"
         )
 
         if provided_key != api_key:
             body = json.dumps({"detail": "Invalid or missing API key"}).encode()
-            await send({
-                "type": "http.response.start",
-                "status": 401,
-                "headers": [
-                    (b"content-type", b"application/json"),
-                    (b"content-length", str(len(body)).encode()),
-                ],
-            })
+            await send(
+                {
+                    "type": "http.response.start",
+                    "status": 401,
+                    "headers": [
+                        (b"content-type", b"application/json"),
+                        (b"content-length", str(len(body)).encode()),
+                    ],
+                }
+            )
             await send({"type": "http.response.body", "body": body})
             return
 

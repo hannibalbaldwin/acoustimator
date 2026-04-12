@@ -10,7 +10,6 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.exc import IntegrityError
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

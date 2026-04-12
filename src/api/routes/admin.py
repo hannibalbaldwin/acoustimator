@@ -249,8 +249,7 @@ async def trigger_retrain(
 
     return RetrainResponse(
         status="retraining_started",
-        message=f"Retraining started in background ({' '.join(flags)}). "
-        "Check GET /api/stats/model-status for results.",
+        message=f"Retraining started in background ({' '.join(flags)}). Check GET /api/stats/model-status for results.",
     )
 
 

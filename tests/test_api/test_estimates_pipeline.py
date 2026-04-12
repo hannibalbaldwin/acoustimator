@@ -19,11 +19,10 @@ from uuid import uuid4
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from tests.conftest import requires_dropbox, requires_models
 from src.api.dependencies import get_db
 from src.api.main import app
-from tests.test_api.conftest import make_estimate, make_scope
-
+from tests.conftest import requires_dropbox, requires_models
+from tests.test_api.conftest import make_estimate
 
 # ===========================================================================
 # Section 1: Additional Items CRUD (fully mocked DB)
@@ -112,9 +111,7 @@ class TestAdditionalItemsCRUD:
             app.dependency_overrides.clear()
 
     @pytest.mark.asyncio
-    async def test_create_additional_item_estimate_not_found(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_create_additional_item_estimate_not_found(self, client: AsyncClient) -> None:
         """POST to a non-existent estimate must return 404.
 
         The route does `db.get(Estimate, estimate_id)` — when it returns None
@@ -204,9 +201,7 @@ class TestAdditionalItemsCRUD:
 
         app.dependency_overrides[get_db] = lambda: mock_db
         try:
-            response = await client.delete(
-                f"/api/estimates/{estimate_id}/additional-items/{item_id}"
-            )
+            response = await client.delete(f"/api/estimates/{estimate_id}/additional-items/{item_id}")
             assert response.status_code == 204
         finally:
             app.dependency_overrides.clear()
@@ -231,9 +226,7 @@ class TestScopePatchLaborRecompute:
     """
 
     @pytest.mark.asyncio
-    async def test_scope_patch_labor_days_updates_labor_price(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_scope_patch_labor_days_updates_labor_price(self, client: AsyncClient) -> None:
         """PATCH scope with labor_days=8 must set labor_price = 8 × 725 = 5800.
 
         Setup: scope starts with man_days=5, labor_price=3625, daily_labor_rate=725.
@@ -376,9 +369,7 @@ async def test_create_estimate_from_seven_pines_pdf(dropbox_root: Path) -> None:
                 headers={"X-API-Key": api_key},
             )
 
-        assert response.status_code == 201, (
-            f"Expected 201, got {response.status_code}: {response.text}"
-        )
+        assert response.status_code == 201, f"Expected 201, got {response.status_code}: {response.text}"
         data = response.json()
         created_id = data.get("id")
 
@@ -386,20 +377,14 @@ async def test_create_estimate_from_seven_pines_pdf(dropbox_root: Path) -> None:
         assert "scopes" in data
         scopes = data["scopes"]
         assert len(scopes) == 3, (
-            f"Expected exactly 3 AWP scopes, got {len(scopes)}: "
-            f"{[s.get('scope_type') for s in scopes]}"
+            f"Expected exactly 3 AWP scopes, got {len(scopes)}: {[s.get('scope_type') for s in scopes]}"
         )
         for scope in scopes:
-            assert scope.get("scope_type") == "AWP", (
-                f"Expected scope_type=AWP, got {scope.get('scope_type')}"
-            )
-            assert (scope.get("total") or 0) > 0, (
-                f"Scope {scope.get('tag')} has zero total cost"
-            )
+            assert scope.get("scope_type") == "AWP", f"Expected scope_type=AWP, got {scope.get('scope_type')}"
+            assert (scope.get("total") or 0) > 0, f"Scope {scope.get('tag')} has zero total cost"
 
         assert data.get("confidence_level") == "high", (
-            f"Expected confidence_level=high (extraction_confidence=1.0), "
-            f"got {data.get('confidence_level')}"
+            f"Expected confidence_level=high (extraction_confidence=1.0), got {data.get('confidence_level')}"
         )
 
         # Cleanup: delete the created estimate so re-runs are idempotent
@@ -411,8 +396,8 @@ async def test_create_estimate_from_seven_pines_pdf(dropbox_root: Path) -> None:
             # Best-effort cleanup — don't fail the test if delete fails
             if delete_resp.status_code not in (200, 204, 404):
                 import warnings
+
                 warnings.warn(
-                    f"Failed to clean up estimate {created_id}: "
-                    f"HTTP {delete_resp.status_code}",
+                    f"Failed to clean up estimate {created_id}: HTTP {delete_resp.status_code}",
                     stacklevel=1,
                 )

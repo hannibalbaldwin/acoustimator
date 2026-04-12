@@ -93,12 +93,14 @@ async def _read_plan_async(
         page_num = i + 1  # 1-based
 
         if progress_fn is not None:
-            progress_fn({
-                "event": "extracting",
-                "page": page_num,
-                "total": total_pages,
-                "message": f"Reading page {page_num} of {total_pages}",
-            })
+            progress_fn(
+                {
+                    "event": "extracting",
+                    "page": page_num,
+                    "total": total_pages,
+                    "message": f"Reading page {page_num} of {total_pages}",
+                }
+            )
 
         # Classify and extract text
         page_info = classify_page(fitz_page, page_num, total_pages)
@@ -125,12 +127,14 @@ async def _read_plan_async(
             # Optionally fall back to Vision API (capped at MAX_VISION_PAGES)
             if use_vision and vision_pages_used < MAX_VISION_PAGES:
                 if progress_fn is not None:
-                    progress_fn({
-                        "event": "extracting_vision",
-                        "page": page_num,
-                        "total": total_pages,
-                        "message": f"Vision API: page {page_num} of {total_pages}",
-                    })
+                    progress_fn(
+                        {
+                            "event": "extracting_vision",
+                            "page": page_num,
+                            "total": total_pages,
+                            "message": f"Vision API: page {page_num} of {total_pages}",
+                        }
+                    )
                 vision_data = await extract_raster_page_vision(fitz_page, page_num, plan_page.page_type)
                 vision_pages_used += 1
 

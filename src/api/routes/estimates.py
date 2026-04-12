@@ -195,11 +195,7 @@ async def _build_response(estimate: Estimate, db: AsyncSession) -> EstimateRespo
 
     # Collect deduplicated unknown product names (product_name set but product_id is null)
     unknown_products: list[str] = list(
-        dict.fromkeys(
-            s.product_name
-            for s in scopes
-            if s.product_name is not None and s.product_id is None
-        )
+        dict.fromkeys(s.product_name for s in scopes if s.product_name is not None and s.product_id is None)
     )
 
     return EstimateResponse(
@@ -268,9 +264,7 @@ async def list_estimates(
             dict.fromkeys(str(s.scope_type) for s in (est.estimate_scopes or []) if s.scope_type is not None)
         )
         scopes = est.estimate_scopes or []
-        has_scope_with_sf = any(
-            (s.square_footage is not None and s.square_footage > 0) for s in scopes
-        )
+        has_scope_with_sf = any((s.square_footage is not None and s.square_footage > 0) for s in scopes)
         has_accepted_scope = any(getattr(s, "manually_adjusted", False) for s in scopes)
         items.append(
             EstimateListItem(
@@ -302,7 +296,7 @@ async def _persist_estimate(
     project_name: str,
     gc_name: str | None,
     address: str | None,
-) -> "UUID":
+) -> UUID:
     """Merge multiple ProjectEstimate objects and persist to the database.
 
     Returns the UUID of the newly created Estimate row.
@@ -481,9 +475,7 @@ async def update_estimate_status(
 
     if new_idx > current_idx:  # Forward — validate
         # Eagerly load scopes for validation
-        scope_result = await db.execute(
-            select(EstimateScope).where(EstimateScope.estimate_id == estimate_id)
-        )
+        scope_result = await db.execute(select(EstimateScope).where(EstimateScope.estimate_id == estimate_id))
         scopes = list(scope_result.scalars().all())
 
         if new_status == EstimateStatus.REVIEWED:

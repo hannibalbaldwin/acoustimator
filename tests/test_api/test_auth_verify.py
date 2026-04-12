@@ -8,7 +8,6 @@ from uuid import uuid4
 import pytest
 from httpx import AsyncClient
 
-
 # ---------------------------------------------------------------------------
 # POST /api/auth/verify — correct credentials → 200 + user payload
 # ---------------------------------------------------------------------------
@@ -22,9 +21,7 @@ async def test_verify_correct_credentials_returns_200(client: AsyncClient) -> No
     mock_db = AsyncMock()
     row = MagicMock()
     # Simulate row unpacking: id_, email, name, role, password_hash
-    row.__iter__ = MagicMock(
-        return_value=iter([user_id, "alice@example.com", "Alice", "admin", "$2b$12$fakehash"])
-    )
+    row.__iter__ = MagicMock(return_value=iter([user_id, "alice@example.com", "Alice", "admin", "$2b$12$fakehash"]))
     result = MagicMock()
     result.fetchone.return_value = row
     mock_db.execute = AsyncMock(return_value=result)
@@ -62,9 +59,7 @@ async def test_verify_wrong_password_returns_401(client: AsyncClient) -> None:
 
     mock_db = AsyncMock()
     row = MagicMock()
-    row.__iter__ = MagicMock(
-        return_value=iter([user_id, "alice@example.com", "Alice", "user", "$2b$12$fakehash"])
-    )
+    row.__iter__ = MagicMock(return_value=iter([user_id, "alice@example.com", "Alice", "user", "$2b$12$fakehash"]))
     result = MagicMock()
     result.fetchone.return_value = row
     mock_db.execute = AsyncMock(return_value=result)
@@ -129,9 +124,7 @@ async def test_verify_case_insensitive_email(client: AsyncClient) -> None:
 
     mock_db = AsyncMock()
     row = MagicMock()
-    row.__iter__ = MagicMock(
-        return_value=iter([user_id, "alice@example.com", "Alice", "user", "$2b$12$fakehash"])
-    )
+    row.__iter__ = MagicMock(return_value=iter([user_id, "alice@example.com", "Alice", "user", "$2b$12$fakehash"]))
     result = MagicMock()
     result.fetchone.return_value = row
     mock_db.execute = AsyncMock(return_value=result)
