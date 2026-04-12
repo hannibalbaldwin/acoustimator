@@ -1,0 +1,456 @@
+{
+  "source_file": "Seven Pines Jax - Takeoff Dwgs.pdf",
+  "total_pages": 7,
+  "vector_rich_pages": 7,
+  "raster_pages": 0,
+  "pages": [],
+  "rooms": [],
+  "ceiling_specs": [],
+  "scope_suggestions": [
+    {
+      "scope_type": "AWP",
+      "scope_tag": "AWP-1",
+      "area_sf": "568.87",
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.7,
+      "source": "bluebeam_annotation",
+      "rooms": []
+    },
+    {
+      "scope_type": "AWP",
+      "scope_tag": "AWP-2",
+      "area_sf": "378.18",
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.7,
+      "source": "bluebeam_annotation",
+      "rooms": []
+    },
+    {
+      "scope_type": "AWP",
+      "scope_tag": "AWP-3",
+      "area_sf": "648.33",
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.7,
+      "source": "bluebeam_annotation",
+      "rooms": []
+    },
+    {
+      "scope_type": "ACT",
+      "scope_tag": "ACT-1",
+      "area_sf": null,
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.85,
+      "source": "text_extraction",
+      "rooms": []
+    },
+    {
+      "scope_type": "ACT",
+      "scope_tag": "ACT-2",
+      "area_sf": null,
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.85,
+      "source": "text_extraction",
+      "rooms": []
+    },
+    {
+      "scope_type": "WW",
+      "scope_tag": "WW-1",
+      "area_sf": null,
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.85,
+      "source": "text_extraction",
+      "rooms": []
+    },
+    {
+      "scope_type": "Baffles",
+      "scope_tag": "BF-1",
+      "area_sf": null,
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.85,
+      "source": "text_extraction",
+      "rooms": []
+    },
+    {
+      "scope_type": "RPG",
+      "scope_tag": "RP-1",
+      "area_sf": null,
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.85,
+      "source": "text_extraction",
+      "rooms": []
+    },
+    {
+      "scope_type": "ACT",
+      "scope_tag": "ACT-3",
+      "area_sf": null,
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.85,
+      "source": "text_extraction",
+      "rooms": []
+    },
+    {
+      "scope_type": "ACT",
+      "scope_tag": "ACT-4",
+      "area_sf": null,
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.85,
+      "source": "text_extraction",
+      "rooms": []
+    },
+    {
+      "scope_type": "ACT",
+      "scope_tag": "ACT-5",
+      "area_sf": null,
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.85,
+      "source": "text_extraction",
+      "rooms": []
+    },
+    {
+      "scope_type": "ACT",
+      "scope_tag": "ACT-6",
+      "area_sf": null,
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.85,
+      "source": "text_extraction",
+      "rooms": []
+    },
+    {
+      "scope_type": "ACT",
+      "scope_tag": "ACT-7",
+      "area_sf": null,
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.85,
+      "source": "text_extraction",
+      "rooms": []
+    },
+    {
+      "scope_type": "ACT",
+      "scope_tag": "ACT-8",
+      "area_sf": null,
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.85,
+      "source": "text_extraction",
+      "rooms": []
+    },
+    {
+      "scope_type": "ACT",
+      "scope_tag": "ACT-9",
+      "area_sf": null,
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.85,
+      "source": "text_extraction",
+      "rooms": []
+    },
+    {
+      "scope_type": "ACT",
+      "scope_tag": "ACT-10",
+      "area_sf": null,
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.85,
+      "source": "text_extraction",
+      "rooms": []
+    },
+    {
+      "scope_type": "ACT",
+      "scope_tag": "ACT-11",
+      "area_sf": null,
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.85,
+      "source": "text_extraction",
+      "rooms": []
+    },
+    {
+      "scope_type": "ACT",
+      "scope_tag": "ACT-12",
+      "area_sf": null,
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.85,
+      "source": "text_extraction",
+      "rooms": []
+    },
+    {
+      "scope_type": "ACT",
+      "scope_tag": "ACT-13",
+      "area_sf": null,
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.85,
+      "source": "text_extraction",
+      "rooms": []
+    },
+    {
+      "scope_type": "ACT",
+      "scope_tag": "ACT-14",
+      "area_sf": null,
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.85,
+      "source": "text_extraction",
+      "rooms": []
+    },
+    {
+      "scope_type": "ACT",
+      "scope_tag": "ACT-15",
+      "area_sf": null,
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.85,
+      "source": "text_extraction",
+      "rooms": []
+    },
+    {
+      "scope_type": "ACT",
+      "scope_tag": "ACT-16",
+      "area_sf": null,
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.85,
+      "source": "text_extraction",
+      "rooms": []
+    },
+    {
+      "scope_type": "ACT",
+      "scope_tag": "ACT-17",
+      "area_sf": null,
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.85,
+      "source": "text_extraction",
+      "rooms": []
+    },
+    {
+      "scope_type": "ACT",
+      "scope_tag": "ACT-18",
+      "area_sf": null,
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.85,
+      "source": "text_extraction",
+      "rooms": []
+    },
+    {
+      "scope_type": "ACT",
+      "scope_tag": "ACT-19",
+      "area_sf": null,
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.85,
+      "source": "text_extraction",
+      "rooms": []
+    },
+    {
+      "scope_type": "ACT",
+      "scope_tag": "ACT-20",
+      "area_sf": null,
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.85,
+      "source": "text_extraction",
+      "rooms": []
+    },
+    {
+      "scope_type": "ACT",
+      "scope_tag": "ACT-21",
+      "area_sf": null,
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.85,
+      "source": "text_extraction",
+      "rooms": []
+    },
+    {
+      "scope_type": "ACT",
+      "scope_tag": "ACT-22",
+      "area_sf": null,
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.85,
+      "source": "text_extraction",
+      "rooms": []
+    },
+    {
+      "scope_type": "ACT",
+      "scope_tag": "ACT-23",
+      "area_sf": null,
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.85,
+      "source": "text_extraction",
+      "rooms": []
+    },
+    {
+      "scope_type": "ACT",
+      "scope_tag": "ACT-24",
+      "area_sf": null,
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.85,
+      "source": "text_extraction",
+      "rooms": []
+    },
+    {
+      "scope_type": "ACT",
+      "scope_tag": "ACT-25",
+      "area_sf": null,
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.85,
+      "source": "text_extraction",
+      "rooms": []
+    },
+    {
+      "scope_type": "ACT",
+      "scope_tag": "ACT-26",
+      "area_sf": null,
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.85,
+      "source": "text_extraction",
+      "rooms": []
+    },
+    {
+      "scope_type": "ACT",
+      "scope_tag": "ACT-27",
+      "area_sf": null,
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.85,
+      "source": "text_extraction",
+      "rooms": []
+    },
+    {
+      "scope_type": "ACT",
+      "scope_tag": "ACT-28",
+      "area_sf": null,
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.85,
+      "source": "text_extraction",
+      "rooms": []
+    },
+    {
+      "scope_type": "ACT",
+      "scope_tag": "ACT-29",
+      "area_sf": null,
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.85,
+      "source": "text_extraction",
+      "rooms": []
+    },
+    {
+      "scope_type": "ACT",
+      "scope_tag": "ACT-30",
+      "area_sf": null,
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.85,
+      "source": "text_extraction",
+      "rooms": []
+    },
+    {
+      "scope_type": "ACT",
+      "scope_tag": "ACT-31",
+      "area_sf": null,
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.85,
+      "source": "text_extraction",
+      "rooms": []
+    },
+    {
+      "scope_type": "ACT",
+      "scope_tag": "ACT-32",
+      "area_sf": null,
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.85,
+      "source": "text_extraction",
+      "rooms": []
+    },
+    {
+      "scope_type": "ACT",
+      "scope_tag": "ACT-33",
+      "area_sf": null,
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.85,
+      "source": "text_extraction",
+      "rooms": []
+    },
+    {
+      "scope_type": "ACT",
+      "scope_tag": "ACT-34",
+      "area_sf": null,
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.85,
+      "source": "text_extraction",
+      "rooms": []
+    },
+    {
+      "scope_type": "ACT",
+      "scope_tag": "ACT-35",
+      "area_sf": null,
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.85,
+      "source": "text_extraction",
+      "rooms": []
+    },
+    {
+      "scope_type": "ACT",
+      "scope_tag": "ACT-36",
+      "area_sf": null,
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.85,
+      "source": "text_extraction",
+      "rooms": []
+    },
+    {
+      "scope_type": "ACT",
+      "scope_tag": "ACT-37",
+      "area_sf": null,
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.85,
+      "source": "text_extraction",
+      "rooms": []
+    },
+    {
+      "scope_type": "ACT",
+      "scope_tag": "ACT-38",
+      "area_sf": null,
+      "length_lf": null,
+      "product_hint": null,
+      "confidence": 0.85,
+      "source": "text_extraction",
+      "rooms": []
+    }
+  ],
+  "total_area_sf": "1595.38",
+  "extraction_confidence": 1.0,
+  "vision_pages_used": 0,
+  "error": null,
+  "success": true
+}

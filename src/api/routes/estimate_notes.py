@@ -76,9 +76,7 @@ async def list_notes(estimate_id: UUID, db: AsyncSession = Depends(get_db)) -> l
     """List all notes for an estimate, ordered by created_at asc."""
     await _get_estimate_or_404(estimate_id, db)
     result = await db.execute(
-        select(EstimateNote)
-        .where(EstimateNote.estimate_id == estimate_id)
-        .order_by(EstimateNote.created_at.asc())
+        select(EstimateNote).where(EstimateNote.estimate_id == estimate_id).order_by(EstimateNote.created_at.asc())
     )
     return list(result.scalars().all())
 

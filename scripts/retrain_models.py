@@ -160,10 +160,7 @@ def main() -> None:
         type=int,
         default=_DEFAULT_THRESHOLD,
         metavar="N",
-        help=(
-            f"Minimum new projects with actuals since last retrain "
-            f"(default: {_DEFAULT_THRESHOLD})"
-        ),
+        help=(f"Minimum new projects with actuals since last retrain (default: {_DEFAULT_THRESHOLD})"),
     )
     args = parser.parse_args()
 

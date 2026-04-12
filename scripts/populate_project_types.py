@@ -41,9 +41,7 @@ async def populate(dry_run: bool = False) -> dict[str, int]:
 
     async with async_session() as session:
         # Only fetch rows where project_type is currently NULL
-        result = await session.execute(
-            select(Project).where(Project.project_type.is_(None)).order_by(Project.id)
-        )
+        result = await session.execute(select(Project).where(Project.project_type.is_(None)).order_by(Project.id))
         null_projects = result.scalars().all()
         print(f"Projects with NULL project_type: {len(null_projects)}\n")
 
@@ -55,18 +53,13 @@ async def populate(dry_run: bool = False) -> dict[str, int]:
             ptype, reason = _classify(project.name, project.gc_name)
             type_counts[ptype.value] = type_counts.get(ptype.value, 0) + 1
             updates.append({"id": project.id, "project_type": ptype})
-            print(
-                f"  [{label}→ {ptype.value:<22}] "
-                f"{project.name!r:<50}  gc={project.gc_name!r}  ({reason})"
-            )
+            print(f"  [{label}→ {ptype.value:<22}] {project.name!r:<50}  gc={project.gc_name!r}  ({reason})")
 
         if not dry_run:
             print(f"\nApplying {len(updates)} DB updates …")
             for upd in updates:
                 await session.execute(
-                    update(Project)
-                    .where(Project.id == upd["id"])
-                    .values(project_type=upd["project_type"])
+                    update(Project).where(Project.id == upd["id"]).values(project_type=upd["project_type"])
                 )
             await session.commit()
             print("Committed.\n")
@@ -101,12 +94,7 @@ async def populate(dry_run: bool = False) -> dict[str, int]:
             from sqlalchemy import text
 
             rows = await session.execute(
-                text(
-                    "SELECT project_type, COUNT(*) AS cnt"
-                    " FROM projects"
-                    " GROUP BY project_type"
-                    " ORDER BY cnt DESC"
-                )
+                text("SELECT project_type, COUNT(*) AS cnt FROM projects GROUP BY project_type ORDER BY cnt DESC")
             )
             null_count = 0
             for row in rows:

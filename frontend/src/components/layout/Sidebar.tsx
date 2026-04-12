@@ -52,9 +52,11 @@ function getInitials(name: string): string {
 interface SidebarProps {
   isOpen?: boolean
   onClose?: () => void
+  collapsed?: boolean
+  onToggleCollapse?: () => void
 }
 
-export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
+export function Sidebar({ isOpen = false, onClose, collapsed = false, onToggleCollapse }: SidebarProps) {
   const pathname = usePathname()
   const { theme, toggle } = useTheme()
   const isLight = theme === 'light'
@@ -107,15 +109,27 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
       {/* Sidebar panel */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex flex-col w-[220px] min-h-screen flex-shrink-0 transition-transform duration-200',
-          'md:static md:translate-x-0 md:z-auto md:transition-none',
+          'fixed inset-y-0 left-0 z-50 flex flex-col min-h-screen flex-shrink-0',
+          // relative so the edge toggle button can be absolutely positioned
+          'relative',
+          // Mobile: always 220px wide, slides in/out via translate
+          'w-[220px] transition-transform duration-200',
+          // Desktop: static position, no translate, width drives collapse; separate transition
+          'md:static md:translate-x-0 md:z-auto md:transition-[width] md:duration-200 md:ease-linear',
+          collapsed ? 'md:w-[56px]' : 'md:w-[220px]',
           isOpen ? 'translate-x-0' : '-translate-x-full'
         )}
         style={{ background: bg, borderRight: `1px solid ${border}` }}
       >
+        {/* Inner content — clips during width transition */}
+        <div className="flex flex-col min-h-screen overflow-hidden">
+
         {/* ── Logo / Wordmark ── */}
-        <div className="px-5 py-[18px]" style={{ borderBottom: `1px solid ${border}` }}>
-          <div className="flex items-center gap-2.5">
+        <div
+          className={collapsed ? 'flex items-center justify-center py-[18px]' : 'px-5 py-[18px]'}
+          style={{ borderBottom: `1px solid ${border}` }}
+        >
+          <div className={cn('flex items-center', collapsed ? 'justify-center' : 'gap-2.5')}>
             <div
               className="w-7 h-7 rounded-[6px] flex items-center justify-center flex-shrink-0"
               style={{ background: 'linear-gradient(135deg, #5a8a1e 0%, #a1d67c 100%)' }}
@@ -131,14 +145,16 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                 />
               </svg>
             </div>
-            <div>
-              <p className="text-[13px] font-semibold tracking-tight leading-none" style={{ color: textPrimary }}>
-                Acoustimator
-              </p>
-              <p className="text-[10px] mt-0.5 leading-none" style={{ color: textMuted }}>
-                Commercial Acoustics
-              </p>
-            </div>
+            {!collapsed && (
+              <div>
+                <p className="text-[13px] font-semibold tracking-tight leading-none" style={{ color: textPrimary }}>
+                  Acoustimator
+                </p>
+                <p className="text-[10px] mt-0.5 leading-none" style={{ color: textMuted }}>
+                  Commercial Acoustics
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -151,12 +167,20 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                 <Link
                   key={item.href}
                   href={item.href}
+                  title={collapsed ? item.label : undefined}
                   onClick={onClose}
-                  className="flex items-center gap-2.5 px-2.5 py-2 rounded-[6px] text-[13px] font-medium transition-all duration-100"
+                  className={cn(
+                    'flex items-center py-2 rounded-[6px] text-[13px] font-medium transition-all duration-100',
+                    collapsed ? 'justify-center px-2' : 'gap-2.5 px-2.5'
+                  )}
                   style={
                     isActive
-                      ? { background: activeNavBg, borderLeft: '2px solid #a1d67c', paddingLeft: '10px', color: activeNavText }
-                      : { borderLeft: '2px solid transparent', color: textSecondary }
+                      ? {
+                          background: activeNavBg,
+                          ...(collapsed ? {} : { borderLeft: '2px solid #a1d67c', paddingLeft: '10px' }),
+                          color: activeNavText,
+                        }
+                      : { borderLeft: collapsed ? undefined : '2px solid transparent', color: textSecondary }
                   }
                   onMouseEnter={(e) => {
                     if (!isActive && hoverNavBg) {
@@ -172,7 +196,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                   }}
                 >
                   <span style={{ color: isActive ? activeNavIcon : textSecondary }}>{item.icon}</span>
-                  {item.label}
+                  {!collapsed && item.label}
                 </Link>
               )
             })}
@@ -294,7 +318,11 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
           <button
             type="button"
             onClick={() => setMenuOpen((v) => !v)}
-            className="w-full flex items-center gap-2.5 px-4 py-3 transition-colors text-left"
+            title={collapsed ? userName : undefined}
+            className={cn(
+              'w-full flex items-center py-3 transition-colors',
+              collapsed ? 'justify-center px-2' : 'gap-2.5 px-4 text-left'
+            )}
             style={{
               background: menuOpen
                 ? isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.04)'
@@ -319,27 +347,77 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
             >
               {avatarInitials}
             </div>
-            {/* Name + email */}
-            <div className="flex-1 min-w-0 text-left">
-              <p className="text-[12px] font-semibold leading-tight truncate" style={{ color: textPrimary }}>
-                {userName}
-              </p>
-              {userEmail && (
-                <p className="text-[10px] leading-tight truncate mt-0.5" style={{ color: textMuted }}>
-                  {userEmail}
+            {/* Name + email — hidden when collapsed */}
+            {!collapsed && (
+              <div className="flex-1 min-w-0 text-left">
+                <p className="text-[12px] font-semibold leading-tight truncate" style={{ color: textPrimary }}>
+                  {userName}
                 </p>
-              )}
-            </div>
-            {/* Chevron */}
-            <svg
-              className="w-[12px] h-[12px] flex-shrink-0 transition-transform"
-              style={{ color: textMuted, transform: menuOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
-              fill="none" stroke="currentColor" viewBox="0 0 24 24"
-            >
-              <path d="M19 9l-7 7-7-7" strokeWidth="2" strokeLinecap="round" />
-            </svg>
+                {userEmail && (
+                  <p className="text-[10px] leading-tight truncate mt-0.5" style={{ color: textMuted }}>
+                    {userEmail}
+                  </p>
+                )}
+              </div>
+            )}
+            {/* Chevron — hidden when collapsed */}
+            {!collapsed && (
+              <svg
+                className="w-[12px] h-[12px] flex-shrink-0 transition-transform"
+                style={{ color: textMuted, transform: menuOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
+                fill="none" stroke="currentColor" viewBox="0 0 24 24"
+              >
+                <path d="M19 9l-7 7-7-7" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            )}
           </button>
         </div>
+        </div>{/* ── end inner overflow-hidden wrapper ── */}
+
+        {/* ── Edge collapse toggle — desktop only, straddles right border ── */}
+        <button
+          onClick={onToggleCollapse}
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className="hidden md:flex absolute items-center justify-center"
+          style={{
+            right: -10,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            width: 20,
+            height: 20,
+            borderRadius: '50%',
+            background: bg,
+            border: `1px solid ${border}`,
+            boxShadow: isLight
+              ? '0 1px 6px rgba(0,0,0,0.14), 0 0 0 1px rgba(0,0,0,0.04)'
+              : '0 1px 6px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06)',
+            zIndex: 55,
+            cursor: 'pointer',
+            color: textMuted,
+            padding: 0,
+            transition: 'color 0.15s, box-shadow 0.15s',
+          }}
+          onMouseEnter={(e) => {
+            ;(e.currentTarget as HTMLButtonElement).style.color = isLight ? '#3d7010' : '#a1d67c'
+            ;(e.currentTarget as HTMLButtonElement).style.boxShadow = isLight
+              ? '0 2px 10px rgba(0,0,0,0.18)'
+              : '0 2px 10px rgba(0,0,0,0.6), 0 0 0 1px rgba(161,214,124,0.2)'
+          }}
+          onMouseLeave={(e) => {
+            ;(e.currentTarget as HTMLButtonElement).style.color = textMuted
+            ;(e.currentTarget as HTMLButtonElement).style.boxShadow = isLight
+              ? '0 1px 6px rgba(0,0,0,0.14), 0 0 0 1px rgba(0,0,0,0.04)'
+              : '0 1px 6px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06)'
+          }}
+        >
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+            {collapsed ? (
+              <path d="M3.5 1.5L7 5l-3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            ) : (
+              <path d="M6.5 1.5L3 5l3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            )}
+          </svg>
+        </button>
       </aside>
     </>
   )

@@ -593,6 +593,32 @@ Full CA brand theme + real API wiring (PRs #8, #10):
 - CA brand styling: translucent panel, checkmark on selected, animated caret chevron
 - Closes on outside click via `useRef` + `mousedown` listener
 
+### 6.4.5: Kanban UX Enhancements ✅ COMPLETE
+
+- **Bidirectional drag** — removed forward-only restriction; cards can be moved backward
+- **Pre-validation amber hints** — `has_scope_with_sf` and `has_accepted_scope` flags added to `EstimateListItem` list response; `getDropBlockReason()` evaluates rules client-side during drag (no round-trip); blocked column shows amber tint + `⚠ {reason}` warning pill before user drops
+- **Chevron hover highlight** — ← → nav buttons on `EstimateCard` glow CA green on hover with `btnHovered` state + `transition: background 0.1s`
+- **Status flow enforcement** — Reviewed → Exported drag blocked (must pass through Finalized); `EstimateStatus.EXPORTED` inherits FINALIZED validation rules in backend PATCH
+
+### 6.4.6: Threaded Estimate Notes + Delete Confirmation Modal ✅ COMPLETE
+
+- `estimate_notes` DB table: UUID PK, FK → estimates (CASCADE), author_name, content, created_at, updated_at
+- `src/api/routes/estimate_notes.py` — GET list / POST create (201) / PATCH update / DELETE (204)
+- `NotesThread.tsx` — full threaded comment UI: CA-green author avatar (first initial), relative timestamps, hover-reveal Edit + Delete icon buttons, inline edit textarea, inline delete confirm, Cmd+Enter shortcut
+- Compose box: author name input persisted to `localStorage` as `acoustimator_note_author`
+- `window.confirm` replaced with custom styled delete confirmation modal on estimate detail page
+
+### 6.4.7: ProjectTypeBadge ✅ COMPLETE
+
+- `frontend/src/components/ui/ProjectTypeBadge.tsx` — colored icon pills for all 10 project types (healthcare=red, education=amber, residential=green, worship=purple, office=blue, etc.)
+- Inline SVG icons, `{color}18` background tint, `{color}40` border; graceful fallback for unknown types
+- Displayed in: project detail hero, project info sidebar, projects list table column, estimate comparables
+
+### 6.4.8: WaveformLoader ✅ COMPLETE
+
+- `WaveformLoader.tsx` — SVG stroke-dasharray acoustic wave animation, CA green `#a1d67c`, two variants (inline spinner / full-page block)
+- Replaces all generic spinners throughout the app
+
 ### 6.5: Quote Generation ✅ COMPLETE
 
 - `POST /api/estimates/{id}/quote` — reportlab PDF with `CA-YYYY-NNNN` sequential numbering, T-004A/B/E template support
@@ -631,7 +657,7 @@ Full CA brand theme + real API wiring (PRs #8, #10):
 - `scripts/retrain_models.py` — production retraining with A/B comparison and rollback on regression (>5% MAPE increase keeps old model)
 - `POST /api/admin/retrain` — admin-only endpoint, triggers retraining as background task, returns 202 immediately
 - `GET /api/stats/model-status` — returns `last_retrain_results` per model with old_mape, new_mape, deployed, reason
-- External cron trigger pattern documented (GitHub Actions monthly workflow recommended)
+- **GitHub Actions monthly retrain cron** ✅ — `.github/workflows/monthly_retrain.yml`, cron `'0 2 1-7 * 0'` (first Sunday of month, 2 AM UTC); `workflow_dispatch` with `force`, `dry_run`, `threshold` inputs; uploads model artifacts (30-day retention); Slack notification via curl
 
 ### 7.3: Vendor Price Tracking ✅ COMPLETE (PR #16)
 
@@ -648,6 +674,85 @@ Full CA brand theme + real API wiring (PRs #8, #10):
 - ❌ Model adaptation for new categories not yet built
 
 **Phase 7 Deliverable:** Self-improving estimation system.
+
+---
+
+## Phase 8: PlanHub Integration — Automated Project Discovery
+
+**Goal:** Automatically discover new construction projects on PlanHub that match Commercial Acoustics' trade profile, download plan sets, run them through the Acoustimator pipeline, and queue estimates for human review.
+
+### 8.1: API Research & Access Negotiation ✅ COMPLETE
+
+**Findings:** PlanHub has a real but gated "Data & API" product. It is a commercial add-on positioned for building material suppliers feeding leads into CRMs — not a self-serve developer API for subcontractors. No public documentation, no Swagger, no Zapier connector, no webhooks exist.
+
+**Confirmed data available via API:** Project ID/title/stage/status/description, full address + lat/long, start/end dates, estimated value, GC company name, contact name/email/phone.
+
+**Critical unknowns (require sales engagement to confirm):**
+- Whether trade category ("Acoustical Ceiling and Wall Panels" is a confirmed named category) is a filterable API parameter
+- Whether plan document download URLs are returned
+- Whether webhook/event stream exists or polling is required
+
+**Recommended paths (priority order):**
+1. **Call PlanHub sales** (1-866-752-6482) — request Data & API product for subcontractor AI pipeline use case; annual license, 3–5 day implementation
+2. **Playwright session automation** — intercept Angular SPA API calls from logged-in session to discover real endpoint paths and schema (grey area under ToS but fastest technical path)
+3. **Email alert parsing** — PlanHub sends emails for keyword/trade matches; parse with Gmail API → extract project links → drive authenticated browser session for downloads
+4. **STACK partner path** — PlanHub ↔ STACK Construction Technologies have active integration; STACK has a documented API that may surface PlanHub project data
+
+**Backend tech stack (for reverse engineering):** PHP/Laravel + Angular 2+ SPA, AWS RDS + S3, `api.planhub.live` live endpoint (Cloudflare-fronted, returns JSON, auth required).
+
+---
+
+### 8.2: Authenticated Session Automation ❌ Not started
+
+**What to build:** Playwright-based scraper that runs under the user's authenticated PlanHub session to:
+- Intercept network calls from `subcontractor.planhub.com` to discover actual API endpoint paths, auth headers, and JSON schemas
+- Automate project search filtered by "Acoustical Ceiling and Wall Panels" trade + Florida geography
+- Detect new project invitations since last run
+- Download plan PDF attachments (pre-signed S3 URLs via the subcontractor UI)
+
+**Key files to create:**
+- `src/integrations/planhub/session_client.py` — Playwright async context manager with cookie-based auth
+- `src/integrations/planhub/project_fetcher.py` — project listing + filtering logic
+- `src/integrations/planhub/document_downloader.py` — PDF download with retry + S3 caching
+
+---
+
+### 8.3: Project Matching & Filtering ❌ Not started
+
+**What to build:** Scoring layer that decides whether an incoming PlanHub project is worth estimating:
+- Trade match: Division 09 scope (ACT 09 51 00, AWP/FW 09 77 00, SM 27 51 26)
+- Geography: Florida primary, southeast US secondary
+- Bid timeline: ≥5 business days remaining (enough time to estimate)
+- Value range: ≥$15,000 estimated value (minimum viable job)
+- Deduplication: don't re-estimate projects already in Acoustimator DB
+
+---
+
+### 8.4: Auto-Estimation Pipeline ❌ Not started
+
+**What to build:**
+- Scheduled job (GitHub Actions cron or Inngest equivalent) that runs 8.2 + 8.3 daily
+- On match: download PDF → `estimate_from_pdf()` → persist to DB with status `"discovered"` and `source="planhub"`
+- Slack/email notification to team with project summary and estimate link
+- New `source` and `planhub_project_id` columns on `estimates` table
+
+---
+
+### 8.5: Review Queue UI ❌ Not started
+
+**What to build:** Dedicated "Discovered" column in the Kanban board (or separate Inbox tab) for PlanHub-sourced estimates showing:
+- Bid due date countdown badge (red if <48h, amber if <5 days)
+- GC name, location, PlanHub project link
+- AI-generated estimate with confidence level
+- One-click "Accept & Estimate" (moves to Draft) or "Pass" (archives)
+
+---
+
+### 8.6: Bid Submission ❌ Not started
+
+**Dependency:** Requires formal PlanHub API agreement or documented internal API path.
+
+**What to build:** Programmatic bid submission that posts CA's quote PDF + total to PlanHub when the user approves a finalized estimate, then logs submission date and tracks win/loss outcome back to Acoustimator for model feedback.
 
 ---
 
@@ -678,24 +783,42 @@ Full CA brand theme + real API wiring (PRs #8, #10):
 | Phase 6.2 | ✅ | Next.js frontend, full API wiring, CA brand theme |
 | Phase 6.3 | ✅ | Dashboard live stat cards, Cost/SF Trends with Year/Quarter/Month granularity toggle |
 | Phase 6.4 | ✅ | Estimate builder, scope type selector, delete scope, comparable projects fix, full light-mode |
+| Phase 6.4.5 | ✅ | Kanban UX: bidirectional drag, amber pre-validation hints, chevron hover, status flow enforcement |
+| Phase 6.4.6 | ✅ | Threaded estimate notes (DB-backed, author/edit/delete), custom delete confirmation modal |
+| Phase 6.4.7 | ✅ | ProjectTypeBadge: colored icon pills for all 10 project types everywhere type is displayed |
+| Phase 6.4.8 | ✅ | WaveformLoader: CA-green acoustic wave SVG animation replaces all generic spinners |
 | Phase 6.5 | ✅ | Quote PDF generated and downloadable; Generate Quote button + template selector wired in UI |
 | Phase 6.6 | ✅ | Auth.js v5, login, route protection, admin panel, sidebar account popup |
 | Phase 7.1 | ✅ | Actual cost recording, MAPE/bias tracking, variance panel on estimate detail (PR #16) |
-| Phase 7.2 | ✅ | Retraining pipeline with A/B comparison + rollback; POST /api/admin/retrain |
+| Phase 7.2 | ✅ | Retraining pipeline with A/B comparison + rollback; POST /api/admin/retrain; GitHub Actions monthly cron |
 | Phase 7.3 | ✅ | Vendor price tracking, Armstrong +28.9% alert, dashboard card (PR #16) |
 | Phase 7.4 | ⚠️ | Unknown product flagging in API + UI; catalog entry workflow not yet built |
+| Phase 8.1 | ✅ | PlanHub API research complete — gated commercial product, no public docs, paths documented |
+| Phase 8.2 | ❌ | Playwright session automation — not started |
+| Phase 8.3 | ❌ | Project matching & filtering logic — not started |
+| Phase 8.4 | ❌ | Auto-estimation pipeline + scheduled job — not started |
+| Phase 8.5 | ❌ | Review queue UI (Discovered Kanban column) — not started |
+| Phase 8.6 | ❌ | Bid submission — blocked on API access |
 
 ---
 
 ## Immediate Next Steps (Priority Order)
 
-1. **Catalog entry UI** — Allow users to promote an unknown product from the estimate detail warning into the products catalog (completes Phase 7.4)
-2. **Neon↔Vercel integration** — Enable preview branch auto-provisioning in Vercel dashboard → Storage → Connect → Neon (one-time UI step)
-3. **Retrain models** — Now that `project_type` is populated for all 124 projects, retrain cost/markup models to incorporate the new signal: `POST /api/admin/retrain` or `python scripts/retrain_models.py --force`
-4. **Test model improvement** — Compare new MAPE scores vs. current (Markup model baseline R²=0.36 should improve with project_type feature)
-5. **GitHub Actions cron** — Add `.github/workflows/monthly_retrain.yml` to call `POST /api/admin/retrain` on a monthly schedule
+1. **PlanHub sales call** — Call 1-866-752-6482 and request "Data & API" product access; ask specifically about trade filtering, document download URLs, and webhook support
+2. **PlanHub session inspection** — While logged into `subcontractor.planhub.com`, open DevTools → Network → filter XHR, search "Acoustical Ceiling" and note the actual endpoint URLs, auth headers, and response schema
+3. **Catalog entry UI** — Allow users to promote an unknown product from the estimate detail warning into the products catalog (completes Phase 7.4)
+4. **Retrain models** — Now that `project_type` is populated for all 124 projects, retrain cost/markup models: `POST /api/admin/retrain` or `python scripts/retrain_models.py --force`
+5. **Neon↔Vercel integration** — Enable preview branch auto-provisioning in Vercel dashboard → Storage → Connect → Neon (one-time UI step, user action required)
 
 *Previously completed:*
+- ~~SSE streaming endpoint~~ → `POST /api/estimates/stream` with real-time page-by-page progress events; frontend uses `fetch()` stream reader replacing fake timer; live subtitle under active step (e.g. "Vision API: page 4 of 20")
+- ~~Vision API enabled~~ → `use_vision=True` in estimate creation route; `MAX_VISION_PAGES = 9999` (uncapped); fires on raster pages only
+- ~~Additional cost items~~ → `EstimateAdditionalItem` DB table + full CRUD API (`GET/POST/PATCH/DELETE /api/estimates/{id}/additional-items`) + `AdditionalItemsSection` frontend component with 12 item types, inline edit, optimistic delete
+- ~~Labor cost breakdown~~ → Sub-row under each scope showing "↳ Labor: X.X days @ $725/day" with `labor_price` in dollar column; `additional_items_total` in tfoot; grand total includes both
+- ~~labor_price recompute bug~~ → Scope PATCH now recomputes `labor_price = man_days × daily_labor_rate` when `labor_days` is updated
+- ~~Sidebar collapse/expand~~ → Desktop sidebar collapses to 56px icon-rail; edge toggle button straddles right border at vertical midpoint; `Cmd/Ctrl+B` shortcut; `localStorage` persistence; smooth 200ms width transition
+- ~~FilterSelect viewport-aware~~ → Dropdown flips upward when insufficient space below viewport (measures remaining space vs. estimated height on open)
+- ~~Notes author auto-fill~~ → `useSession` pre-fills author name from NextAuth session; name input hidden when logged in
 - ~~Run DB migration~~ → alembic migration 002 applied
 - ~~Populate `project_type`~~ → 124/124 projects classified (healthcare:18, office:10, education:10, worship:10, gov:5, residential:4, other:67)
 - ~~Phase 6.5: Complete quote generation~~ → Generate Quote button + template selector + download all wired
@@ -705,6 +828,12 @@ Full CA brand theme + real API wiring (PRs #8, #10):
 - ~~Phase 7.3: Vendor price tracking~~ → PR #16
 - ~~Phase 7.4 (partial)~~ → Unknown product flagging in API + estimate detail UI
 - ~~Production env vars~~ → AUTH_SECRET, NEXTAUTH_URL, ACOUSTIMATOR_API_KEY all set on Vercel
+- ~~GitHub Actions monthly retrain cron~~ → `.github/workflows/monthly_retrain.yml` live
+- ~~Kanban UX improvements~~ → bidirectional drag, amber pre-validation, chevron hover, status flow
+- ~~Estimate notes thread~~ → DB-backed, author/edit/delete, localStorage author name
+- ~~ProjectTypeBadge~~ → colored icon pills everywhere project type is displayed
+- ~~WaveformLoader~~ → CA-green acoustic wave animation replaces all generic spinners
+- ~~CORS fixes~~ → pure ASGI middleware, correct LIFO middleware order
 
 ---
 

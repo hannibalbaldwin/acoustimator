@@ -23,6 +23,7 @@ class ScopeResponse(BaseModel):
     material_cost: float | None = None
     markup_pct: float | None = None
     man_days: float | None = None
+    daily_labor_rate: float | None = None
     labor_price: float | None = None
     total: float | None = None
     confidence_score: float | None = None
@@ -50,6 +51,7 @@ class ScopeResponse(BaseModel):
             material_cost=_f(scope.material_cost),  # type: ignore[attr-defined]
             markup_pct=_f(scope.markup_pct),  # type: ignore[attr-defined]
             man_days=_f(scope.man_days),  # type: ignore[attr-defined]
+            daily_labor_rate=_f(scope.daily_labor_rate),  # type: ignore[attr-defined]
             labor_price=_f(scope.labor_price),  # type: ignore[attr-defined]
             total=_f(scope.total),  # type: ignore[attr-defined]
             confidence_score=_f(scope.confidence_score),  # type: ignore[attr-defined]
@@ -167,7 +169,7 @@ class EstimateListItem(BaseModel):
     scope_types: list[str] = []
     # Pre-validation flags — lets the Kanban board show invalid drop targets
     # before the card is dropped, without a round-trip to the server.
-    has_scope_with_sf: bool = False   # any scope with area_sf > 0
+    has_scope_with_sf: bool = False  # any scope with area_sf > 0
     has_accepted_scope: bool = False  # any scope with manually_adjusted = True
 
 
@@ -204,3 +206,26 @@ class UpdateEstimateBody(BaseModel):
 
     status: str | None = None
     notes: str | None = None
+
+
+class AdditionalItemResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    estimate_id: UUID
+    item_type: str
+    description: str | None = None
+    amount: float
+    created_at: datetime
+
+
+class CreateAdditionalItemRequest(BaseModel):
+    item_type: str
+    description: str | None = None
+    amount: float
+
+
+class UpdateAdditionalItemRequest(BaseModel):
+    item_type: str | None = None
+    description: str | None = None
+    amount: float | None = None

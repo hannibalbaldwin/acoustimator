@@ -145,7 +145,7 @@ export function ProjectTypeBadge({ type, className }: ProjectTypeBadgeProps) {
 
   return (
     <span style={style} className={className}>
-      {React.cloneElement(icon, { style: { flexShrink: 0 } })}
+      <span style={{ flexShrink: 0, display: 'flex' }}>{icon}</span>
       {label}
     </span>
   )

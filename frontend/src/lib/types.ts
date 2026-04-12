@@ -10,12 +10,37 @@ export interface ScopeResponse {
   material_cost_per_sf: number | null
   markup_pct: number | null
   labor_days: number | null
+  labor_price: number | null
+  daily_labor_rate: number | null
   total_cost: number | null
   confidence_score: number | null
   confidence_level: ConfidenceLevel
   is_ai_suggested: boolean
   is_accepted: boolean
   unknown_product?: boolean
+}
+
+export type AdditionalItemType =
+  | 'lift_rental'
+  | 'travel_per_diem'
+  | 'travel_hotels'
+  | 'travel_flights'
+  | 'equipment'
+  | 'consumables'
+  | 'commission'
+  | 'punch_list'
+  | 'site_visit'
+  | 'setup_unload'
+  | 'bond'
+  | 'other'
+
+export interface AdditionalItem {
+  id: string
+  estimate_id: string
+  item_type: AdditionalItemType
+  description: string | null
+  amount: number
+  created_at: string
 }
 
 export interface CatalogProduct {

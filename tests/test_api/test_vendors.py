@@ -8,7 +8,6 @@ from uuid import uuid4
 import pytest
 from httpx import AsyncClient
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -58,9 +57,7 @@ async def test_vendor_price_summary_returns_list(client: AsyncClient) -> None:
     baseline_row = make_window_row(
         vendor_id=vid, avg=10000.0, count=3, attr_avg="baseline_avg", attr_count="baseline_count"
     )
-    recent_row = make_window_row(
-        vendor_id=vid, avg=11500.0, count=2, attr_avg="recent_avg", attr_count="recent_count"
-    )
+    recent_row = make_window_row(vendor_id=vid, avg=11500.0, count=2, attr_avg="recent_avg", attr_count="recent_count")
 
     mock_db = AsyncMock()
 
@@ -136,9 +133,7 @@ async def test_vendor_price_summary_alert_on_large_price_change(client: AsyncCli
     baseline_row = make_window_row(
         vendor_id=vid, avg=10000.0, count=3, attr_avg="baseline_avg", attr_count="baseline_count"
     )
-    recent_row = make_window_row(
-        vendor_id=vid, avg=12000.0, count=3, attr_avg="recent_avg", attr_count="recent_count"
-    )
+    recent_row = make_window_row(vendor_id=vid, avg=12000.0, count=3, attr_avg="recent_avg", attr_count="recent_count")
 
     mock_db = AsyncMock()
     all_time_result = MagicMock()
@@ -180,9 +175,7 @@ async def test_vendor_price_summary_no_alert_on_small_price_change(client: Async
     baseline_row = make_window_row(
         vendor_id=vid, avg=10000.0, count=2, attr_avg="baseline_avg", attr_count="baseline_count"
     )
-    recent_row = make_window_row(
-        vendor_id=vid, avg=10500.0, count=2, attr_avg="recent_avg", attr_count="recent_count"
-    )
+    recent_row = make_window_row(vendor_id=vid, avg=10500.0, count=2, attr_avg="recent_avg", attr_count="recent_count")
 
     mock_db = AsyncMock()
     all_time_result = MagicMock()

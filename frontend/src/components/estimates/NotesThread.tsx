@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useSession } from 'next-auth/react'
 import {
   listEstimateNotes,
   createEstimateNote,
@@ -186,6 +187,9 @@ interface NotesThreadProps {
 }
 
 export function NotesThread({ estimateId, isLight = false }: NotesThreadProps) {
+  const { data: session } = useSession()
+  const sessionName = session?.user?.name ?? session?.user?.email ?? null
+
   const [notes, setNotes] = useState<EstimateNote[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -211,13 +215,17 @@ export function NotesThread({ estimateId, isLight = false }: NotesThreadProps) {
   const inputBorder = isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'
   const dividerColor = isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)'
 
-  // Load persisted author name
+  // Populate author: session name takes priority, fall back to localStorage
   useEffect(() => {
+    if (sessionName) {
+      setComposeAuthor(sessionName)
+      return
+    }
     try {
       const stored = localStorage.getItem(AUTHOR_KEY)
       if (stored) setComposeAuthor(stored)
     } catch { /* ignore */ }
-  }, [])
+  }, [sessionName])
 
   // Fetch notes on mount
   useEffect(() => {
@@ -399,22 +407,25 @@ export function NotesThread({ estimateId, isLight = false }: NotesThreadProps) {
 
       {/* Compose box */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        <input
-          type="text"
-          placeholder="Your name"
-          value={composeAuthor}
-          onChange={(e) => handleAuthorChange(e.target.value)}
-          style={{
-            width: '120px',
-            fontSize: '12px',
-            padding: '5px 8px',
-            borderRadius: '6px',
-            background: inputBg,
-            border: `1px solid ${inputBorder}`,
-            color: textPrimary,
-            outline: 'none',
-          }}
-        />
+        {/* Name field — hidden when session provides the author */}
+        {!sessionName && (
+          <input
+            type="text"
+            placeholder="Your name"
+            value={composeAuthor}
+            onChange={(e) => handleAuthorChange(e.target.value)}
+            style={{
+              width: '120px',
+              fontSize: '12px',
+              padding: '5px 8px',
+              borderRadius: '6px',
+              background: inputBg,
+              border: `1px solid ${inputBorder}`,
+              color: textPrimary,
+              outline: 'none',
+            }}
+          />
+        )}
         <textarea
           placeholder="Add a note..."
           rows={3}

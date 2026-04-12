@@ -60,10 +60,11 @@ function ScopeRow({ scope, isLight, onAccept, onSave, onDelete, onAddToCatalog }
   const isNewBlank = scope.is_ai_suggested === false && scope.confidence_score === null
 
   return (
+    <>
     <tr
       className="group transition-colors"
       style={{
-        borderBottom: `1px solid ${isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.04)'}`,
+        borderBottom: scope.labor_days != null && scope.labor_days > 0 ? 'none' : `1px solid ${isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.04)'}`,
         borderLeft: `2px solid ${accentColor}`,
       }}
       onMouseEnter={(e) =>
@@ -323,6 +324,26 @@ function ScopeRow({ scope, isLight, onAccept, onSave, onDelete, onAddToCatalog }
         </div>
       </td>
     </tr>
+    {scope.labor_days != null && scope.labor_days > 0 && (
+      <tr style={{ borderBottom: `1px solid ${isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.04)'}` }}>
+        <td style={{ borderLeft: `2px solid ${accentColor}` }} />
+        <td
+          colSpan={4}
+          className="px-3 pb-1.5 text-[11px]"
+          style={{ color: isLight ? '#7890aa' : '#3a4f6a', paddingTop: 0 }}
+        >
+          ↳ Labor: {scope.labor_days.toFixed(1)} days @ ${(scope.daily_labor_rate ?? 725).toLocaleString()}/day
+        </td>
+        <td className="px-3 pb-1.5 text-right text-[11px] tabular-nums" style={{ color: isLight ? '#7890aa' : '#3a4f6a', paddingTop: 0, fontFamily: 'var(--font-jetbrains-mono), monospace' }}>
+          {scope.labor_days.toFixed(1)}
+        </td>
+        <td className="px-3 pb-1.5 text-right text-[11px] tabular-nums" style={{ color: isLight ? '#7890aa' : '#3a4f6a', paddingTop: 0, fontFamily: 'var(--font-jetbrains-mono), monospace' }}>
+          {scope.labor_price != null ? `$${scope.labor_price.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : '—'}
+        </td>
+        <td colSpan={2} />
+      </tr>
+    )}
+    </>
   )
 }
 
@@ -334,11 +355,12 @@ interface EstimateTableProps {
   onScopeUpdate?: (scopeId: string, edits: EditState) => void
   onScopeDelete?: (scopeId: string) => void
   onAddToCatalog?: (scope: ScopeResponse) => void
+  additionalItemsTotal?: number
 }
 
 const BLANK_SCOPE_TYPES: ScopeType[] = ['ACT', 'AWP', 'FW', 'SM', 'WW', 'Baffles', 'RPG', 'Other']
 
-export function EstimateTable({ estimateId, scopes, isLight, onScopesChange, onScopeUpdate, onScopeDelete, onAddToCatalog }: EstimateTableProps) {
+export function EstimateTable({ estimateId, scopes, isLight, onScopesChange, onScopeUpdate, onScopeDelete, onAddToCatalog, additionalItemsTotal }: EstimateTableProps) {
   const [localScopes, setLocalScopes] = useState<ScopeResponse[]>(scopes)
 
   const handleAccept = async (id: string, accepted: boolean) => {
@@ -392,6 +414,8 @@ export function EstimateTable({ estimateId, scopes, isLight, onScopesChange, onS
       material_cost_per_sf: null,
       markup_pct: null,
       labor_days: null,
+      labor_price: null,
+      daily_labor_rate: null,
       total_cost: null,
       confidence_score: null,
       confidence_level: 'low',
@@ -512,10 +536,22 @@ export function EstimateTable({ estimateId, scopes, isLight, onScopesChange, onS
                   color: '#a1d67c',
                 }}
               >
-                {formatCurrency(totalCost)}
+                {formatCurrency(totalCost + (additionalItemsTotal ?? 0))}
               </td>
               <td colSpan={2} className="px-3 py-2.5" />
             </tr>
+            {(additionalItemsTotal ?? 0) > 0 && (
+              <tr style={{ borderTop: `1px solid ${isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'}` }}>
+                <td colSpan={5} className="px-3 py-1.5 text-[11px]" style={{ color: isLight ? '#7890aa' : '#3a4f6a' }}>
+                  + Additional Items
+                </td>
+                <td className="px-3 py-1.5" />
+                <td className="px-3 py-1.5 text-right tabular-nums text-[12px]" style={{ fontFamily: 'var(--font-jetbrains-mono), monospace', color: isLight ? '#4a5e7a' : '#6b82a0' }}>
+                  {formatCurrency(additionalItemsTotal ?? 0)}
+                </td>
+                <td colSpan={2} />
+              </tr>
+            )}
           </tfoot>
         </table>
       </div>

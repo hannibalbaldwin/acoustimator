@@ -7,7 +7,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from httpx import AsyncClient
 
-
 # ---------------------------------------------------------------------------
 # GET /api/stats/summary — 200 with required keys
 # ---------------------------------------------------------------------------
@@ -20,10 +19,10 @@ async def test_stats_summary_returns_200(client: AsyncClient) -> None:
 
     # Four sequential scalar_one() calls: total_projects, active_estimates, avg_act, total_sf
     results = [MagicMock(), MagicMock(), MagicMock(), MagicMock()]
-    results[0].scalar_one.return_value = 125          # total_projects
-    results[1].scalar_one.return_value = 18           # active_estimates
-    results[2].scalar_one.return_value = 4.87         # avg_act_cost_per_sf
-    results[3].scalar_one.return_value = 987654.0     # total_historical_sf
+    results[0].scalar_one.return_value = 125  # total_projects
+    results[1].scalar_one.return_value = 18  # active_estimates
+    results[2].scalar_one.return_value = 4.87  # avg_act_cost_per_sf
+    results[3].scalar_one.return_value = 987654.0  # total_historical_sf
 
     mock_db.execute = AsyncMock(side_effect=results)
 
@@ -55,8 +54,8 @@ async def test_stats_summary_null_averages(client: AsyncClient) -> None:
     results = [MagicMock(), MagicMock(), MagicMock(), MagicMock()]
     results[0].scalar_one.return_value = 0
     results[1].scalar_one.return_value = 0
-    results[2].scalar_one.return_value = None   # No ACT data
-    results[3].scalar_one.return_value = None   # No scope data
+    results[2].scalar_one.return_value = None  # No ACT data
+    results[3].scalar_one.return_value = None  # No scope data
 
     mock_db.execute = AsyncMock(side_effect=results)
 

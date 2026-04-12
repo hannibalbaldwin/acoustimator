@@ -195,11 +195,7 @@ async def _build_response(estimate: Estimate, db: AsyncSession) -> EstimateRespo
 
     # Collect deduplicated unknown product names (product_name set but product_id is null)
     unknown_products: list[str] = list(
-        dict.fromkeys(
-            s.product_name
-            for s in scopes
-            if s.product_name is not None and s.product_id is None
-        )
+        dict.fromkeys(s.product_name for s in scopes if s.product_name is not None and s.product_id is None)
     )
 
     return EstimateResponse(
@@ -268,9 +264,7 @@ async def list_estimates(
             dict.fromkeys(str(s.scope_type) for s in (est.estimate_scopes or []) if s.scope_type is not None)
         )
         scopes = est.estimate_scopes or []
-        has_scope_with_sf = any(
-            (s.square_footage is not None and s.square_footage > 0) for s in scopes
-        )
+        has_scope_with_sf = any((s.square_footage is not None and s.square_footage > 0) for s in scopes)
         has_accepted_scope = any(getattr(s, "manually_adjusted", False) for s in scopes)
         items.append(
             EstimateListItem(
@@ -293,6 +287,65 @@ async def list_estimates(
 # ---------------------------------------------------------------------------
 # POST /api/estimates
 # ---------------------------------------------------------------------------
+
+
+async def _persist_estimate(
+    db: AsyncSession,
+    project_estimates: list,
+    *,
+    project_name: str,
+    gc_name: str | None,
+    address: str | None,
+) -> UUID:
+    """Merge multiple ProjectEstimate objects and persist to the database.
+
+    Returns the UUID of the newly created Estimate row.
+    """
+    from src.estimation.models import ScopeEstimate  # noqa: F401 — used for type context
+
+    merged_scopes = []
+    total_cost = Decimal(0)
+    total_man_days = Decimal(0)
+    max_confidence = 0.0
+
+    for pe in project_estimates:
+        merged_scopes.extend(pe.scope_estimates)
+        total_cost += pe.total_estimated_cost
+        total_man_days += pe.estimated_man_days
+        if pe.extraction_confidence > max_confidence:
+            max_confidence = pe.extraction_confidence
+
+    estimate = Estimate(
+        name=project_name,
+        gc_name=gc_name,
+        project_address=address,
+        source_plans=[str(pe.source_plan) for pe in project_estimates],
+        status=EstimateStatus.DRAFT,
+        total_estimate=total_cost,
+        overall_confidence=Decimal(str(max_confidence)),
+    )
+    db.add(estimate)
+    await db.flush()  # get estimate.id
+
+    for se in merged_scopes:
+        scope_row = EstimateScope(
+            estimate_id=estimate.id,
+            tag=se.scope_tag,
+            scope_type=se.scope_type,
+            product_name=se.product_hint,
+            square_footage=se.area_sf,
+            material_cost=se.material_cost,
+            markup_pct=se.predicted_markup_pct,
+            man_days=se.predicted_man_days,
+            labor_price=se.labor_cost,
+            total=se.total,
+            confidence_score=Decimal(str(se.confidence)) if se.confidence is not None else None,
+            ai_notes="; ".join(se.comparable_projects) if se.comparable_projects else None,
+        )
+        db.add(scope_row)
+
+    await db.commit()
+    return estimate.id
 
 
 @router.post("", status_code=201, response_model=EstimateResponse)
@@ -331,7 +384,7 @@ async def create_estimate(
             try:
                 pe = await loop.run_in_executor(
                     None,
-                    lambda p=pdf_path: estimate_from_pdf(str(p), use_vision=False),
+                    lambda p=pdf_path: estimate_from_pdf(str(p), use_vision=True),
                 )
                 project_estimates.append(pe)
             except Exception as exc:
@@ -343,59 +396,16 @@ async def create_estimate(
             detail="Could not extract any estimates from the uploaded plans",
         )
 
-    # Merge multi-plan estimates (sum totals, combine scopes)
-    from src.estimation.models import ScopeEstimate
-
-    merged_scopes: list[ScopeEstimate] = []
-    total_cost = Decimal(0)
-    total_man_days = Decimal(0)
-    total_area = Decimal(0)
-    max_confidence = 0.0
-
-    for pe in project_estimates:
-        merged_scopes.extend(pe.scope_estimates)
-        total_cost += pe.total_estimated_cost
-        total_man_days += pe.estimated_man_days
-        if pe.total_area_sf:
-            total_area += pe.total_area_sf
-        if pe.extraction_confidence > max_confidence:
-            max_confidence = pe.extraction_confidence
-
-    # Persist to database
-    estimate = Estimate(
-        name=project_name,
+    estimate_id = await _persist_estimate(
+        db,
+        project_estimates,
+        project_name=project_name,
         gc_name=gc_name,
-        project_address=address,
-        source_plans=[str(pe.source_plan) for pe in project_estimates],
-        status=EstimateStatus.DRAFT,
-        total_estimate=total_cost,
-        overall_confidence=Decimal(str(max_confidence)),
+        address=address,
     )
-    db.add(estimate)
-    await db.flush()  # get estimate.id
 
-    for se in merged_scopes:
-        scope_row = EstimateScope(
-            estimate_id=estimate.id,
-            tag=se.scope_tag,
-            scope_type=se.scope_type,
-            product_name=se.product_hint,
-            square_footage=se.area_sf,
-            material_cost=se.material_cost,
-            markup_pct=se.predicted_markup_pct,
-            man_days=se.predicted_man_days,
-            labor_price=se.labor_cost,
-            total=se.total,
-            confidence_score=Decimal(str(se.confidence)) if se.confidence is not None else None,
-            ai_notes="; ".join(se.comparable_projects) if se.comparable_projects else None,
-        )
-        db.add(scope_row)
-
-    await db.commit()
-    await db.refresh(estimate)
-
-    # Reload with scopes
-    estimate = await _fetch_estimate_or_404(estimate.id, db)
+    # Reload with scopes and build response
+    estimate = await _fetch_estimate_or_404(estimate_id, db)
     return await _build_response(estimate, db)
 
 
@@ -465,9 +475,7 @@ async def update_estimate_status(
 
     if new_idx > current_idx:  # Forward — validate
         # Eagerly load scopes for validation
-        scope_result = await db.execute(
-            select(EstimateScope).where(EstimateScope.estimate_id == estimate_id)
-        )
+        scope_result = await db.execute(select(EstimateScope).where(EstimateScope.estimate_id == estimate_id))
         scopes = list(scope_result.scalars().all())
 
         if new_status == EstimateStatus.REVIEWED:
@@ -540,6 +548,11 @@ async def update_scope(
         scope.man_days = Decimal(str(body.labor_days))
     if body.is_accepted is not None:
         scope.manually_adjusted = body.is_accepted
+
+    # Recompute labor_price when man_days changes
+    if body.labor_days is not None:
+        daily_rate = scope.daily_labor_rate or Decimal("725")
+        scope.labor_price = scope.man_days * daily_rate
 
     # Recompute scope total: material_cost * (1 + markup_pct) + labor_price
     material_cost = scope.material_cost or Decimal(0)
