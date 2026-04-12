@@ -43,10 +43,7 @@ function fileInput(page: Page) {
 test.describe('New Estimate wizard — full pipeline', () => {
   test.beforeAll(() => {
     if (!fs.existsSync(PLAN_PDF)) {
-      throw new Error(
-        `Plan PDF not found: ${PLAN_PDF}\n` +
-          'Ensure Dropbox is synced and the +ITBs folder is accessible.',
-      )
+      test.skip(true, `Plan PDF not found: ${PLAN_PDF} — requires local Dropbox sync`)
     }
   })
 
