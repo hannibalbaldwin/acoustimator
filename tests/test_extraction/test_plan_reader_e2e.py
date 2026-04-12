@@ -14,10 +14,9 @@ from pathlib import Path
 
 import pytest
 
-from tests.conftest import requires_dropbox, requires_models
-from src.extraction.plan_reader import read_plan
 from src.estimation.estimator import estimate_from_plan_result
-
+from src.extraction.plan_reader import read_plan
+from tests.conftest import requires_dropbox, requires_models
 
 # ===========================================================================
 # Seven Pines — known-good vector PDF
@@ -87,7 +86,7 @@ def test_seven_pines_awp_areas_match_known_values(seven_pines_pdf: Path) -> None
     )
 
     expected_sorted = [378.18, 568.87, 648.33]
-    for scope, expected in zip(area_scopes, expected_sorted):
+    for scope, expected in zip(area_scopes, expected_sorted, strict=False):
         actual = float(scope.area_sf)
         assert abs(actual - expected) < 1.0, (
             f"{scope.scope_tag}: area_sf {actual:.2f} not within 1 SF of expected {expected}"
