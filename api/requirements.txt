@@ -19,3 +19,5 @@ python-dotenv>=1.0.0
 rich>=13.0.0
 alembic>=1.13.0
 psycopg2-binary>=2.9.0
+bcrypt>=4.0.0
+fastapi-nextauth-jwt>=0.1.0
