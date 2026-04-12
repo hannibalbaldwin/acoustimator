@@ -37,7 +37,7 @@ class ApiKeyMiddleware:
             await self.app(scope, receive, send)
             return
 
-        api_key = os.getenv("ACOUSTIMATOR_API_KEY")
+        api_key = (os.getenv("ACOUSTIMATOR_API_KEY") or "").strip()
         if not api_key:
             logger.warning("ACOUSTIMATOR_API_KEY not set — API auth disabled")
             await self.app(scope, receive, send)
