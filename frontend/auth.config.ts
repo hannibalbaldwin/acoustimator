@@ -6,6 +6,9 @@ export const authConfig: NextAuthConfig = {
   },
   callbacks: {
     authorized({ auth, request: { nextUrl } }) {
+      // Allow all requests in E2E test environments (CI smoke tests)
+      if (process.env.E2E_AUTH_BYPASS === 'true') return true
+
       const isLoggedIn = !!auth?.user
       const isOnLogin = nextUrl.pathname === '/login'
       if (isOnLogin) {

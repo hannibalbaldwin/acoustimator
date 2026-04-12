@@ -55,9 +55,14 @@ jobs:
         env:
           NEXT_PUBLIC_API_URL: http://localhost:8000
           NEXT_PUBLIC_API_KEY: ""
+          AUTH_SECRET: "ci-test-secret-not-for-production"
+          E2E_AUTH_BYPASS: "true"
         run: cd frontend && pnpm build
 
       - name: Start Next.js
+        env:
+          AUTH_SECRET: "ci-test-secret-not-for-production"
+          E2E_AUTH_BYPASS: "true"
         run: cd frontend && pnpm start &
 
       - name: Wait for services
