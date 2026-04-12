@@ -13,6 +13,7 @@ interface FilterSelectProps {
 
 export function FilterSelect({ value, onChange, options, className }: FilterSelectProps) {
   const [open, setOpen] = useState(false)
+  const [opensUpward, setOpensUpward] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const { theme } = useTheme()
   const isLight = theme === 'light'
@@ -25,6 +26,17 @@ export function FilterSelect({ value, onChange, options, className }: FilterSele
     document.addEventListener('mousedown', handle)
     return () => document.removeEventListener('mousedown', handle)
   }, [])
+
+  const handleToggle = () => {
+    if (!open && ref.current) {
+      const rect = ref.current.getBoundingClientRect()
+      // Each option ~36px + 8px padding; cap estimate at 320px
+      const estimatedHeight = Math.min(options.length * 36 + 8, 320)
+      const spaceBelow = window.innerHeight - rect.bottom
+      setOpensUpward(spaceBelow < estimatedHeight + 8)
+    }
+    setOpen((v) => !v)
+  }
 
   const bg = isLight ? '#ffffff' : '#0e1219'
   const border = isLight ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.12)'
@@ -39,7 +51,7 @@ export function FilterSelect({ value, onChange, options, className }: FilterSele
     <div ref={ref} style={{ position: 'relative', display: 'inline-block' }} className={className}>
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={handleToggle}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -68,7 +80,9 @@ export function FilterSelect({ value, onChange, options, className }: FilterSele
         <div
           style={{
             position: 'absolute',
-            top: 'calc(100% + 4px)',
+            ...(opensUpward
+              ? { bottom: 'calc(100% + 4px)' }
+              : { top: 'calc(100% + 4px)' }),
             left: 0,
             right: 0,
             zIndex: 50,

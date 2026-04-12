@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { PlanUploadZone } from '@/components/upload/PlanUploadZone'
 import { cn } from '@/lib/utils'
-import { createEstimate } from '@/lib/api'
 import type { ScopeType } from '@/lib/types'
 
 type Step = 1 | 2 | 3
@@ -70,15 +69,16 @@ function StepIndicator({ current, step }: { current: Step; step: Step }) {
 interface ProcessingStepRowProps {
   label: string
   status: 'done' | 'running' | 'pending'
+  progressMessage?: string
 }
 
-function ProcessingStepRow({ label, status }: ProcessingStepRowProps) {
+function ProcessingStepRow({ label, status, progressMessage }: ProcessingStepRowProps) {
   return (
     <div
-      className="flex items-center gap-3 py-3"
+      className="flex items-start gap-3 py-3"
       style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}
     >
-      <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
+      <div className="w-5 h-5 flex items-center justify-center flex-shrink-0 mt-[1px]">
         {status === 'done' && (
           <div
             className="w-5 h-5 rounded-full flex items-center justify-center"
@@ -102,18 +102,25 @@ function ProcessingStepRow({ label, status }: ProcessingStepRowProps) {
           />
         )}
       </div>
-      <span
-        className="text-[13px] font-medium"
-        style={{
-          color:
-            status === 'done' ? '#a1d67c' : status === 'running' ? '#d8e4f5' : '#3a4f6a',
-        }}
-      >
-        {label}
-        {status === 'done' && (
-          <span className="ml-1.5 text-[11px] opacity-60">✓</span>
+      <div>
+        <span
+          className="text-[13px] font-medium"
+          style={{
+            color:
+              status === 'done' ? '#a1d67c' : status === 'running' ? '#d8e4f5' : '#3a4f6a',
+          }}
+        >
+          {label}
+          {status === 'done' && (
+            <span className="ml-1.5 text-[11px] opacity-60">✓</span>
+          )}
+        </span>
+        {status === 'running' && progressMessage && (
+          <p className="text-[11px] mt-0.5" style={{ color: '#3a4f6a' }}>
+            {progressMessage}
+          </p>
         )}
-      </span>
+      </div>
     </div>
   )
 }
@@ -135,33 +142,21 @@ export default function NewEstimatePage() {
   const [estSF, setEstSF] = useState('')
   const [scopeHints, setScopeHints] = useState<ScopeType[]>([])
   const [processingStep, setProcessingStep] = useState(0)
+  const [progressMessage, setProgressMessage] = useState<string>('')
   const [complete, setComplete] = useState(false)
   const [estimateId, setEstimateId] = useState<string | null>(null)
   const [apiError, setApiError] = useState<string | null>(null)
   const apiCalledRef = useRef(false)
 
-  // Animate the first 4 steps while the API call is in-flight,
-  // then hold at step 5 "Building estimate" until it resolves.
+  // Stream progress from the SSE endpoint and advance steps as events arrive.
   useEffect(() => {
     if (step !== 3) return
     if (complete) return
     if (apiCalledRef.current) return
-
     apiCalledRef.current = true
+
     setProcessingStep(1)
 
-    // Simulate the first 4 steps
-    const interval = setInterval(() => {
-      setProcessingStep((prev) => {
-        if (prev >= 4) {
-          clearInterval(interval)
-          return 5 // Hold at "Building estimate" (running)
-        }
-        return prev + 1
-      })
-    }, 1800)
-
-    // Fire the real API call
     const formData = new FormData()
     files.forEach((f) => formData.append('plans', f))
     formData.append('project_name', projectName)
@@ -169,19 +164,69 @@ export default function NewEstimatePage() {
     if (address.trim()) formData.append('address', address)
     scopeHints.forEach((h) => formData.append('scope_type_hints', h))
 
-    createEstimate(formData)
-      .then((estimate) => {
-        clearInterval(interval)
-        setProcessingStep(PROCESSING_STEPS.length + 1) // all done
-        setEstimateId(estimate.id)
-        setComplete(true)
-      })
-      .catch((err: unknown) => {
-        clearInterval(interval)
-        setApiError(err instanceof Error ? err.message : 'Estimation failed. Please try again.')
-      })
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? ''
+    const API_KEY = process.env.NEXT_PUBLIC_API_KEY ?? ''
+    const headers: Record<string, string> = {}
+    if (API_KEY) headers['X-API-Key'] = API_KEY
 
-    return () => clearInterval(interval)
+    fetch(`${API_BASE}/api/estimates/stream`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    }).then(async (res) => {
+      if (!res.ok || !res.body) {
+        setApiError('Estimation failed. Please try again.')
+        return
+      }
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n\n')
+        buffer = lines.pop() ?? ''
+
+        for (const chunk of lines) {
+          const line = chunk.replace(/^data: /, '').trim()
+          if (!line) continue
+          try {
+            const evt = JSON.parse(line) as {
+              event: string
+              message?: string
+              page?: number
+              total?: number
+              estimate_id?: string
+            }
+            if (evt.event === 'uploading') {
+              setProcessingStep(1)
+              setProgressMessage(evt.message ?? '')
+            } else if (evt.event === 'extracting' || evt.event === 'extracting_vision') {
+              setProcessingStep(2)
+              setProgressMessage(evt.message ?? '')
+            } else if (evt.event === 'detecting_scopes') {
+              setProcessingStep(3)
+              setProgressMessage(evt.message ?? '')
+            } else if (evt.event === 'running_models') {
+              setProcessingStep(4)
+              setProgressMessage(evt.message ?? '')
+            } else if (evt.event === 'done' && evt.estimate_id) {
+              setProcessingStep(PROCESSING_STEPS.length + 1)
+              setEstimateId(evt.estimate_id)
+              setComplete(true)
+            } else if (evt.event === 'error') {
+              setApiError(evt.message ?? 'Estimation failed.')
+            }
+          } catch {
+            // skip malformed lines
+          }
+        }
+      }
+    }).catch((err: unknown) => {
+      setApiError(err instanceof Error ? err.message : 'Estimation failed. Please try again.')
+    })
   }, [step, complete, files, projectName, gcName, address, scopeHints])
 
   const toggleScopeHint = (t: ScopeType) => {
@@ -431,13 +476,17 @@ export default function NewEstimatePage() {
             style={{ background: '#131822', border: '1px solid rgba(255,255,255,0.08)' }}
           >
             <div>
-              {PROCESSING_STEPS.map((s, idx) => (
-                <ProcessingStepRow
-                  key={s.id}
-                  label={s.label}
-                  status={getProcessingStatus(idx + 1)}
-                />
-              ))}
+              {PROCESSING_STEPS.map((s, idx) => {
+                const status = getProcessingStatus(idx + 1)
+                return (
+                  <ProcessingStepRow
+                    key={s.id}
+                    label={s.label}
+                    status={status}
+                    progressMessage={status === 'running' ? progressMessage : undefined}
+                  />
+                )
+              })}
             </div>
 
             {apiError && (

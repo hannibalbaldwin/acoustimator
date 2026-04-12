@@ -292,7 +292,6 @@ export function AdditionalItemsSection({
     <div
       style={{
         borderRadius: '8px',
-        overflow: 'hidden',
         background: cardBg,
         border: `1px solid ${cardBorder}`,
       }}

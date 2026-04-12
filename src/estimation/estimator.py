@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import csv
 import logging
+from collections.abc import Callable
 from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -496,6 +497,7 @@ def estimate_from_pdf(
     use_vision: bool = False,
     daily_labor_rate: float = 725.0,
     sales_tax_pct: float = 0.075,
+    progress_fn: Callable[[dict], None] | None = None,
 ) -> Any:
     """Read a plan PDF and produce a full ProjectEstimate in one call.
 
@@ -510,6 +512,8 @@ def estimate_from_pdf(
         Crew day rate in USD.
     sales_tax_pct :
         FL sales tax fraction applied to material cost.
+    progress_fn :
+        Optional callback invoked with progress dicts during extraction and estimation.
 
     Returns
     -------
@@ -519,7 +523,13 @@ def estimate_from_pdf(
 
     pdf_path = Path(pdf_path)
     logger.info("Reading plan: %s", pdf_path)
-    plan_result = read_plan(pdf_path, use_vision=use_vision)
+    plan_result = read_plan(pdf_path, use_vision=use_vision, progress_fn=progress_fn)
+
+    if progress_fn is not None:
+        progress_fn({"event": "detecting_scopes", "message": "Detecting scopes..."})
+
+    if progress_fn is not None:
+        progress_fn({"event": "running_models", "message": "Running cost models..."})
 
     return estimate_from_plan_result(
         plan_result,

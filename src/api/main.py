@@ -14,6 +14,7 @@ from src.api.routes import admin as admin_router
 from src.api.routes import auth_verify as auth_verify_router
 from src.api.routes import estimate_additional_items as estimate_additional_items_router
 from src.api.routes import estimate_notes as estimate_notes_router
+from src.api.routes import estimate_stream as estimate_stream_router
 from src.api.routes import estimates as estimates_router
 from src.api.routes import products as products_router
 from src.api.routes import projects as projects_router
@@ -64,6 +65,7 @@ app.include_router(admin_router.router)
 app.include_router(auth_verify_router.router)
 app.include_router(estimate_additional_items_router.router, prefix="/api/estimates")
 app.include_router(estimate_notes_router.router, prefix="/api/estimates")
+app.include_router(estimate_stream_router.router, prefix="/api/estimates")
 app.include_router(estimates_router.router)
 app.include_router(products_router.router)
 app.include_router(projects_router.router)

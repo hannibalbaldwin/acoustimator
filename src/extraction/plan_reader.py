@@ -6,6 +6,7 @@ Usage:
 """
 
 import asyncio
+from collections.abc import Callable
 from decimal import Decimal
 from pathlib import Path
 
@@ -25,8 +26,8 @@ from src.extraction.plan_parser.scope_suggester import suggest_scopes
 from src.extraction.plan_parser.sf_estimator import estimate_total_sf
 from src.extraction.plan_parser.text_extractor import extract_annotations
 
-# Maximum raster pages to send to Vision API (cost control)
-MAX_VISION_PAGES = 5
+# Maximum raster pages to send to Vision API (no cap — process all pages)
+MAX_VISION_PAGES = 9999
 
 
 def _compute_confidence(
@@ -53,6 +54,7 @@ def _compute_confidence(
 async def _read_plan_async(
     pdf_path: Path,
     use_vision: bool = True,
+    progress_fn: Callable[[dict], None] | None = None,
 ) -> PlanReadResult:
     """Internal async implementation of read_plan."""
     from src.extraction.plan_parser.vision_extractor import extract_raster_page_vision
@@ -90,6 +92,14 @@ async def _read_plan_async(
     for i, fitz_page in enumerate(doc):
         page_num = i + 1  # 1-based
 
+        if progress_fn is not None:
+            progress_fn({
+                "event": "extracting",
+                "page": page_num,
+                "total": total_pages,
+                "message": f"Reading page {page_num} of {total_pages}",
+            })
+
         # Classify and extract text
         page_info = classify_page(fitz_page, page_num, total_pages)
         annotations = extract_annotations(fitz_page, page_num)
@@ -114,6 +124,13 @@ async def _read_plan_async(
             raster_count += 1
             # Optionally fall back to Vision API (capped at MAX_VISION_PAGES)
             if use_vision and vision_pages_used < MAX_VISION_PAGES:
+                if progress_fn is not None:
+                    progress_fn({
+                        "event": "extracting_vision",
+                        "page": page_num,
+                        "total": total_pages,
+                        "message": f"Vision API: page {page_num} of {total_pages}",
+                    })
                 vision_data = await extract_raster_page_vision(fitz_page, page_num, plan_page.page_type)
                 vision_pages_used += 1
 
@@ -183,15 +200,20 @@ async def _read_plan_async(
     )
 
 
-def read_plan(pdf_path: Path, use_vision: bool = True) -> PlanReadResult:
+def read_plan(
+    pdf_path: Path,
+    use_vision: bool = True,
+    progress_fn: Callable[[dict], None] | None = None,
+) -> PlanReadResult:
     """Read an architectural drawing PDF and extract structured data.
 
     Args:
         pdf_path: Path to the PDF file.
         use_vision: Whether to use Claude Vision API for raster pages.
                     Set False in tests to avoid API costs.
+        progress_fn: Optional callback invoked with a progress dict on each page.
 
     Returns:
         PlanReadResult with extracted pages, rooms, ceiling specs, and scope suggestions.
     """
-    return asyncio.run(_read_plan_async(pdf_path, use_vision=use_vision))
+    return asyncio.run(_read_plan_async(pdf_path, use_vision=use_vision, progress_fn=progress_fn))
