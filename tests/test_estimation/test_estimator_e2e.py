@@ -110,20 +110,29 @@ class TestEstimatorFromFixture:
                 f"area_sf {se.area_sf} not within 1.0 SF of any known AWP area"
             )
 
+    @requires_models
     def test_total_cost_reasonable(self, seven_pines_plan_result: PlanReadResult) -> None:
         """Total estimated cost for the 3 AWP scopes (1595 SF combined) must fall
         within a plausible range.  The actual bid was ~$68k; we assert > $40k
-        (conservative floor) and < $200k (generous ceiling)."""
+        (conservative floor) and < $200k (generous ceiling).
+
+        Requires trained models — heuristic fallback produces lower costs that
+        would fail this model-accuracy assertion.
+        """
         result = estimate_from_plan_result(seven_pines_plan_result)
 
         total = result.total_estimated_cost
         assert total > Decimal("40000"), f"Total cost ${total} is suspiciously low for 1595 SF of AWP"
         assert total < Decimal("200000"), f"Total cost ${total} exceeds sanity upper bound of $200k"
 
+    @requires_models
     def test_man_days_predicted(self, seven_pines_plan_result: PlanReadResult) -> None:
         """Estimated man-days for 1595 SF of AWP must be within a reasonable range.
-        AWP heuristic is ~1.8 man-days per 1000 SF → expect ~2.9 days minimum;
-        we assert > 5 to accommodate model variance, capped at 100."""
+        We assert > 5 days based on trained labor model output.
+
+        Requires trained models — heuristic fallback uses a simpler formula that
+        produces ~2.9 days (below this model-calibrated threshold).
+        """
         result = estimate_from_plan_result(seven_pines_plan_result)
 
         man_days = result.estimated_man_days
