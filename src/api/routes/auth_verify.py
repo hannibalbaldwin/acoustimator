@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies import get_db
 
-router = APIRouter(prefix="/api/auth", tags=["auth"])
+router = APIRouter(prefix="/api/credentials", tags=["auth"])
 
 
 class VerifyRequest(BaseModel):

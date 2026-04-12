@@ -16,7 +16,7 @@ export async function verifyUserCredentials(
   const BASE = process.env.NEXT_PUBLIC_API_URL ?? ''
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY ?? ''
   try {
-    const res = await fetch(`${BASE}/api/auth/verify`, {
+    const res = await fetch(`${BASE}/api/credentials/verify`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

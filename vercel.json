@@ -4,7 +4,6 @@
     { "src": "frontend/package.json", "use": "@vercel/next" }
   ],
   "routes": [
-    { "src": "/api/auth/verify", "dest": "api/index.py" },
     { "src": "/api/auth/(.*)", "dest": "frontend/api/auth/$1" },
     { "src": "/api/(.*)", "dest": "api/index.py" },
     { "src": "/(.*)", "dest": "frontend/$1" }
