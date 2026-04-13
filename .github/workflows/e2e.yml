@@ -33,7 +33,7 @@ jobs:
         with:
           version: 10
 
-      - uses: astral-sh/setup-uv@v4
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
 
@@ -110,7 +110,7 @@ jobs:
         with:
           version: 10
 
-      - uses: astral-sh/setup-uv@v4
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
 
