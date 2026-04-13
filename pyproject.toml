@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "AI-powered estimation engine for Commercial Acoustics"
 requires-python = ">=3.12"
 dependencies = [
-    "anthropic>=0.40.0",
+    "anthropic>=0.94.0",
     "openpyxl>=3.1.0",
     "sqlalchemy[asyncio]>=2.0",
     "asyncpg>=0.30.0",
